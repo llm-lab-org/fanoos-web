@@ -34,6 +34,7 @@ test.describe("Event List Summary", () => {
                 }),
             ).toBeVisible();
 
+            await replaceBotIds(page, bot);
             await expect(page.locator(".mx_MainSplit")).toMatchScreenshot("bot_joined_the_room.png", ignoreTimestamps);
         },
     );
@@ -65,6 +66,7 @@ test.describe("Event List Summary", () => {
                 }),
             ).toBeVisible();
 
+            await replaceBotIds(page, bot);
             await expect(page.locator(".mx_MainSplit")).toMatchScreenshot("bot_was_banned.png", ignoreTimestamps);
         },
     );
@@ -95,6 +97,7 @@ test.describe("Event List Summary", () => {
                 }),
             ).toBeVisible();
 
+            await replaceBotIds(page, bot);
             await expect(page.locator(".mx_MainSplit")).toMatchScreenshot(
                 "multiple_join_leave_messages.png",
                 ignoreTimestamps,
@@ -129,6 +132,7 @@ test.describe("Event List Summary", () => {
                 }),
             ).toBeVisible();
 
+            await replaceBotIds(page, bot);
             await expect(page.locator(".mx_MainSplit")).toMatchScreenshot(
                 "multiple_join_ban_messages.png",
                 ignoreTimestamps,
@@ -175,6 +179,7 @@ test.describe("Event List Summary", () => {
 
             await expect(page.locator('div[aria-label="3 members"]')).toBeVisible();
 
+            await replaceBotIds(page, bot, bot2);
             await expect(page.locator(".mx_MainSplit")).toMatchScreenshot(
                 "multiple_people_join_leave_messages.png",
                 ignoreTimestampsRightColumnAndHeader,
@@ -193,6 +198,7 @@ test.describe("Event List Summary", () => {
                 }),
             ).toBeVisible();
 
+            await replaceBotIds(page, bot, bot2);
             await expect(page.locator(".mx_MainSplit")).toMatchScreenshot(
                 "multiple_people_join_leave_messages_expanded.png",
                 ignoreTimestampsRightColumnAndHeader,
@@ -240,6 +246,7 @@ test.describe("Event List Summary", () => {
 
             await expect(page.locator('div[aria-label="3 members"]')).toBeVisible();
 
+            await replaceBotIds(page, bot, bot2);
             await expect(page.locator(".mx_MainSplit")).toMatchScreenshot(
                 "multiple_people_ban_messages.png",
                 ignoreTimestampsRightColumnAndHeader,
@@ -258,6 +265,7 @@ test.describe("Event List Summary", () => {
                 }),
             ).toBeVisible();
 
+            await replaceBotIds(page, bot, bot2);
             await expect(page.locator(".mx_MainSplit")).toMatchScreenshot(
                 "multiple_people_ban_messages_expanded.png",
                 ignoreTimestampsRightColumnAndHeader,
@@ -301,4 +309,23 @@ async function setupRoom(app: ElementAppPage, homeserver: StartedHomeserverConta
     await app.client.sendMessage(roomId, "I invited MyBot...");
 
     return { bot, roomId };
+}
+
+/**
+ * Find the ID of the supplied bot in the page and replace it with a known string.
+ *
+ * This allows us to create consistent screenshots.
+ */
+async function replaceBotIds(page: Page, bot: Bot, bot2?: Bot) {
+    await page.evaluate(
+        ([bot1UserId, bot2UserId]) => {
+            for (const el of document.querySelectorAll("div.mx_TextualEvent")) {
+                if ("innerText" in el) {
+                    el.innerText = (el.innerText as any as string).replaceAll(bot1UserId, "<<replaced_bot1_id>>");
+                    el.innerText = (el.innerText as any as string).replaceAll(bot2UserId, "<<replaced_bot2_id>>");
+                }
+            }
+        },
+        [bot.credentials.userId, bot2?.credentials?.userId ?? "no_bot_2_to_replace"],
+    );
 }
