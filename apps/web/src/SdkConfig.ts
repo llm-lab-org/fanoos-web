@@ -40,7 +40,7 @@ export const DEFAULTS: DeepReadonly<IConfigOptions> = {
     desktopBuilds: {
         available: true,
         // eslint-disable-next-line @typescript-eslint/no-require-imports
-        logo: require("../res/img/element-desktop-logo.svg").default,
+        logo: require("../res/img/element-desktop-logo.png"),
         url: "https://element.io/get-started",
     },
 

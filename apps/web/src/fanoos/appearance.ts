@@ -464,7 +464,10 @@ export function applyFanoosAppearance(): void {
         (SettingsStore.getValue("fanoos.accentColor") as string | null) ??
         paletteVars["--cpd-color-icon-accent-primary"] ??
         null;
-    const sentMsgTextColor = paletteVars["--fanoos-sent-msg-color"] ?? null;
+    const sentMsgTextColor =
+        (SettingsStore.getValue("fanoos.sentMsgTextColor") as string | null) ??
+        paletteVars["--fanoos-sent-msg-color"] ??
+        null;
     const receivedMsgTextColor = paletteVars["--fanoos-received-msg-color"] ?? null;
 
     const rules: string[] = [];
@@ -2152,6 +2155,7 @@ const FANOOS_APPEARANCE_SETTING_KEYS = [
     "fanoos.composerColor",
     "fanoos.chatBgColor",
     "fanoos.sentMsgColor",
+    "fanoos.sentMsgTextColor",
     "fanoos.receivedMsgColor",
     "fanoos.accentColor",
     "fanoos.palette",

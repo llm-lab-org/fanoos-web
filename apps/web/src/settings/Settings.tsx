@@ -297,6 +297,7 @@ export interface Settings {
     "fanoos.headerColor": IBaseSetting<string | null>;
     "fanoos.composerColor": IBaseSetting<string | null>;
     "fanoos.sentMsgColor": IBaseSetting<string | null>;
+    "fanoos.sentMsgTextColor": IBaseSetting<string | null>;
     "fanoos.receivedMsgColor": IBaseSetting<string | null>;
     "fanoos.accentColor": IBaseSetting<string | null>;
     "fanoos.palette": IBaseSetting<string>;
@@ -1084,6 +1085,10 @@ export const SETTINGS: Settings = {
     "fanoos.sentMsgColor": {
         supportedLevels: LEVELS_DEVICE_ONLY_SETTINGS,
         default: "#e0fcd7",
+    },
+    "fanoos.sentMsgTextColor": {
+        supportedLevels: LEVELS_DEVICE_ONLY_SETTINGS,
+        default: "#1a2a48",
     },
     "fanoos.receivedMsgColor": {
         supportedLevels: LEVELS_DEVICE_ONLY_SETTINGS,
