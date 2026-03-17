@@ -1067,31 +1067,31 @@ export const SETTINGS: Settings = {
     },
     "fanoos.chatBgColor": {
         supportedLevels: LEVELS_DEVICE_ONLY_SETTINGS,
-        default: null,
+        default: "#eef1f8",
     },
     "fanoos.leftPanelColor": {
         supportedLevels: LEVELS_DEVICE_ONLY_SETTINGS,
-        default: null,
+        default: "#1e3a5c",
     },
     "fanoos.headerColor": {
         supportedLevels: LEVELS_DEVICE_ONLY_SETTINGS,
-        default: null,
+        default: "#2a5298",
     },
     "fanoos.composerColor": {
         supportedLevels: LEVELS_DEVICE_ONLY_SETTINGS,
-        default: null,
+        default: "#ffffff",
     },
     "fanoos.sentMsgColor": {
         supportedLevels: LEVELS_DEVICE_ONLY_SETTINGS,
-        default: null,
+        default: "#2a5298",
     },
     "fanoos.receivedMsgColor": {
         supportedLevels: LEVELS_DEVICE_ONLY_SETTINGS,
-        default: null,
+        default: "#f0f5ff",
     },
     "fanoos.accentColor": {
         supportedLevels: LEVELS_DEVICE_ONLY_SETTINGS,
-        default: null,
+        default: "#2a85ff",
     },
     "fanoos.palette": {
         supportedLevels: LEVELS_DEVICE_ONLY_SETTINGS,
