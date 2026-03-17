@@ -5,65 +5,41 @@ SPDX-License-Identifier: AGPL-3.0-only OR GPL-3.0-only OR LicenseRef-Element-Com
 Please see LICENSE files in the repository root for full details.
 */
 
-.mx_LanguageSelector_wrapper {
+.mx_LanguageSelector_buttons {
     display: flex;
-    align-items: center;
-    gap: 0;
-    background: rgba(255, 255, 255, 0.55);
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    border-radius: 20px;
-    padding: 5px 10px 5px 10px;
+    gap: 6px;
+    justify-content: center;
     width: 100%;
-    box-sizing: border-box;
-    transition: background 0.15s ease, border-color 0.15s ease;
-
-    &:hover {
-        background: rgba(255, 255, 255, 0.8);
-        border-color: rgba(0, 0, 0, 0.18);
-    }
 }
 
-.mx_LanguageSelector_icon {
-    color: #555e6e;
-    flex-shrink: 0;
-    margin-right: 7px;
-    margin-top: 1px;
-}
-
-.mx_AuthBody_language {
+.mx_LanguageSelector_btn {
     flex: 1;
-    min-width: 0;
-}
+    padding: 6px 4px;
+    border-radius: 16px;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    background: rgba(255, 255, 255, 0.45);
+    color: #555e6e;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    white-space: nowrap;
 
-.mx_AuthBody_language .mx_Dropdown_input {
-    border: none;
-    background: transparent;
-    border-radius: 0;
-    padding: 0;
-    font: var(--cpd-font-body-md-semibold);
-    font-size: 13px;
-    color: #333d4b;
+    &:hover:not(:disabled) {
+        background: rgba(255, 255, 255, 0.75);
+        border-color: rgba(0, 0, 0, 0.2);
+        color: #1a1d23;
+    }
 
-    &:focus {
-        border: none;
+    &:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
     }
 }
 
-.mx_AuthBody_language .mx_Dropdown_arrow {
-    color: #555e6e;
-    width: 16px;
-    height: 16px;
-}
-
-.mx_AuthBody_language .mx_Dropdown_option {
-    font-size: 13px;
-    padding: 0 6px;
-}
-
-.mx_AuthBody_language .mx_Dropdown_menu {
-    z-index: 1000;
-    top: auto;
-    bottom: calc(100% + 8px);
-    border-radius: 10px;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+.mx_LanguageSelector_btn_active {
+    background: rgba(255, 255, 255, 0.9);
+    border-color: rgba(0, 0, 0, 0.2);
+    color: #1a1d23;
+    font-weight: 600;
 }

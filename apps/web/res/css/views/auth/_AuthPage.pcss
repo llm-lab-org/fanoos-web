@@ -17,13 +17,13 @@ Please see LICENSE files in the repository root for full details.
 
 .mx_AuthPage_modal {
     display: flex;
-    margin: 340px auto auto;
+    margin: 40px auto auto;
     border-radius: 20px;
     background-color: $authpage-modal-bg-color;
     overflow: hidden;
 
     @media only screen and (max-height: 768px) {
-        margin-top: 200px;
+        margin-top: 20px;
     }
 
     @media only screen and (max-width: 480px) {
@@ -40,6 +40,35 @@ Please see LICENSE files in the repository root for full details.
         .mx_AuthPage_modalContent {
             background-color: rgba(255, 255, 255, 0.92);
         }
+    }
+}
+
+.mx_AuthPage_poem {
+    text-align: center;
+    padding: 48px 24px 0;
+    pointer-events: none;
+    user-select: none;
+
+    .mx_AuthPage_poem_main {
+        margin: 0 0 10px;
+        font-size: 28px;
+        font-weight: 400;
+        color: #f5e8b0;
+        opacity: 0.88;
+        text-shadow:
+            0 0 40px rgba(240, 200, 80, 0.6),
+            0 0 80px rgba(200, 150, 40, 0.35);
+        letter-spacing: 0.04em;
+        line-height: 1.5;
+    }
+
+    .mx_AuthPage_poem_sub {
+        margin: 0;
+        font-size: 15px;
+        font-family: "Georgia", "Palatino Linotype", serif;
+        color: #e8d898;
+        opacity: 0.55;
+        letter-spacing: 0.03em;
     }
 }
 

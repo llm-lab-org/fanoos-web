@@ -12,6 +12,28 @@ import classNames from "classnames";
 
 import SdkConfig from "../../../SdkConfig";
 import AuthFooter from "./AuthFooter";
+import { getCurrentLanguage } from "../../../languageHandler";
+
+const POEMS: Record<string, { main: string; sub: string; dir: "rtl" | "ltr"; font: string }> = {
+    fa: {
+        main: "ای روشنای قلب من، فانوس راهت می‌شوم",
+        sub: "O light of my heart, I will become the lantern that lights your way.",
+        dir: "rtl",
+        font: "'IRANSansX', 'Vazirmatn', serif",
+    },
+    ar: {
+        main: "يا ضياءَ قلبي، سأغدو فانوسًا يهدي طريقك",
+        sub: "O light of my heart, I will become the lantern that lights your way.",
+        dir: "rtl",
+        font: "'Scheherazade New', 'Noto Naskh Arabic', serif",
+    },
+    en: {
+        main: "O light of my heart, I will become the lantern that lights your way.",
+        sub: "",
+        dir: "ltr",
+        font: "'Georgia', 'Palatino Linotype', serif",
+    },
+};
 
 interface IProps {
     /**
@@ -84,8 +106,16 @@ export default class AuthPage extends React.PureComponent<React.PropsWithChildre
             mx_AuthPage_modal_withBlur: this.props.addBlur !== false,
         });
 
+        const lang = getCurrentLanguage();
+        const poemKey = lang.startsWith("fa") ? "fa" : lang.startsWith("ar") ? "ar" : "en";
+        const poem = POEMS[poemKey];
+
         return (
             <div className="mx_AuthPage" style={pageStyle}>
+                <div className="mx_AuthPage_poem" dir={poem.dir}>
+                    <p className="mx_AuthPage_poem_main" style={{ fontFamily: poem.font }}>{poem.main}</p>
+                    {poem.sub && <p className="mx_AuthPage_poem_sub">{poem.sub}</p>}
+                </div>
                 <div className={modalClasses} style={modalStyle}>
                     {modalBlur}
                     <main
