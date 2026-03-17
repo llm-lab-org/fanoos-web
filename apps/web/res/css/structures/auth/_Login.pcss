@@ -68,10 +68,22 @@ Please see LICENSE files in the repository root for full details.
 /* hide the login-type switcher (email/phone/username toggle) */
 .mx_Login_type_container { display: none; }
 
+/* Dark pill sign-in button */
 .mx_Login_submit {
     width: 100%;
     margin-top: 24px;
-    margin-bottom: 24px;
+    margin-bottom: 16px;
+    background-color: #1a1d23 !important;
+    color: #ffffff !important;
+    border-radius: 28px !important;
+    padding: 14px !important;
+    font-size: 15px !important;
+    font-weight: 600 !important;
+    border: none !important;
+
+    &:hover {
+        background-color: #2d3340 !important;
+    }
 }
 
 .mx_Login_loader {
