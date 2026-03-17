@@ -5,17 +5,46 @@ SPDX-License-Identifier: AGPL-3.0-only OR GPL-3.0-only OR LicenseRef-Element-Com
 Please see LICENSE files in the repository root for full details.
 */
 
-.mx_AuthBody_language {
+.mx_LanguageSelector_wrapper {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255, 255, 255, 0.55);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 20px;
+    padding: 4px 10px 4px 8px;
     width: 100%;
+    box-sizing: border-box;
+    transition: background 0.15s ease, border-color 0.15s ease;
+
+    &:hover {
+        background: rgba(255, 255, 255, 0.8);
+        border-color: rgba(0, 0, 0, 0.18);
+    }
+}
+
+.mx_LanguageSelector_icon {
+    color: #555e6e;
+    flex-shrink: 0;
+}
+
+.mx_AuthBody_language {
+    flex: 1;
+    min-width: 0;
 }
 
 .mx_AuthBody_language .mx_Dropdown_input {
     border: none;
+    background: transparent;
     font: var(--cpd-font-body-md-semibold);
-    color: $authpage-lang-color;
-    width: auto;
+    color: #333d4b;
+    padding: 0;
 }
 
 .mx_AuthBody_language .mx_Dropdown_arrow {
-    color: $authpage-lang-color;
+    color: #555e6e;
+}
+
+.mx_AuthBody_language .mx_Dropdown_option {
+    font-size: 13px;
 }
