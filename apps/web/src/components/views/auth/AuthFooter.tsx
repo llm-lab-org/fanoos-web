@@ -10,7 +10,7 @@ import React, { type ReactElement } from "react";
 const AuthFooter = (): ReactElement => {
     return (
         <footer className="mx_AuthFooter" role="contentinfo">
-            <span>Fanoos — a modified version of Element, licensed under AGPL-3.0 · © 2024 New Vector Ltd.</span>
+            <span>Fanoos is an adapted version of Element, licensed under AGPL-3.0 · Modified by LLM-LAB</span>
         </footer>
     );
 };
