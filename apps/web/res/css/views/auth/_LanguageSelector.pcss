@@ -8,19 +8,9 @@ Please see LICENSE files in the repository root for full details.
 .mx_LanguageSelector_wrapper {
     display: flex;
     align-items: center;
-    gap: 6px;
-    background: rgba(255, 255, 255, 0.55);
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    border-radius: 20px;
-    padding: 4px 10px 4px 8px;
+    gap: 8px;
     width: 100%;
     box-sizing: border-box;
-    transition: background 0.15s ease, border-color 0.15s ease;
-
-    &:hover {
-        background: rgba(255, 255, 255, 0.8);
-        border-color: rgba(0, 0, 0, 0.18);
-    }
 }
 
 .mx_LanguageSelector_icon {
@@ -34,11 +24,18 @@ Please see LICENSE files in the repository root for full details.
 }
 
 .mx_AuthBody_language .mx_Dropdown_input {
-    border: none;
-    background: transparent;
+    background: rgba(255, 255, 255, 0.55);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 20px;
+    padding: 4px 8px;
     font: var(--cpd-font-body-md-semibold);
     color: #333d4b;
-    padding: 0;
+    transition: background 0.15s ease, border-color 0.15s ease;
+
+    &:hover {
+        background: rgba(255, 255, 255, 0.8);
+        border-color: rgba(0, 0, 0, 0.18);
+    }
 }
 
 .mx_AuthBody_language .mx_Dropdown_arrow {
