@@ -1083,7 +1083,7 @@ export const SETTINGS: Settings = {
     },
     "fanoos.sentMsgColor": {
         supportedLevels: LEVELS_DEVICE_ONLY_SETTINGS,
-        default: "#2a5298",
+        default: "#e0fcd7",
     },
     "fanoos.receivedMsgColor": {
         supportedLevels: LEVELS_DEVICE_ONLY_SETTINGS,
