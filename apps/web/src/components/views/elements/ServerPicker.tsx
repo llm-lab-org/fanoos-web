@@ -7,7 +7,6 @@ Please see LICENSE files in the repository root for full details.
 */
 
 import React from "react";
-import { InfoIcon } from "@vector-im/compound-design-tokens/assets/web/icons";
 
 import AccessibleButton from "./AccessibleButton";
 import { type ValidatedServerConfig } from "../../../utils/ValidatedServerConfig";
@@ -16,7 +15,6 @@ import TextWithTooltip from "./TextWithTooltip";
 import SdkConfig from "../../../SdkConfig";
 import Modal from "../../../Modal";
 import ServerPickerDialog from "../dialogs/ServerPickerDialog";
-import InfoDialog from "../dialogs/InfoDialog";
 
 interface IProps {
     title?: string;
@@ -35,39 +33,16 @@ const showPickerDialog = (
     finished.then(([config]) => onFinished(config));
 };
 
-const onHelpClick = (): void => {
-    const brand = SdkConfig.get().brand;
-    Modal.createDialog(
-        InfoDialog,
-        {
-            title: _t("auth|server_picker_title_default"),
-            description: _t("auth|server_picker_description", { brand }),
-            button: _t("action|dismiss"),
-            hasCloseButton: false,
-            fixedWidth: false,
-        },
-        "mx_ServerPicker_helpDialog",
-    );
-};
-
 const ServerPicker: React.FC<IProps> = ({ title, dialogTitle, serverConfig, onServerConfigChange, disabled }) => {
     const disableCustomUrls = SdkConfig.get("disable_custom_urls");
 
-    let editBtn;
-    if (!disableCustomUrls && onServerConfigChange) {
-        const onClick = (): void => {
+    const onClick = (): void => {
+        if (!disableCustomUrls && onServerConfigChange) {
             showPickerDialog(dialogTitle, serverConfig, (config?: ValidatedServerConfig) => {
-                if (config) {
-                    onServerConfigChange(config);
-                }
+                if (config) onServerConfigChange(config);
             });
-        };
-        editBtn = (
-            <AccessibleButton className="mx_ServerPicker_change" kind="link" onClick={onClick} disabled={disabled}>
-                {_t("action|edit")}
-            </AccessibleButton>
-        );
-    }
+        }
+    };
 
     let serverName: React.ReactNode = serverConfig.isNameResolvable ? serverConfig.hsName : serverConfig.hsUrl;
     if (serverConfig.hsNameIsDifferent) {
@@ -78,24 +53,27 @@ const ServerPicker: React.FC<IProps> = ({ title, dialogTitle, serverConfig, onSe
         );
     }
 
-    let desc;
-    if (serverConfig.hsName === "matrix.org") {
-        desc = <span className="mx_ServerPicker_desc">{_t("auth|server_picker_description_matrix.org")}</span>;
-    }
-
     return (
-        <div className="mx_ServerPicker">
-            <h2>{title || _t("common|homeserver")}</h2>
-            {!disableCustomUrls ? (
-                <AccessibleButton className="mx_ServerPicker_help" onClick={onHelpClick} aria-label={_t("common|help")}>
-                    <InfoIcon />
-                </AccessibleButton>
-            ) : null}
-            <span className="mx_ServerPicker_server" title={typeof serverName === "string" ? serverName : undefined}>
-                {serverName}
-            </span>
-            {editBtn}
-            {desc}
+        <div className="mx_ServerPicker mx_ServerPicker_field" onClick={!disabled ? onClick : undefined}>
+            <div className="mx_ServerPicker_fieldIcon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="2" y1="12" x2="22" y2="12"/>
+                    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                </svg>
+            </div>
+            <div className="mx_ServerPicker_fieldContent">
+                <span className="mx_ServerPicker_fieldLabel">{title || _t("common|homeserver")}</span>
+                <span className="mx_ServerPicker_server">{serverName}</span>
+            </div>
+            {!disableCustomUrls && onServerConfigChange && (
+                <div className="mx_ServerPicker_fieldEdit">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                    </svg>
+                </div>
+            )}
         </div>
     );
 };
