@@ -41,6 +41,9 @@
         "interfaceDirection": "ltr",
         "appFont": "IRANSansX"
     },
+    "embedded_pages": {
+        "login_for_welcome": true
+    },
     "branding": {
         "welcome_background_url": "themes/element/img/backgrounds/night-sky.svg",
         "auth_header_logo_url": "themes/element/img/logos/fanoos-large.png",
