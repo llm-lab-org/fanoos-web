@@ -1,105 +1,77 @@
 <style type="text/css">
-    /* we deliberately inline style here to avoid flash-of-CSS problems, and to avoid
- * voodoo where we have to set display: none by default
- */
-
-    .mx_Header_title::after {
-        content: "!";
-    }
-
     .mx_Parent {
-        display: -webkit-box;
-        display: -webkit-flex;
-        display: -ms-flexbox;
         display: flex;
-        -webkit-box-orient: vertical;
-        -webkit-box-direction: normal;
-        -webkit-flex-direction: column;
-        -ms-flex-direction: column;
         flex-direction: column;
-        -webkit-box-pack: center;
-        -webkit-justify-content: center;
-        -ms-flex-pack: center;
         justify-content: center;
-        -webkit-box-align: center;
-        -webkit-align-items: center;
-        -ms-flex-align: center;
         align-items: center;
         text-align: center;
-        padding: 25px 35px;
+        padding: 40px 48px 32px;
+        gap: 0;
     }
 
     .mx_Logo {
-        height: 54px;
-        margin-top: 2px;
-    }
-
-    .mx_ButtonGroup {
-        margin-top: 10px;
-    }
-
-    .mx_ButtonRow {
-        display: -webkit-box;
-        display: -webkit-flex;
-        display: -ms-flexbox;
-        display: flex;
-        -webkit-justify-content: space-around;
-        -ms-flex-pack: distribute;
-        -webkit-box-align: center;
-        -webkit-align-items: center;
-        -ms-flex-align: center;
-        align-items: center;
-        justify-content: center;
-        box-sizing: border-box;
-        margin: 16px 0 0;
-        gap: 16px;
-    }
-
-    .mx_ButtonRow > * {
-        margin: 0;
-    }
-
-    .mx_ButtonParent {
-        display: -webkit-box;
-        display: -webkit-flex;
-        display: -ms-flexbox;
-        display: flex;
-        padding: 10px 20px;
-        -webkit-box-orient: horizontal;
-        -webkit-box-direction: normal;
-        -webkit-flex-direction: row;
-        -ms-flex-direction: row;
-        flex-direction: row;
-        -webkit-box-pack: center;
-        -webkit-justify-content: center;
-        -ms-flex-pack: center;
-        justify-content: center;
-        -webkit-box-align: center;
-        -webkit-align-items: center;
-        -ms-flex-align: center;
-        align-items: center;
-        border-radius: 4px;
-        width: 150px;
-        background-repeat: no-repeat;
-        background-position: 10px center;
-        text-decoration: none;
-        color: #2e2f32 !important;
-    }
-
-    .mx_ButtonLabel {
-        margin-left: 20px;
+        height: 72px;
+        margin-bottom: 8px;
+        filter: drop-shadow(0 4px 24px rgba(180,140,80,0.25));
     }
 
     .mx_Header_title {
-        font-size: 24px;
-        font-weight: 600;
-        margin: 20px 0 0;
+        font-size: 26px;
+        font-weight: 700;
+        margin: 16px 0 0;
+        letter-spacing: 0.01em;
+        color: inherit;
+    }
+
+    .mx_Header_title::after {
+        content: "";
     }
 
     .mx_Header_subtitle {
-        font-size: 12px;
+        font-size: 13px;
         font-weight: normal;
         margin: 8px 0 0;
+        opacity: 0.7;
+    }
+
+    .mx_ButtonGroup {
+        margin-top: 28px;
+        width: 100%;
+    }
+
+    .mx_ButtonRow {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-sizing: border-box;
+        margin: 0;
+        gap: 16px;
+    }
+
+    .mx_ButtonParent {
+        display: flex;
+        padding: 12px 28px;
+        flex-direction: row;
+        justify-content: center;
+        align-items: center;
+        border-radius: 8px;
+        min-width: 140px;
+        background-repeat: no-repeat;
+        background-position: 14px center;
+        text-decoration: none;
+        font-size: 15px;
+        font-weight: 600;
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+    }
+
+    .mx_ButtonParent:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 18px rgba(0,0,0,0.28);
+    }
+
+    .mx_ButtonLabel {
+        margin-left: 24px;
     }
 
     .mx_ButtonSignIn {
@@ -113,8 +85,9 @@
     }
 
     .mx_SecondaryButton {
-        background-color: #ffffff;
-        color: #2e2f32;
+        background-color: rgba(255,255,255,0.15);
+        color: inherit !important;
+        border: 1px solid rgba(255,255,255,0.3);
     }
 
     .mx_Button_iconSignIn {
@@ -130,29 +103,31 @@
         background-image: url("welcome/images/icon-room-directory.svg");
     }
 
-    /*
-.mx_WelcomePage_loggedIn is applied by EmbeddedPage from the Welcome component
-If it is set on the page, we should show the buttons. Otherwise, we have to assume
-we don't have an account and should hide them. No account == no guest account either.
- */
     .mx_WelcomePage:not(.mx_WelcomePage_loggedIn) .mx_WelcomePage_guestFunctions {
         display: none;
     }
 
     .mx_ButtonRow.mx_WelcomePage_guestFunctions {
-        margin-top: 20px;
+        margin-top: 14px;
     }
     .mx_ButtonRow.mx_WelcomePage_guestFunctions > div {
         margin: 0 auto;
+    }
+
+    .mx_Divider {
+        width: 48px;
+        height: 2px;
+        background: rgba(255,255,255,0.2);
+        border-radius: 2px;
+        margin: 24px auto 0;
     }
 
     @media only screen and (max-width: 480px) {
         .mx_ButtonRow {
             flex-direction: column;
         }
-
-        .mx_ButtonRow > * {
-            margin: 0 0 10px 0;
+        .mx_Parent {
+            padding: 28px 24px 24px;
         }
     }
 </style>
@@ -160,8 +135,8 @@ we don't have an account and should hide them. No account == no guest account ei
 <div class="mx_Parent">
     <img src="$logoUrl" alt="$brand" class="mx_Logo" />
     <h1 class="mx_Header_title">_t("welcome_to_element")</h1>
-    <!-- XXX: Our translations system isn't smart enough to recognize variables in the HTML, so we manually do it -->
     <h2 class="mx_Header_subtitle">_t("powered_by_matrix_with_logo")</h2>
+    <div class="mx_Divider"></div>
     <div class="mx_ButtonGroup">
         <div class="mx_ButtonRow">
             <a href="#/login" class="mx_ButtonParent mx_ButtonSignIn mx_Button_iconSignIn">

@@ -226,6 +226,7 @@ export default class ServerPickerDialog extends React.PureComponent<IProps, ISta
                             validateOnFocus={false}
                             autoFocus={true}
                             id="mx_homeserverInput"
+                            list="mx_homeserverSuggestions"
                         />
                     </StyledRadioButton>
                     <p>{_t("auth|server_picker_explainer")}</p>
@@ -234,14 +235,13 @@ export default class ServerPickerDialog extends React.PureComponent<IProps, ISta
                         {_t("action|continue")}
                     </AccessibleButton>
 
-                    <h2>{_t("action|learn_more")}</h2>
-                    <ExternalLink
-                        href="https://matrix.org/docs/matrix-concepts/elements-of-matrix/#homeserver"
-                        target="_blank"
-                        rel="noreferrer noopener"
-                    >
-                        {_t("auth|server_picker_learn_more")}
-                    </ExternalLink>
+                    <datalist id="mx_homeserverSuggestions">
+                        <option value="https://research.llm-lab.org" />
+                        <option value="https://quranic.network" />
+                        <option value="https://ebad.quranic.network" />
+                        <option value="https://motaghin.quranic.network" />
+                        <option value="https://matrix.org" />
+                    </datalist>
                 </form>
             </BaseDialog>
         );
