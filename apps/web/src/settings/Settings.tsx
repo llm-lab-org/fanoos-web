@@ -1071,11 +1071,11 @@ export const SETTINGS: Settings = {
     },
     "fanoos.leftPanelColor": {
         supportedLevels: LEVELS_DEVICE_ONLY_SETTINGS,
-        default: "#1e3a5c",
+        default: "#1a1d2e",
     },
     "fanoos.headerColor": {
         supportedLevels: LEVELS_DEVICE_ONLY_SETTINGS,
-        default: "#2a5298",
+        default: "#ffffff",
     },
     "fanoos.composerColor": {
         supportedLevels: LEVELS_DEVICE_ONLY_SETTINGS,
