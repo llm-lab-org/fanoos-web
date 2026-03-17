@@ -30,7 +30,7 @@ import { logger } from "matrix-js-sdk/src/logger";
 import { LockSolidIcon, PublicIcon, ChevronLeftIcon } from "@vector-im/compound-design-tokens/assets/web/icons";
 
 import { _t } from "../../../languageHandler";
-import ContextMenu, { ChevronFace } from "../../structures/ContextMenu";
+import ContextMenu, { ChevronFace, type IPosition } from "../../structures/ContextMenu";
 import createRoom, { type IOpts as ICreateOpts } from "../../../createRoom";
 import MatrixClientContext, { useMatrixClientContext } from "../../../contexts/MatrixClientContext";
 import type SpaceBasicSettings from "./SpaceBasicSettings";
@@ -197,9 +197,12 @@ export const SpaceCreateForm: React.FC<ISpaceCreateFormProps> = ({
     );
 };
 
-const SpaceCreateMenu: React.FC<{
-    onFinished(this: void): void;
-}> = ({ onFinished }) => {
+const SpaceCreateMenu: React.FC<
+    IPosition & {
+        chevronFace?: ChevronFace;
+        onFinished(this: void): void;
+    }
+> = ({ onFinished, ...positionProps }) => {
     const cli = useMatrixClientContext();
     const settingAllowPublicSpaces = useSettingValue(UIFeature.AllowCreatingPublicSpaces);
     const [visibility, setVisibility] = useState<Visibility | null>(
@@ -340,8 +343,7 @@ const SpaceCreateMenu: React.FC<{
 
     return (
         <ContextMenu
-            left={72}
-            top={62}
+            {...positionProps}
             chevronOffset={0}
             chevronFace={ChevronFace.None}
             onFinished={onFinished}

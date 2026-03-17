@@ -33,7 +33,7 @@ import {
 } from "@vector-im/compound-design-tokens/assets/web/icons";
 
 import { _t } from "../../../languageHandler";
-import { useContextMenu } from "../../structures/ContextMenu";
+import { toRightOf, useContextMenu } from "../../structures/ContextMenu";
 import SpaceCreateMenu from "./SpaceCreateMenu";
 import { SpaceButton, SpaceItem } from "./SpaceTreeLevel";
 import { useEventEmitter, useEventEmitterState } from "../../../hooks/useEventEmitter";
@@ -242,8 +242,13 @@ const CreateSpaceButton: React.FC<Pick<IInnerSpacePanelProps, "isPanelCollapsed"
     }, [isPanelCollapsed]); // eslint-disable-line react-hooks/exhaustive-deps
 
     let contextMenu: JSX.Element | undefined;
-    if (menuDisplayed) {
-        contextMenu = <SpaceCreateMenu onFinished={closeMenu} />;
+    if (menuDisplayed && handle.current) {
+        contextMenu = (
+            <SpaceCreateMenu
+                {...toRightOf(handle.current.getBoundingClientRect(), 0)}
+                onFinished={closeMenu}
+            />
+        );
     }
 
     const onNewClick = menuDisplayed

@@ -5,14 +5,17 @@
  * Please see LICENSE files in the repository root for full details.
  */
 
+import React from "react";
 import { logger } from "matrix-js-sdk/src/logger";
 import { MapWithDefault } from "matrix-js-sdk/src/utils";
 import { type TranslationStringsObject } from "@matrix-org/react-sdk-module-api";
 import _ from "lodash";
 import {
-    _t,
+    _t as _tBase,
     normalizeLanguageKey,
     type IVariables,
+    type Tags,
+    type TranslatedString,
     KEY_SEPARATOR,
     getLangsJson,
     registerTranslations,
@@ -20,6 +23,7 @@ import {
     getLocale,
     setMissingEntryGenerator as setMissingEntryGeneratorSharedComponents,
 } from "@element-hq/web-shared-components";
+import { localizeDigits } from "./fanoos/digits";
 
 import SettingsStore from "./settings/SettingsStore";
 import PlatformPeg from "./PlatformPeg";
@@ -29,7 +33,6 @@ import SdkConfig from "./SdkConfig";
 import { ModuleRunner } from "./modules/ModuleRunner";
 
 export {
-    _t,
     type IVariables,
     type Tags,
     type TranslatedString,
@@ -41,6 +44,19 @@ export {
     getNormalizedLanguageKeys,
     substitute,
 } from "@element-hq/web-shared-components";
+
+/**
+ * Translate a key and automatically convert ASCII digits (0-9) in the result
+ * to locale-native digits (Persian ۰-۹ or Arabic ٠-٩) based on the current
+ * document language.
+ */
+export function _t(text: TranslationKey, variables?: IVariables): string;
+export function _t(text: TranslationKey, variables: IVariables | undefined, tags: Tags): React.ReactNode;
+export function _t(text: TranslationKey, variables?: IVariables, tags?: Tags): TranslatedString {
+    const result = tags ? _tBase(text, variables, tags) : _tBase(text, variables);
+    if (typeof result === "string") return localizeDigits(result);
+    return result;
+}
 
 const i18nFolder = "i18n/";
 

@@ -7,20 +7,23 @@ Please see LICENSE files in the repository root for full details.
 
 .mx_SpacePillButton {
     position: relative;
-    padding: 16px 32px 16px 72px;
-    width: 432px;
+    padding: 18px 24px 18px 72px;
+    width: 100%;
     box-sizing: border-box;
-    border-radius: 8px;
-    border: 1px solid $input-border-color;
-    font-size: $font-17px;
+    border-radius: 12px;
+    border: 1.5px solid $input-border-color;
+    font-size: $font-16px;
     font-weight: var(--cpd-font-weight-semibold);
-    margin: 20px 0;
+    margin: 10px 0;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    text-align: left;
 
     > div {
         margin-top: 4px;
         font-weight: normal;
-        font-size: $font-15px;
+        font-size: $font-14px;
         color: $secondary-content;
+        line-height: 1.4;
     }
 
     svg {
@@ -36,6 +39,7 @@ Please see LICENSE files in the repository root for full details.
 
     &:hover {
         border-color: var(--cpd-color-bg-action-primary-rest);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 
         svg {
             color: var(--cpd-color-icon-primary);

@@ -1,0 +1,194 @@
+{
+    "a11y": {
+        "seek_bar_label": "شريط البحث الصوتي"
+    },
+    "action": {
+        "back": "رجوع",
+        "delete": "حذف",
+        "dismiss": "تجاهل",
+        "edit": "تعديل",
+        "explore_rooms": "استكشاف الغرف",
+        "go": "اذهب",
+        "invite": "دعوة",
+        "new_conversation": "محادثة جديدة",
+        "new_room": "غرفة جديدة",
+        "new_video_room": "غرفة فيديو جديدة",
+        "open_menu": "فتح القائمة",
+        "pause": "إيقاف مؤقت",
+        "play": "تشغيل",
+        "remove": "إزالة",
+        "retry": "إعادة المحاولة",
+        "search": "بحث",
+        "start_chat": "بدء محادثة"
+    },
+    "common": {
+        "encryption_enabled": "التشفير مفعّل",
+        "preferences": "التفضيلات",
+        "state_encryption_enabled": "تشفير الحالة التجريبي مفعّل"
+    },
+    "left_panel": {
+        "open_dial_pad": "فتح لوحة الاتصال"
+    },
+    "notifications": {
+        "all_messages": "جميع الرسائل",
+        "default_settings": "مطابقة الإعدادات الافتراضية",
+        "mentions_keywords": "الإشارات والكلمات المفتاحية",
+        "mute_room": "كتم الغرفة"
+    },
+    "room": {
+        "context_menu": {
+            "title": "خيارات الغرفة"
+        },
+        "history_visibility_badge": {
+            "private": "الأعضاء الجدد لا يرون السجل",
+            "shared": "الأعضاء الجدد يرون السجل",
+            "world_readable": "يمكن للجميع رؤية السجل"
+        },
+        "jump_to_date": "الانتقال إلى تاريخ",
+        "jump_to_date_beginning": "بداية الغرفة",
+        "jump_to_date_prompt": "اختر تاريخاً للانتقال إليه",
+        "pinned_message_badge": "رسالة مثبّتة",
+        "status_bar": {
+            "delete_all": "حذف الكل",
+            "exceeded_resource_limit_description": "يرجى التواصل مع مسؤول الخدمة لمواصلة الاستخدام.",
+            "exceeded_resource_limit_title": "لم تُرسل رسالتك لأن هذا الخادم تجاوز حد الموارد.",
+            "failed_to_create_room_title": "تعذّر بدء محادثة مع هذا المستخدم",
+            "homeserver_blocked_title": "لم تُرسل رسالتك لأن مسؤول هذا الخادم قام بحجبه.",
+            "monthly_user_limit_reached_title": "لم تُرسل رسالتك لأن هذا الخادم وصل إلى حد المستخدمين الشهري.",
+            "requires_consent_agreement_title": "لا يمكنك إرسال رسائل حتى تراجع وتوافق على الشروط والأحكام.",
+            "retry_all": "إعادة المحاولة للكل",
+            "select_messages_to_retry": "يمكنك تحديد جميع الرسائل أو رسائل فردية لإعادة المحاولة أو الحذف",
+            "server_connectivity_lost_description": "ستُحفظ الرسائل المُرسلة حتى عودة الاتصال.",
+            "server_connectivity_lost_title": "انقطع الاتصال بالخادم.",
+            "some_messages_not_sent": "لم تُرسل بعض رسائلك"
+        }
+    },
+    "room_list": {
+        "a11y": {
+            "default": "فتح الغرفة %(roomName)s",
+            "invitation": "فتح دعوة الغرفة %(roomName)s",
+            "mention": {
+                "one": "فتح الغرفة %(roomName)s مع إشارة غير مقروءة واحدة",
+                "other": "فتح الغرفة %(roomName)s مع %(count)s إشارات غير مقروءة"
+            },
+            "unread": {
+                "one": "فتح الغرفة %(roomName)s مع رسالة غير مقروءة واحدة",
+                "other": "فتح الغرفة %(roomName)s مع %(count)s رسائل غير مقروءة"
+            },
+            "unsent_message": "فتح الغرفة %(roomName)s مع رسالة لم تُرسل"
+        },
+        "appearance": "المظهر",
+        "collapse_filters": "طيّ قائمة الفلاتر",
+        "empty": {
+            "no_chats": "لا توجد محادثات بعد",
+            "no_chats_description": "ابدأ بإرسال رسالة لشخص ما أو بإنشاء غرفة",
+            "no_chats_description_no_room_rights": "ابدأ بإرسال رسالة لشخص ما",
+            "no_favourites": "لا توجد محادثات مفضّلة بعد",
+            "no_favourites_description": "يمكنك إضافة محادثة إلى المفضّلة من إعدادات المحادثة",
+            "no_invites": "لا توجد دعوات غير مقروءة",
+            "no_lowpriority": "لا توجد غرف ذات أولوية منخفضة",
+            "no_mentions": "لا توجد إشارات غير مقروءة",
+            "no_people": "لا توجد محادثات مباشرة بعد",
+            "no_people_description": "يمكنك إلغاء تحديد الفلاتر لرؤية المحادثات الأخرى",
+            "no_rooms": "لست عضواً في أي غرفة بعد",
+            "no_rooms_description": "يمكنك إلغاء تحديد الفلاتر لرؤية المحادثات الأخرى",
+            "no_unread": "تهانينا! لا توجد رسائل غير مقروءة",
+            "show_activity": "عرض كل النشاط",
+            "show_chats": "عرض كل المحادثات"
+        },
+        "expand_filters": "توسيع قائمة الفلاتر",
+        "filters": {
+            "favourite": "المفضّلة",
+            "invites": "الدعوات",
+            "low_priority": "أولوية منخفضة",
+            "mentions": "الإشارات",
+            "people": "الأشخاص",
+            "rooms": "الغرف",
+            "unread": "غير المقروءة"
+        },
+        "list_title": "قائمة الغرف",
+        "more_options": {
+            "copy_link": "نسخ رابط الغرفة",
+            "favourited": "مفضّل",
+            "leave_room": "مغادرة الغرفة",
+            "low_priority": "أولوية منخفضة",
+            "mark_read": "تعيين كمقروء",
+            "mark_unread": "تعيين كغير مقروء"
+        },
+        "notification_options": "خيارات الإشعارات",
+        "open_space_menu": "فتح قائمة الفضاء",
+        "primary_filters": "فلاتر قائمة الغرف",
+        "room": {
+            "more_options": "المزيد من الخيارات"
+        },
+        "room_options": "خيارات الغرفة",
+        "show_message_previews": "عرض معاينات الرسائل",
+        "sort": "ترتيب",
+        "sort_type": {
+            "activity": "آخر نشاط",
+            "atoz": "أ-ي",
+            "unread_first": "غير المقروءة أولاً"
+        },
+        "space_menu": {
+            "home": "الرئيسية",
+            "space_settings": "إعدادات الفضاء"
+        }
+    },
+    "terms": {
+        "tac_button": "مراجعة الشروط والأحكام"
+    },
+    "time": {
+        "about_day_ago": "منذ حوالي يوم",
+        "about_hour_ago": "منذ حوالي ساعة",
+        "about_minute_ago": "منذ حوالي دقيقة",
+        "few_seconds_ago": "منذ ثوانٍ قليلة",
+        "in_about_day": "بعد حوالي يوم",
+        "in_about_hour": "بعد حوالي ساعة",
+        "in_about_minute": "بعد حوالي دقيقة",
+        "in_few_seconds": "بعد ثوانٍ قليلة",
+        "in_n_days": "بعد %(num)s أيام",
+        "in_n_hours": "بعد %(num)s ساعات",
+        "in_n_minutes": "بعد %(num)s دقائق",
+        "n_days_ago": "منذ %(num)s أيام",
+        "n_hours_ago": "منذ %(num)s ساعات",
+        "n_minutes_ago": "منذ %(num)s دقائق"
+    },
+    "timeline": {
+        "decryption_failure": {
+            "blocked": "قام المرسل بحجبك من استلام هذه الرسالة لأن جهازك غير موثّق",
+            "historical_event_no_key_backup": "الرسائل التاريخية غير متوفرة على هذا الجهاز",
+            "historical_event_unverified_device": "تحتاج إلى توثيق هذا الجهاز للوصول إلى الرسائل التاريخية",
+            "historical_event_user_not_joined": "ليس لديك صلاحية الوصول إلى هذه الرسالة",
+            "sender_identity_previously_verified": "تمت إعادة تعيين هوية المرسل الموثّقة",
+            "sender_unsigned_device": "أُرسلت من جهاز غير آمن.",
+            "unable_to_decrypt": "تعذّر فك تشفير الرسالة"
+        },
+        "m.audio": {
+            "audio_player": "مشغّل الصوت",
+            "error_downloading_audio": "خطأ في تنزيل الملف الصوتي",
+            "unnamed_audio": "ملف صوتي بلا اسم"
+        },
+        "m.room.encryption": {
+            "disable_attempt": "تم تجاهل محاولة تعطيل التشفير",
+            "disabled": "التشفير غير مفعّل",
+            "enabled": "رسائل هذه الغرفة مشفّرة من طرف إلى طرف. عند انضمام الأشخاص، يمكنك التحقق منهم في ملفهم الشخصي.",
+            "enabled_dm": "الرسائل هنا مشفّرة من طرف إلى طرف. تحقق من %(displayName)s في ملفه الشخصي.",
+            "enabled_local": "رسائل هذه المحادثة ستكون مشفّرة من طرف إلى طرف.",
+            "parameters_changed": "تم تغيير بعض معاملات التشفير.",
+            "state_enabled": "الرسائل وأحداث الحالة في هذه الغرفة مشفّرة من طرف إلى طرف.",
+            "unsupported": "التشفير المستخدم في هذه الغرفة غير مدعوم."
+        },
+        "message_timestamp_received_at": "استُلمت في: %(dateTime)s",
+        "message_timestamp_sent_at": "أُرسلت في: %(dateTime)s"
+    },
+    "widget": {
+        "context_menu": {
+            "move_left": "نقل لليسار",
+            "move_right": "نقل لليمين",
+            "remove": "حذف للجميع",
+            "revoke": "إلغاء الصلاحيات",
+            "screenshot": "التقاط صورة",
+            "start_audio_stream": "بدء بث صوتي"
+        }
+    }
+}

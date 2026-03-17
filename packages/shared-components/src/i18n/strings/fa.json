@@ -1,14 +1,141 @@
 {
+    "a11y": {
+        "seek_bar_label": "نوار جستجوی صوتی"
+    },
     "action": {
+        "back": "بازگشت",
         "delete": "پاک‌کردن",
         "dismiss": "نادیده بگیر",
-        "explore_rooms": "جستجو در اتاق ها",
+        "edit": "ویرایش",
+        "explore_rooms": "جستجو در اتاق‌ها",
+        "go": "برو",
+        "invite": "دعوت",
+        "new_conversation": "گفتگوی جدید",
+        "new_room": "اتاق جدید",
+        "new_video_room": "اتاق ویدئویی جدید",
+        "open_menu": "باز کردن منو",
         "pause": "متوقف‌کردن",
         "play": "اجرا کردن",
-        "search": "جستجو"
+        "remove": "حذف",
+        "retry": "تلاش مجدد",
+        "search": "جستجو",
+        "start_chat": "شروع چت"
+    },
+    "common": {
+        "encryption_enabled": "رمزنگاری فعال",
+        "preferences": "تنظیمات",
+        "state_encryption_enabled": "رمزنگاری وضعیت آزمایشی فعال"
     },
     "left_panel": {
         "open_dial_pad": "باز کردن صفحه شماره‌گیری"
+    },
+    "notifications": {
+        "all_messages": "همه پیام‌ها",
+        "default_settings": "تطابق با تنظیمات پیش‌فرض",
+        "mentions_keywords": "منشن‌ها و کلیدواژه‌ها",
+        "mute_room": "بی‌صدا کردن اتاق"
+    },
+    "room": {
+        "context_menu": {
+            "title": "گزینه‌های اتاق"
+        },
+        "history_visibility_badge": {
+            "private": "اعضای جدید تاریخچه را نمی‌بینند",
+            "shared": "اعضای جدید تاریخچه را می‌بینند",
+            "world_readable": "همه می‌توانند تاریخچه را ببینند"
+        },
+        "jump_to_date": "رفتن به تاریخ",
+        "jump_to_date_beginning": "ابتدای اتاق",
+        "jump_to_date_prompt": "تاریخ مقصد را انتخاب کنید",
+        "pinned_message_badge": "پیام سنجاق‌شده",
+        "status_bar": {
+            "delete_all": "حذف همه",
+            "exceeded_resource_limit_description": "برای ادامه استفاده از سرویس با مدیر سرویس تماس بگیرید.",
+            "exceeded_resource_limit_title": "پیام شما ارسال نشد چون این هوم‌سرور از محدودیت منابع عبور کرده.",
+            "failed_to_create_room_title": "امکان شروع چت با این کاربر وجود ندارد",
+            "homeserver_blocked_title": "پیام شما ارسال نشد چون این هوم‌سرور توسط مدیرش مسدود شده.",
+            "monthly_user_limit_reached_title": "پیام شما ارسال نشد چون این هوم‌سرور به حد ماهانه کاربران فعال رسیده.",
+            "requires_consent_agreement_title": "تا زمانی که شرایط و ضوابط را مرور و تأیید نکنید، نمی‌توانید پیام ارسال کنید.",
+            "retry_all": "تلاش مجدد برای همه",
+            "select_messages_to_retry": "می‌توانید همه یا پیام‌های جداگانه را برای تلاش مجدد یا حذف انتخاب کنید",
+            "server_connectivity_lost_description": "پیام‌های ارسال‌شده تا بازگشت اتصال ذخیره می‌شوند.",
+            "server_connectivity_lost_title": "اتصال به سرور قطع شده.",
+            "some_messages_not_sent": "برخی از پیام‌های شما ارسال نشده‌اند"
+        }
+    },
+    "room_list": {
+        "a11y": {
+            "default": "باز کردن اتاق %(roomName)s",
+            "invitation": "باز کردن دعوتنامه اتاق %(roomName)s",
+            "mention": {
+                "one": "باز کردن اتاق %(roomName)s با ۱ منشن خوانده‌نشده",
+                "other": "باز کردن اتاق %(roomName)s با %(count)s منشن خوانده‌نشده"
+            },
+            "unread": {
+                "one": "باز کردن اتاق %(roomName)s با ۱ پیام خوانده‌نشده",
+                "other": "باز کردن اتاق %(roomName)s با %(count)s پیام خوانده‌نشده"
+            },
+            "unsent_message": "باز کردن اتاق %(roomName)s با یک پیام ارسال‌نشده"
+        },
+        "appearance": "ظاهر",
+        "collapse_filters": "جمع کردن فیلترها",
+        "empty": {
+            "no_chats": "هنوز چتی وجود ندارد",
+            "no_chats_description": "با ارسال پیام به کسی یا ساختن یک اتاق شروع کنید",
+            "no_chats_description_no_room_rights": "با ارسال پیام به کسی شروع کنید",
+            "no_favourites": "هنوز چت موردعلاقه‌ای ندارید",
+            "no_favourites_description": "می‌توانید چت را از تنظیمات چت به موردعلاقه‌ها اضافه کنید",
+            "no_invites": "دعوتنامه خوانده‌نشده‌ای ندارید",
+            "no_lowpriority": "اتاق اولویت پایینی ندارید",
+            "no_mentions": "منشن خوانده‌نشده‌ای ندارید",
+            "no_people": "هنوز هیچ چت مستقیمی ندارید",
+            "no_people_description": "می‌توانید فیلترها را حذف کنید تا چت‌های دیگر را ببینید",
+            "no_rooms": "هنوز عضو هیچ اتاقی نیستید",
+            "no_rooms_description": "می‌توانید فیلترها را حذف کنید تا چت‌های دیگر را ببینید",
+            "no_unread": "آفرین! پیام خوانده‌نشده‌ای ندارید",
+            "show_activity": "مشاهده همه فعالیت‌ها",
+            "show_chats": "نمایش همه چت‌ها"
+        },
+        "expand_filters": "باز کردن فیلترها",
+        "filters": {
+            "favourite": "موردعلاقه‌ها",
+            "invites": "دعوت‌ها",
+            "low_priority": "اولویت پایین",
+            "mentions": "منشن‌ها",
+            "people": "افراد",
+            "rooms": "اتاق‌ها",
+            "unread": "خوانده‌نشده"
+        },
+        "list_title": "فهرست اتاق‌ها",
+        "more_options": {
+            "copy_link": "کپی لینک اتاق",
+            "favourited": "موردعلاقه",
+            "leave_room": "ترک اتاق",
+            "low_priority": "اولویت پایین",
+            "mark_read": "علامت‌گذاری به عنوان خوانده‌شده",
+            "mark_unread": "علامت‌گذاری به عنوان خوانده‌نشده"
+        },
+        "notification_options": "گزینه‌های اعلان",
+        "open_space_menu": "باز کردن منوی فضا",
+        "primary_filters": "فیلترهای فهرست اتاق",
+        "room": {
+            "more_options": "گزینه‌های بیشتر"
+        },
+        "room_options": "گزینه‌های اتاق",
+        "show_message_previews": "نمایش پیش‌نمایش پیام‌ها",
+        "sort": "مرتب‌سازی",
+        "sort_type": {
+            "activity": "آخرین فعالیت",
+            "atoz": "الف-ی",
+            "unread_first": "خوانده‌نشده‌ها ابتدا"
+        },
+        "space_menu": {
+            "home": "خانه فضا",
+            "space_settings": "تنظیمات فضا"
+        }
+    },
+    "terms": {
+        "tac_button": "بررسی شرایط و ضوابط"
     },
     "time": {
         "about_day_ago": "حدود یک روز قبل",
@@ -25,5 +152,43 @@
         "n_days_ago": "%(num)s روز قبل",
         "n_hours_ago": "%(num)s ساعت قبل",
         "n_minutes_ago": "%(num)s دقیقه قبل"
+    },
+    "timeline": {
+        "decryption_failure": {
+            "blocked": "فرستنده شما را از دریافت این پیام مسدود کرده، چون دستگاه شما تأیید نشده",
+            "historical_event_no_key_backup": "پیام‌های تاریخی در این دستگاه در دسترس نیست",
+            "historical_event_unverified_device": "برای دسترسی به پیام‌های تاریخی باید این دستگاه را تأیید کنید",
+            "historical_event_user_not_joined": "به این پیام دسترسی ندارید",
+            "sender_identity_previously_verified": "هویت تأیید‌شده فرستنده بازنشانی شده",
+            "sender_unsigned_device": "از دستگاه ناامن ارسال شده.",
+            "unable_to_decrypt": "رمزگشایی پیام ناموفق"
+        },
+        "m.audio": {
+            "audio_player": "پخش‌کننده صوتی",
+            "error_downloading_audio": "خطا در دانلود فایل صوتی",
+            "unnamed_audio": "فایل صوتی بدون نام"
+        },
+        "m.room.encryption": {
+            "disable_attempt": "تلاش برای غیرفعال‌کردن رمزنگاری نادیده گرفته شد",
+            "disabled": "رمزنگاری فعال نیست",
+            "enabled": "پیام‌های این اتاق رمزنگاری انتها به انتها دارند. وقتی افراد می‌پیوندند، می‌توانید در پروفایلشان آن‌ها را تأیید کنید، کافی است روی تصویر پروفایلشان ضربه بزنید.",
+            "enabled_dm": "پیام‌های اینجا رمزنگاری انتها به انتها دارند. %(displayName)s را در پروفایلشان تأیید کنید — روی تصویر پروفایلشان ضربه بزنید.",
+            "enabled_local": "پیام‌های این چت رمزنگاری انتها به انتها خواهند داشت.",
+            "parameters_changed": "برخی پارامترهای رمزنگاری تغییر کرده‌اند.",
+            "state_enabled": "پیام‌ها و رویدادهای وضعیت در این اتاق رمزنگاری انتها به انتها دارند. وقتی افراد می‌پیوندند، می‌توانید در پروفایلشان آن‌ها را تأیید کنید.",
+            "unsupported": "رمزنگاری استفاده‌شده در این اتاق پشتیبانی نمی‌شود."
+        },
+        "message_timestamp_received_at": "دریافت در: %(dateTime)s",
+        "message_timestamp_sent_at": "ارسال در: %(dateTime)s"
+    },
+    "widget": {
+        "context_menu": {
+            "move_left": "انتقال به چپ",
+            "move_right": "انتقال به راست",
+            "remove": "حذف برای همه",
+            "revoke": "لغو دسترسی‌ها",
+            "screenshot": "گرفتن عکس",
+            "start_audio_stream": "شروع پخش صدا"
+        }
     }
 }

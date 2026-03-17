@@ -1,0 +1,201 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <!-- Sky gradient -->
+    <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#020818"/>
+      <stop offset="40%" stop-color="#071135"/>
+      <stop offset="75%" stop-color="#0d1f5c"/>
+      <stop offset="100%" stop-color="#1a2e6e"/>
+    </linearGradient>
+
+    <!-- Moon glow -->
+    <radialGradient id="moonGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#fffbe8" stop-opacity="1"/>
+      <stop offset="35%" stop-color="#ffeebb" stop-opacity="0.6"/>
+      <stop offset="70%" stop-color="#aac0ff" stop-opacity="0.2"/>
+      <stop offset="100%" stop-color="#4466cc" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Nebula glow 1 -->
+    <radialGradient id="nebula1" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#2233aa" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#1a1a5e" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Nebula glow 2 -->
+    <radialGradient id="nebula2" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#331166" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#0a0a2e" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Star glow filter -->
+    <filter id="starGlow" x="-100%" y="-100%" width="300%" height="300%">
+      <feGaussianBlur stdDeviation="2.5" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- Big star glow -->
+    <filter id="bigStarGlow" x="-150%" y="-150%" width="400%" height="400%">
+      <feGaussianBlur stdDeviation="5" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- Moon filter -->
+    <filter id="moonFilter" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="18" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Sky background -->
+  <rect width="1920" height="1080" fill="url(#skyGrad)"/>
+
+  <!-- Nebula clouds for depth -->
+  <ellipse cx="400" cy="300" rx="380" ry="220" fill="url(#nebula1)"/>
+  <ellipse cx="1500" cy="200" rx="320" ry="180" fill="url(#nebula2)"/>
+  <ellipse cx="950" cy="500" rx="500" ry="200" fill="url(#nebula1)" opacity="0.5"/>
+  <ellipse cx="200" cy="700" rx="250" ry="130" fill="url(#nebula2)" opacity="0.4"/>
+  <ellipse cx="1700" cy="650" rx="280" ry="150" fill="url(#nebula1)" opacity="0.4"/>
+
+  <!-- Moon glow halo -->
+  <circle cx="1520" cy="160" r="200" fill="url(#moonGlow)"/>
+
+  <!-- Crescent moon - large outer white circle -->
+  <circle cx="1520" cy="160" r="88" fill="#fffde0" filter="url(#moonFilter)"/>
+  <circle cx="1520" cy="160" r="82" fill="#fff8d0"/>
+  <!-- Crescent cutout -->
+  <circle cx="1562" cy="143" r="68" fill="#0d1650"/>
+
+  <!-- Moon surface detail lines (subtle) -->
+  <circle cx="1498" cy="152" r="6" fill="#ffe8a0" opacity="0.3"/>
+  <circle cx="1510" cy="170" r="4" fill="#ffe8a0" opacity="0.2"/>
+  <circle cx="1485" cy="165" r="8" fill="#ffe8a0" opacity="0.15"/>
+
+  <!-- === SMALL STARS (many tiny ones) === -->
+  <g fill="white" opacity="0.7" filter="url(#starGlow)">
+    <circle cx="45" cy="32" r="0.9"/><circle cx="112" cy="88" r="0.8"/><circle cx="178" cy="45" r="1"/>
+    <circle cx="230" cy="110" r="0.7"/><circle cx="290" cy="28" r="1.1"/><circle cx="355" cy="75" r="0.8"/>
+    <circle cx="410" cy="130" r="0.9"/><circle cx="465" cy="55" r="1"/><circle cx="520" cy="95" r="0.7"/>
+    <circle cx="580" cy="35" r="1.1"/><circle cx="640" cy="115" r="0.8"/><circle cx="695" cy="60" r="0.9"/>
+    <circle cx="750" cy="140" r="1"/><circle cx="810" cy="25" r="0.8"/><circle cx="870" cy="90" r="1.1"/>
+    <circle cx="925" cy="50" r="0.9"/><circle cx="985" cy="120" r="0.7"/><circle cx="1040" cy="70" r="1"/>
+    <circle cx="1095" cy="30" r="0.8"/><circle cx="1150" cy="105" r="1.1"/><circle cx="1205" cy="55" r="0.9"/>
+    <circle cx="1260" cy="135" r="0.7"/><circle cx="1315" cy="45" r="1"/><circle cx="1370" cy="80" r="0.8"/>
+    <circle cx="1425" cy="20" r="1.1"/><circle cx="1480" cy="115" r="0.9"/><circle cx="1630" cy="50" r="1"/>
+    <circle cx="1685" cy="95" r="0.8"/><circle cx="1740" cy="35" r="1.1"/><circle cx="1795" cy="120" r="0.9"/>
+    <circle cx="1845" cy="60" r="0.7"/><circle cx="1900" cy="28" r="1"/>
+    <!-- Row 2 -->
+    <circle cx="60" cy="175" r="0.8"/><circle cx="130" cy="220" r="1"/><circle cx="200" cy="185" r="0.9"/>
+    <circle cx="268" cy="240" r="0.7"/><circle cx="335" cy="195" r="1.1"/><circle cx="400" cy="250" r="0.8"/>
+    <circle cx="470" cy="210" r="0.9"/><circle cx="540" cy="175" r="1"/><circle cx="605" cy="235" r="0.7"/>
+    <circle cx="672" cy="195" r="0.8"/><circle cx="738" cy="260" r="1.1"/><circle cx="805" cy="185" r="0.9"/>
+    <circle cx="872" cy="215" r="1"/><circle cx="938" cy="170" r="0.8"/><circle cx="1004" cy="245" r="0.7"/>
+    <circle cx="1070" cy="195" r="1.1"/><circle cx="1136" cy="230" r="0.9"/><circle cx="1202" cy="175" r="1"/>
+    <circle cx="1268" cy="250" r="0.8"/><circle cx="1334" cy="200" r="0.7"/><circle cx="1400" cy="165" r="1.1"/>
+    <circle cx="1650" cy="190" r="0.9"/><circle cx="1715" cy="235" r="1"/><circle cx="1780" cy="170" r="0.8"/>
+    <circle cx="1845" cy="220" r="1.1"/><circle cx="1900" cy="185" r="0.9"/>
+    <!-- Row 3 -->
+    <circle cx="75" cy="330" r="0.9"/><circle cx="155" cy="380" r="0.7"/><circle cx="235" cy="345" r="1"/>
+    <circle cx="315" cy="395" r="0.8"/><circle cx="395" cy="355" r="1.1"/><circle cx="475" cy="310" r="0.9"/>
+    <circle cx="555" cy="370" r="0.7"/><circle cx="635" cy="325" r="1"/><circle cx="715" cy="385" r="0.8"/>
+    <circle cx="795" cy="340" r="1.1"/><circle cx="875" cy="300" r="0.9"/><circle cx="955" cy="360" r="0.7"/>
+    <circle cx="1035" cy="395" r="1"/><circle cx="1115" cy="330" r="0.8"/><circle cx="1195" cy="370" r="1.1"/>
+    <circle cx="1275" cy="315" r="0.9"/><circle cx="1355" cy="380" r="0.7"/><circle cx="1435" cy="350" r="1"/>
+    <circle cx="1660" cy="340" r="0.8"/><circle cx="1730" cy="385" r="1.1"/><circle cx="1800" cy="320" r="0.9"/>
+    <circle cx="1870" cy="360" r="0.7"/>
+  </g>
+
+  <!-- === MEDIUM STARS === -->
+  <g fill="white" filter="url(#starGlow)">
+    <circle cx="95" cy="65" r="1.5" opacity="0.9"/>
+    <circle cx="310" cy="155" r="1.6" opacity="0.85"/>
+    <circle cx="560" cy="80" r="1.4" opacity="0.9"/>
+    <circle cx="720" cy="180" r="1.7" opacity="0.8"/>
+    <circle cx="900" cy="130" r="1.5" opacity="0.9"/>
+    <circle cx="1080" cy="165" r="1.6" opacity="0.85"/>
+    <circle cx="1240" cy="85" r="1.4" opacity="0.9"/>
+    <circle cx="1440" cy="145" r="1.7" opacity="0.8"/>
+    <circle cx="1750" cy="75" r="1.5" opacity="0.9"/>
+    <circle cx="1870" cy="155" r="1.6" opacity="0.85"/>
+    <!-- second belt -->
+    <circle cx="155" cy="285" r="1.5" opacity="0.85"/>
+    <circle cx="445" cy="295" r="1.6" opacity="0.9"/>
+    <circle cx="690" cy="270" r="1.4" opacity="0.85"/>
+    <circle cx="930" cy="285" r="1.7" opacity="0.8"/>
+    <circle cx="1170" cy="268" r="1.5" opacity="0.9"/>
+    <circle cx="1380" cy="290" r="1.6" opacity="0.85"/>
+    <circle cx="1600" cy="275" r="1.4" opacity="0.9"/>
+    <circle cx="1820" cy="265" r="1.7" opacity="0.8"/>
+  </g>
+
+  <!-- === BRIGHT/BIG STARS with cross sparkle === -->
+  <g filter="url(#bigStarGlow)">
+    <!-- Star sparkle shape at various positions -->
+    <!-- Star 1 -->
+    <g transform="translate(185,142)" fill="white" opacity="0.95">
+      <ellipse cx="0" cy="0" rx="2.5" ry="8" opacity="0.8"/>
+      <ellipse cx="0" cy="0" rx="8" ry="2.5" opacity="0.8"/>
+      <ellipse cx="0" cy="0" rx="1.5" ry="5" transform="rotate(45)" opacity="0.5"/>
+      <ellipse cx="0" cy="0" rx="5" ry="1.5" transform="rotate(45)" opacity="0.5"/>
+      <circle cx="0" cy="0" r="2.2"/>
+    </g>
+    <!-- Star 2 -->
+    <g transform="translate(762,95)" fill="white" opacity="0.9">
+      <ellipse cx="0" cy="0" rx="2" ry="7"/>
+      <ellipse cx="0" cy="0" rx="7" ry="2"/>
+      <ellipse cx="0" cy="0" rx="1.2" ry="4.5" transform="rotate(45)" opacity="0.5"/>
+      <ellipse cx="0" cy="0" rx="4.5" ry="1.2" transform="rotate(45)" opacity="0.5"/>
+      <circle cx="0" cy="0" r="1.8"/>
+    </g>
+    <!-- Star 3 -->
+    <g transform="translate(1058,215)" fill="white" opacity="0.9">
+      <ellipse cx="0" cy="0" rx="2.2" ry="9"/>
+      <ellipse cx="0" cy="0" rx="9" ry="2.2"/>
+      <ellipse cx="0" cy="0" rx="1.3" ry="5" transform="rotate(45)" opacity="0.5"/>
+      <ellipse cx="0" cy="0" rx="5" ry="1.3" transform="rotate(45)" opacity="0.5"/>
+      <circle cx="0" cy="0" r="2.5"/>
+    </g>
+    <!-- Star 4 -->
+    <g transform="translate(1720,130)" fill="#e8f0ff" opacity="0.9">
+      <ellipse cx="0" cy="0" rx="2" ry="7.5"/>
+      <ellipse cx="0" cy="0" rx="7.5" ry="2"/>
+      <ellipse cx="0" cy="0" rx="1.2" ry="4.5" transform="rotate(45)" opacity="0.5"/>
+      <ellipse cx="0" cy="0" rx="4.5" ry="1.2" transform="rotate(45)" opacity="0.5"/>
+      <circle cx="0" cy="0" r="2"/>
+    </g>
+    <!-- Star 5 -->
+    <g transform="translate(490,220)" fill="white" opacity="0.88">
+      <ellipse cx="0" cy="0" rx="1.8" ry="6.5"/>
+      <ellipse cx="0" cy="0" rx="6.5" ry="1.8"/>
+      <circle cx="0" cy="0" r="1.8"/>
+    </g>
+    <!-- Star 6 -->
+    <g transform="translate(1310,175)" fill="#fff5cc" opacity="0.9">
+      <ellipse cx="0" cy="0" rx="2.3" ry="8.5"/>
+      <ellipse cx="0" cy="0" rx="8.5" ry="2.3"/>
+      <ellipse cx="0" cy="0" rx="1.4" ry="5" transform="rotate(45)" opacity="0.4"/>
+      <ellipse cx="0" cy="0" rx="5" ry="1.4" transform="rotate(45)" opacity="0.4"/>
+      <circle cx="0" cy="0" r="2.3"/>
+    </g>
+  </g>
+
+  <!-- Subtle horizon glow (atmospheric) -->
+  <rect x="0" y="850" width="1920" height="230" fill="url(#skyGrad)" opacity="0.6"/>
+  <ellipse cx="960" cy="1080" rx="960" ry="120" fill="#1a3070" opacity="0.4"/>
+
+  <!-- Twinkle animation (CSS) -->
+  <style>
+    @keyframes twinkle1 { 0%,100%{opacity:0.9} 50%{opacity:0.3} }
+    @keyframes twinkle2 { 0%,100%{opacity:0.7} 50%{opacity:1} }
+    @keyframes twinkle3 { 0%,100%{opacity:0.5} 50%{opacity:0.95} }
+  </style>
+</svg>

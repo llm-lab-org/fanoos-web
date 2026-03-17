@@ -35,7 +35,7 @@ import { _t } from "../../../languageHandler";
 import defaultDispatcher from "../../../dispatcher/dispatcher";
 import { Action } from "../../../dispatcher/actions";
 import { ContextMenuTooltipButton } from "../../../accessibility/context_menu/ContextMenuTooltipButton";
-import { toRightOf, useContextMenu } from "../../structures/ContextMenu";
+import { toRightOf, toLeftOf, useContextMenu } from "../../structures/ContextMenu";
 import AccessibleButton, {
     type ButtonEvent,
     type ButtonProps as AccessibleButtonProps,
@@ -128,7 +128,9 @@ export const SpaceButton = <T extends keyof HTMLElementTagNameMap>({
     if (menuDisplayed && handle.current && ContextMenuComponent) {
         contextMenu = (
             <ContextMenuComponent
-                {...toRightOf(handle.current.getBoundingClientRect(), 0)}
+                {...(document.documentElement.dir === "rtl"
+                    ? toLeftOf(handle.current.getBoundingClientRect(), 0)
+                    : toRightOf(handle.current.getBoundingClientRect(), 0))}
                 space={space}
                 onFinished={closeMenu}
             />

@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="500" height="500">
+  <defs>
+    <radialGradient id="bgGrad" cx="40%" cy="35%" r="75%">
+      <stop offset="0%" stop-color="#1a2880"/>
+      <stop offset="60%" stop-color="#0d1650"/>
+      <stop offset="100%" stop-color="#060c2e"/>
+    </radialGradient>
+    <radialGradient id="moonGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="50%" stop-color="#dde4ff"/>
+      <stop offset="100%" stop-color="#8899cc"/>
+    </radialGradient>
+    <radialGradient id="tealGrad" cx="35%" cy="30%" r="70%">
+      <stop offset="0%" stop-color="#b8f0ec"/>
+      <stop offset="50%" stop-color="#4dd9d0"/>
+      <stop offset="100%" stop-color="#0dbda8"/>
+    </radialGradient>
+    <filter id="softGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="10" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="tealGlow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="14" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Rounded square background -->
+  <rect width="500" height="500" rx="95" ry="95" fill="url(#bgGrad)"/>
+
+  <!-- Large white moon/glow circle (right side) -->
+  <circle cx="330" cy="185" r="168" fill="url(#moonGlow)" filter="url(#softGlow)"/>
+
+  <!-- Dark navy lantern body silhouette -->
+  <path d="
+    M 108 68
+    C 130 50, 195 52, 240 62
+    C 295 75, 320 105, 318 155
+    C 316 215, 295 275, 268 320
+    C 248 355, 218 378, 180 368
+    C 145 358, 118 325, 106 285
+    C 90 235, 88 150, 108 68 Z
+  " fill="#0a1245"/>
+
+  <!-- Inner lantern window / cutout giving depth -->
+  <path d="
+    M 148 105
+    C 165 88, 210 88, 248 105
+    C 278 120, 285 160, 278 205
+    C 270 255, 252 295, 226 315
+    C 208 328, 185 330, 165 318
+    C 140 304, 126 272, 122 242
+    C 114 195, 122 128, 148 105 Z
+  " fill="#0e1d5e"/>
+
+  <!-- Teal glowing circle (lantern light) -->
+  <circle cx="158" cy="362" r="62" fill="url(#tealGrad)" filter="url(#tealGlow)"/>
+  <circle cx="158" cy="362" r="44" fill="#c2f4f0" opacity="0.65"/>
+  <circle cx="148" cy="350" r="18" fill="white" opacity="0.45"/>
+</svg>
