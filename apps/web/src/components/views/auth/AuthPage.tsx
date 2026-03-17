@@ -19,19 +19,19 @@ const POEMS: Record<string, { main: string; sub: string; dir: "rtl" | "ltr"; fon
         main: "ای روشنای قلب من، فانوس راهت می‌شوم",
         sub: "O light of my heart, I will become the lantern that lights your way.",
         dir: "rtl",
-        font: "'IRANSansX', 'Vazirmatn', serif",
+        font: "'IRANSansX', 'Vazirmatn', 'Noto Nastaliq Urdu', serif",
     },
     ar: {
         main: "يا ضياءَ قلبي، سأغدو فانوسًا يهدي طريقك",
         sub: "O light of my heart, I will become the lantern that lights your way.",
         dir: "rtl",
-        font: "'Scheherazade New', 'Noto Naskh Arabic', serif",
+        font: "'Amiri', 'Scheherazade New', 'Noto Naskh Arabic', serif",
     },
     en: {
         main: "O light of my heart, I will become the lantern that lights your way.",
         sub: "",
         dir: "ltr",
-        font: "'Georgia', 'Palatino Linotype', serif",
+        font: "'IM Fell English', 'Cormorant Garamond', 'Palatino Linotype', Georgia, serif",
     },
 };
 
