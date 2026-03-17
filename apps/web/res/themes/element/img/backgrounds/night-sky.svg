@@ -341,18 +341,29 @@
     <circle cx="1505" cy="250" r="8" fill="#d8ca92" opacity="0.22"/>
   </g>
 
-  <!-- Persian poem — centered in the sky -->
+  <!-- Poem lines — centered in the sky -->
   <text
-    x="780" y="430"
+    x="780" y="410"
     text-anchor="middle"
-    font-family="'IRANSansX', 'Vazirmatn', 'Noto Naskh Arabic', 'Scheherazade New', serif"
-    font-size="38"
+    font-family="'Scheherazade New', 'Noto Naskh Arabic', 'Vazirmatn', serif"
+    font-size="40"
     font-weight="400"
     fill="#f5e8b0"
-    opacity="0.82"
+    opacity="0.85"
     direction="rtl"
+    lang="ar"
     filter="url(#textGlow)"
-    letter-spacing="2">ای روشنای قلب من، فانوس راهت می‌شوم</text>
+    letter-spacing="1">يا ضياءَ قلبي، سأغدو فانوسًا يهدي طريقك</text>
+  <text
+    x="780" y="460"
+    text-anchor="middle"
+    font-family="'Georgia', 'Palatino Linotype', serif"
+    font-size="22"
+    font-weight="400"
+    fill="#e8d898"
+    opacity="0.62"
+    filter="url(#textGlow)"
+    letter-spacing="0.5">O light of my heart, I will become the lantern that lights your way.</text>
 
   <!-- Dune layer 1 — farthest/lightest, near horizon -->
   <path d="M0,750 Q120,695 280,718 Q420,740 560,705 Q700,668 850,690 Q980,710 1120,678 Q1260,645 1400,668 Q1540,690 1680,658 Q1800,632 1920,650 L1920,1080 L0,1080 Z"
