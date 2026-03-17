@@ -19,5 +19,6 @@ RUN pnpm nx build fanoos-web
 FROM nginx:alpine
 
 COPY --from=builder /app/apps/web/webapp /usr/share/nginx/html
+COPY --from=builder /app/apps/web/config.json /usr/share/nginx/html/config.json
 
 EXPOSE 80
