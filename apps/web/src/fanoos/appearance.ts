@@ -632,6 +632,21 @@ export function applyFanoosAppearance(): void {
         rules.push(`.mx_EventTile[data-layout="bubble"][data-self="false"] .mx_MediaBody { background: ${receivedMsgColor} !important; }`);
     }
 
+    // ── Info/system events: always transparent, override msg color rules ─────
+    // Must come after sentMsgColor/receivedMsgColor rules (which have specificity 0,4,0)
+    // so we match that specificity here and rely on source order to win.
+    rules.push(`
+.mx_EventTile[data-layout="bubble"].mx_EventTile_info,
+.mx_EventTile[data-layout="bubble"].mx_EventTile_noBubble,
+.mx_EventTile[data-layout="bubble"].mx_EventTile_bubbleContainer,
+.mx_EventTile[data-layout="bubble"].mx_EventTile_leftAlignedBubble { --backgroundColor: transparent !important; }
+.mx_EventTile[data-layout="bubble"].mx_EventTile_info .mx_EventTile_line,
+.mx_EventTile[data-layout="bubble"].mx_EventTile_noBubble .mx_EventTile_line,
+.mx_EventTile[data-layout="bubble"].mx_EventTile_bubbleContainer .mx_EventTile_line,
+.mx_EventTile[data-layout="bubble"].mx_EventTile_leftAlignedBubble .mx_EventTile_line,
+.mx_GenericEventListSummary[data-layout="bubble"] .mx_EventTile_line { background: transparent !important; }
+`);
+
     // ── Message text & link colors ────────────────────────────────────────────
     if (sentMsgTextColor) {
         rules.push(`.mx_EventTile[data-layout="bubble"][data-self="true"] .mx_EventTile_body { color: ${sentMsgTextColor} !important; }`);
