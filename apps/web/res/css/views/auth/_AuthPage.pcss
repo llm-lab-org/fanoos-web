@@ -17,25 +17,61 @@ Please see LICENSE files in the repository root for full details.
 
 .mx_AuthPage_modal {
     display: flex;
-    margin: 100px auto auto;
-    border-radius: var(--cpd-space-6x);
+    margin: 80px auto auto;
+    border-radius: 20px;
     background-color: $authpage-modal-bg-color;
+    overflow: hidden;
 
     @media only screen and (max-height: 768px) {
-        margin-top: 50px;
+        margin-top: 40px;
     }
 
     @media only screen and (max-width: 480px) {
         margin-top: 0;
+        border-radius: 0;
     }
 
     &.mx_AuthPage_modal_withBlur {
-        /* Apply a blurred shadow around the modal */
-        box-shadow: 0 2px 4px 0 rgb(0, 0, 0, 0.33);
+        box-shadow:
+            0 32px 80px rgba(0, 0, 0, 0.45),
+            0 8px 24px rgba(0, 0, 0, 0.3),
+            0 0 0 1px rgba(255, 255, 255, 0.08);
 
         .mx_AuthPage_modalContent {
-            /* Make the modal's background semitransparent */
-            background-color: $authpage-modal-content-with-blur-bg-color;
+            background-color: rgba(255, 255, 255, 0.92);
         }
+    }
+}
+
+/* ── Auth header: logo centred, bigger ───────────────────────── */
+.mx_AuthHeaderLogo {
+    display: flex;
+    justify-content: center;
+    padding: 32px 0 8px;
+
+    img {
+        height: 96px;
+        width: auto;
+        object-fit: contain;
+    }
+}
+
+/* ── Auth body: generous padding ─────────────────────────────── */
+.mx_AuthBody {
+    padding: 0 40px 32px;
+    min-width: 360px;
+    max-width: 420px;
+
+    h2 {
+        font-size: 20px;
+        font-weight: 700;
+        margin: 0 0 24px;
+        text-align: center;
+        color: $primary-content;
+    }
+
+    @media only screen and (max-width: 480px) {
+        padding: 0 24px 24px;
+        min-width: unset;
     }
 }

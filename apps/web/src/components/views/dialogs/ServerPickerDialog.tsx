@@ -16,11 +16,8 @@ import { _t, UserFriendlyError } from "../../../languageHandler";
 import AccessibleButton from "../elements/AccessibleButton";
 import SdkConfig from "../../../SdkConfig";
 import Field from "../elements/Field";
-import StyledRadioButton from "../elements/StyledRadioButton";
-import TextWithTooltip from "../elements/TextWithTooltip";
 import withValidation, { type IFieldState, type IValidationResult } from "../elements/Validation";
 import { type ValidatedServerConfig } from "../../../utils/ValidatedServerConfig";
-import ExternalLink from "../elements/ExternalLink";
 
 interface IProps {
     title?: string;
@@ -166,20 +163,6 @@ export default class ServerPickerDialog extends React.PureComponent<IProps, ISta
     };
 
     public render(): React.ReactNode {
-        let text: string | undefined;
-        if (this.defaultServer.hsName === "matrix.org") {
-            text = _t("auth|server_picker_matrix.org");
-        }
-
-        let defaultServerName: React.ReactNode = this.defaultServer.hsName;
-        if (this.defaultServer.hsNameIsDifferent) {
-            defaultServerName = (
-                <TextWithTooltip className="mx_Login_underlinedServerName" tooltip={this.defaultServer.hsUrl}>
-                    {this.defaultServer.hsName}
-                </TextWithTooltip>
-            );
-        }
-
         return (
             <BaseDialog
                 title={this.props.title || _t("auth|server_picker_title")}
@@ -190,58 +173,32 @@ export default class ServerPickerDialog extends React.PureComponent<IProps, ISta
                 hasCancel={true}
             >
                 <form className="mx_Dialog_content" id="mx_ServerPickerDialog" onSubmit={this.onSubmit}>
-                    <p>
-                        {_t("auth|server_picker_intro")} {text}
-                    </p>
-
-                    <StyledRadioButton
-                        name="defaultChosen"
-                        value="true"
-                        checked={this.state.defaultChosen}
-                        onChange={this.onDefaultChosen}
-                        data-testid="defaultHomeserver"
-                    >
-                        {defaultServerName}
-                    </StyledRadioButton>
-
-                    <StyledRadioButton
-                        name="defaultChosen"
-                        value="false"
-                        className="mx_ServerPickerDialog_otherHomeserverRadio"
-                        checked={!this.state.defaultChosen}
-                        onChange={this.onOtherChosen}
-                        childrenInLabel={false}
-                        aria-label={_t("auth|server_picker_custom")}
-                    >
-                        <Field
-                            type="text"
-                            className="mx_ServerPickerDialog_otherHomeserver"
-                            label={_t("auth|server_picker_custom")}
-                            onChange={this.onHomeserverChange}
-                            onFocus={this.onOtherChosen}
-                            ref={this.fieldRef}
-                            onValidate={this.onHomeserverValidate}
-                            value={this.state.otherHomeserver}
-                            validateOnChange={false}
-                            validateOnFocus={false}
-                            autoFocus={true}
-                            id="mx_homeserverInput"
-                            list="mx_homeserverSuggestions"
-                        />
-                    </StyledRadioButton>
-                    <p>{_t("auth|server_picker_explainer")}</p>
-
-                    <AccessibleButton className="mx_ServerPickerDialog_continue" kind="primary" onClick={this.onSubmit}>
-                        {_t("action|continue")}
-                    </AccessibleButton>
+                    <Field
+                        type="text"
+                        className="mx_ServerPickerDialog_otherHomeserver"
+                        label={_t("auth|server_picker_custom")}
+                        onChange={this.onHomeserverChange}
+                        onFocus={this.onOtherChosen}
+                        ref={this.fieldRef}
+                        onValidate={this.onHomeserverValidate}
+                        value={this.state.otherHomeserver}
+                        validateOnChange={false}
+                        validateOnFocus={false}
+                        autoFocus={true}
+                        id="mx_homeserverInput"
+                        list="mx_homeserverSuggestions"
+                    />
 
                     <datalist id="mx_homeserverSuggestions">
                         <option value="https://research.llm-lab.org" />
                         <option value="https://quranic.network" />
                         <option value="https://ebad.quranic.network" />
                         <option value="https://motaghin.quranic.network" />
-                        <option value="https://matrix.org" />
                     </datalist>
+
+                    <AccessibleButton className="mx_ServerPickerDialog_continue" kind="primary" onClick={this.onSubmit}>
+                        {_t("action|continue")}
+                    </AccessibleButton>
                 </form>
             </BaseDialog>
         );
