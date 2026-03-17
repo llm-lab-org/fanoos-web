@@ -343,7 +343,7 @@
 
   <!-- Poem lines — centered in the sky -->
   <text
-    x="780" y="410"
+    x="780" y="280"
     text-anchor="middle"
     font-family="'Scheherazade New', 'Noto Naskh Arabic', 'Vazirmatn', serif"
     font-size="40"
@@ -355,7 +355,7 @@
     filter="url(#textGlow)"
     letter-spacing="1">يا ضياءَ قلبي، سأغدو فانوسًا يهدي طريقك</text>
   <text
-    x="780" y="460"
+    x="780" y="330"
     text-anchor="middle"
     font-family="'Georgia', 'Palatino Linotype', serif"
     font-size="22"
