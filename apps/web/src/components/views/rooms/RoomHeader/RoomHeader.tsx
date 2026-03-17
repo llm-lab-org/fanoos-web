@@ -459,10 +459,18 @@ export default function RoomHeader({
         });
     };
 
+    const isRtl = document.documentElement.dir === "rtl";
+
     return (
         <>
             <CurrentRightPanelPhaseContextProvider roomId={room.roomId}>
-                <Flex as="header" align="center" gap="var(--cpd-space-3x)" className="mx_RoomHeader light-panel">
+                <Flex
+                    as="header"
+                    align="center"
+                    gap="var(--cpd-space-3x)"
+                    className="mx_RoomHeader light-panel"
+                    direction={isRtl ? "row-reverse" : "row"}
+                >
                     <WithPresenceIndicator room={room} size="8px">
                         {/* We hide this from the tabIndex list as it is a pointer shortcut and superfluous for a11y */}
                         {/* Disable on-click actions until the room is created */}
