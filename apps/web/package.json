@@ -1,8 +1,8 @@
 {
     "name": "element-web",
     "version": "1.12.12",
-    "description": "Element: the future of secure communication",
-    "author": "New Vector Ltd.",
+    "description": "Fanoos powered by Element of New Vector Ltd.",
+    "author": "Fanoos powered by Element of New Vector Ltd.",
     "repository": {
         "type": "git",
         "url": "https://github.com/element-hq/element-web"

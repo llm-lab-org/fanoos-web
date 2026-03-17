@@ -13,7 +13,7 @@ COPY apps/web/package.json apps/web/
 RUN pnpm install --frozen-lockfile
 
 COPY . .
-RUN pnpm nx build
+RUN pnpm nx build fanoos-web
 
 # ── Stage 2: serve ────────────────────────────────────────────────────────────
 FROM nginx:alpine
