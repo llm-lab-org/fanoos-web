@@ -1059,7 +1059,7 @@ export const SETTINGS: Settings = {
     },
     "fanoos.chatBgPattern": {
         supportedLevels: LEVELS_DEVICE_ONLY_SETTINGS,
-        default: "none",
+        default: "diamonds",
     },
     "fanoos.chatBgOpacity": {
         supportedLevels: LEVELS_DEVICE_ONLY_SETTINGS,
@@ -1095,13 +1095,13 @@ export const SETTINGS: Settings = {
     },
     "fanoos.palette": {
         supportedLevels: LEVELS_DEVICE_ONLY_SETTINGS,
-        default: "default",
+        default: "night_sky",
     },
     "fanoos.audioPlayerStyle": {
         // "default" = original Element waveform player
         // "minimal" | "telegram" | "modern" = Fanoos native HTML5 players
         supportedLevels: LEVELS_DEVICE_ONLY_SETTINGS,
-        default: "default",
+        default: "telegram",
     },
     "breadcrumb_rooms": {
         // not really a setting
@@ -1328,7 +1328,7 @@ export const SETTINGS: Settings = {
     },
     "layout": {
         supportedLevels: LEVELS_ACCOUNT_SETTINGS,
-        default: Layout.Group,
+        default: Layout.Bubble,
     },
     "Images.size": {
         supportedLevels: LEVELS_ACCOUNT_SETTINGS,
