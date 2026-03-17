@@ -31,7 +31,7 @@ const POEMS: Record<string, { main: string; sub: string; dir: "rtl" | "ltr"; fon
         main: "O light of my heart, I will become the lantern that lights your way.",
         sub: "",
         dir: "ltr",
-        font: "'IM Fell English', 'Cormorant Garamond', 'Palatino Linotype', Georgia, serif",
+        font: "'Cormorant Garamond', 'Palatino Linotype', Georgia, serif",
     },
 };
 
