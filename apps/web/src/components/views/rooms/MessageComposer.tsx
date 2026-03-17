@@ -28,7 +28,7 @@ import Stickerpicker from "./Stickerpicker";
 import { makeRoomPermalink, type RoomPermalinkCreator } from "../../../utils/permalinks/Permalinks";
 import E2EIcon from "./E2EIcon";
 import SettingsStore from "../../../settings/SettingsStore";
-import { aboveLeftOf, type MenuProps } from "../../structures/ContextMenu";
+import { aboveLeftOf, aboveRightOf, type MenuProps } from "../../structures/ContextMenu";
 import ReplyPreview from "./ReplyPreview";
 import { UserIdentityWarning } from "./UserIdentityWarning";
 import { UPDATE_EVENT } from "../../../stores/AsyncStore";
@@ -514,7 +514,9 @@ export class MessageComposer extends React.Component<IProps, IState> {
                 contentRect.width,
                 contentRect.height - heightToRemove,
             );
-            return aboveLeftOf(fixedRect);
+            // In RTL, open menus to the right of the button (towards the start of the line)
+            const isRtl = document.documentElement.dir === "rtl";
+            return isRtl ? aboveRightOf(fixedRect) : aboveLeftOf(fixedRect);
         }
     }
 
@@ -527,34 +529,30 @@ export class MessageComposer extends React.Component<IProps, IState> {
     };
 
     public render(): React.ReactNode {
-        let leftIcon: false | JSX.Element = false;
-        if (!this.state.isWysiwygLabEnabled) {
-            if (!this.props.e2eStatus) {
-                leftIcon = (
-                    <div className="mx_MessageComposer_e2eIconWrapper">
-                        <Tooltip label={_t("composer|room_unencrypted")}>
-                            <LockOffIcon
-                                aria-label={_t("composer|room_unencrypted")}
-                                width="12px"
-                                height="12px"
-                                color="var(--cpd-color-icon-info-primary)"
-                                className="mx_E2EIcon mx_MessageComposer_e2eIcon"
-                            />
-                        </Tooltip>
-                    </div>
-                );
-            } else if (this.props.e2eStatus !== E2EStatus.Normal) {
-                leftIcon = (
-                    <div className="mx_MessageComposer_e2eIconWrapper">
-                        <E2EIcon
-                            key="e2eIcon"
-                            status={this.props.e2eStatus}
-                            className="mx_MessageComposer_e2eIcon"
-                            size={12}
-                        />
-                    </div>
-                );
-            }
+        // Inline E2E icon shown in the actions area between the composer buttons and the send button.
+        // In RTL this visually places the icon between the reaction/emoji buttons and the send button.
+        let actionsE2EIcon: JSX.Element | null = null;
+        if (!this.props.e2eStatus) {
+            actionsE2EIcon = (
+                <Tooltip label={_t("composer|room_unencrypted")}>
+                    <LockOffIcon
+                        aria-label={_t("composer|room_unencrypted")}
+                        width="16px"
+                        height="16px"
+                        color="var(--cpd-color-icon-info-primary)"
+                        className="mx_E2EIcon mx_MessageComposer_e2eActionsIcon"
+                    />
+                </Tooltip>
+            );
+        } else if (this.props.e2eStatus !== E2EStatus.Normal) {
+            actionsE2EIcon = (
+                <E2EIcon
+                    key="e2eActionsIcon"
+                    status={this.props.e2eStatus}
+                    className="mx_MessageComposer_e2eActionsIcon"
+                    size={16}
+                />
+            );
         }
 
         const controls: ReactNode[] = [];
@@ -668,7 +666,7 @@ export class MessageComposer extends React.Component<IProps, IState> {
         const classes = classNames({
             "mx_MessageComposer": true,
             "mx_MessageComposer--compact": this.props.compact,
-            "mx_MessageComposer_e2eStatus": leftIcon,
+
             "mx_MessageComposer_wysiwyg": this.state.isWysiwygLabEnabled,
         });
 
@@ -681,7 +679,6 @@ export class MessageComposer extends React.Component<IProps, IState> {
                         permalinkCreator={this.props.permalinkCreator}
                     />
                     <div className="mx_MessageComposer_row">
-                        {leftIcon}
                         {composer}
                         <div className="mx_MessageComposer_actions">
                             {controls}
@@ -705,6 +702,7 @@ export class MessageComposer extends React.Component<IProps, IState> {
                                     toggleButtonMenu={this.toggleButtonMenu}
                                 />
                             )}
+                            {actionsE2EIcon}
                             {showSendButton && (
                                 <SendButton
                                     key="controls_send"

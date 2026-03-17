@@ -23,6 +23,7 @@ import SettingsStore from "./settings/SettingsStore";
 import { stripHTMLReply, stripPlainReply } from "./utils/Reply";
 import { sanitizeHtmlParams, transformTags, linkifyHtml } from "./Linkify";
 import { graphemeSegmenter } from "./utils/strings";
+import { CUSTOM_EMOJI_IMAGES } from "./fanoos/customFlowerEmojis";
 
 export { linkifyAndSanitizeHtml } from "./Linkify";
 
@@ -32,7 +33,7 @@ const SURROGATE_PAIR_PATTERN = /([\ud800-\udbff])([\udc00-\udfff])/;
 // BMP, so this includes the ranges from 'letterlike symbols' to
 // 'miscellaneous symbols and arrows' which should catch all of them
 // (with plenty of false positives, but that's OK)
-const SYMBOL_PATTERN = /([\u2100-\u2bff])/;
+const SYMBOL_PATTERN = /([\u2100-\u2bff\ue000-\ue00f])/;
 
 // Regex pattern for non-emoji characters that can appear in an "all-emoji" message
 // (Zero-Width Space, other whitespace)
@@ -263,7 +264,29 @@ export function formatEmojis(message: string | undefined, isHtmlMessage?: boolea
     let key = 0;
 
     for (const data of graphemeSegmenter.segment(message)) {
-        if (EMOJI_REGEX.test(data.segment)) {
+        const customImgSrc = CUSTOM_EMOJI_IMAGES[data.segment];
+        if (customImgSrc) {
+            if (text) {
+                result.push(text);
+                text = "";
+            }
+            if (isHtmlMessage) {
+                result.push(
+                    `<img src="${customImgSrc}" alt="${data.segment}" class="mx_CustomFlowerEmoji" style="height:1.2em;vertical-align:-0.25em;display:inline-block">`,
+                );
+            } else {
+                result.push(
+                    <img
+                        key={key}
+                        src={customImgSrc}
+                        alt={data.segment}
+                        className="mx_CustomFlowerEmoji"
+                        style={{ height: "1.2em", verticalAlign: "-0.25em", display: "inline-block" }}
+                    />,
+                );
+            }
+            key++;
+        } else if (EMOJI_REGEX.test(data.segment)) {
             if (text) {
                 result.push(text);
                 text = "";

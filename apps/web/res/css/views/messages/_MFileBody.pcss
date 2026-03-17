@@ -27,24 +27,28 @@ Please see LICENSE files in the repository root for full details.
     width: 100%;
 }
 
+/* ── Compact style: audio/video used in reply tiles ── */
 .mx_MFileBody_info {
     cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: var(--cpd-space-2x);
 
     .mx_MFileBody_info_icon {
         background-color: $system;
         border-radius: 20px;
-        display: inline-block;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
         width: 16px;
         height: 16px;
         padding: var(--cpd-space-2x);
-        vertical-align: middle;
-        margin-right: 12px;
 
         svg {
             color: $secondary-content;
             width: inherit;
             height: inherit;
-            display: block;
         }
     }
 
@@ -54,8 +58,95 @@ Please see LICENSE files in the repository root for full details.
         text-overflow: ellipsis;
         overflow: hidden;
         white-space: nowrap;
-        display: inline-block;
-        width: calc(100% - 32px - 12px); /* 32px icon, 12px margin on the icon */
-        vertical-align: middle;
+        flex: 1;
+        min-width: 0;
+    }
+}
+
+/* ── Telegram-style file bubble ── */
+.mx_MFileBody_tg {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    border-radius: 14px;
+    background: var(--cpd-color-bg-canvas-default, $header-panel-bg-color);
+    cursor: default;
+    min-width: 220px;
+    max-width: 320px;
+    box-sizing: border-box;
+    border: none;
+    vertical-align: top;
+    /* ensure both circles stay inside the card */
+    overflow: hidden;
+}
+
+.mx_MFileBody_tg_icon {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* keep the circle flush with inner padding */
+    margin: 1px 0;
+}
+
+.mx_MFileBody_tg_info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    flex: 1;
+    padding-inline-end: 2px;
+    direction: ltr;
+    unicode-bidi: embed;
+}
+
+.mx_MFileBody_tg_name {
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.35;
+    color: var(--cpd-color-text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: block;
+    margin-bottom: 2px;
+}
+
+.mx_MFileBody_tg_meta {
+    font-size: 11px;
+    font-weight: 400;
+    line-height: 1.3;
+    color: var(--cpd-color-text-secondary);
+    white-space: nowrap;
+    display: block;
+}
+
+.mx_MFileBody_tg_dl {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: none;
+    padding: 0;
+    background: $system;
+    color: var(--cpd-color-icon-secondary, $secondary-content);
+    cursor: pointer;
+    transition: background 0.12s ease, color 0.12s ease;
+    /* keep the circle inside the card with equal space on all sides */
+    margin: 0;
+
+    svg {
+        display: block;
+    }
+
+    &:hover,
+    &:focus-visible {
+        background: $accent;
+        color: #fff;
+        outline: none;
     }
 }

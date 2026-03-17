@@ -55,11 +55,12 @@ export class ReactionsRowViewModel
         props: InternalProps,
     ): Pick<
         ReactionsRowViewSnapshot,
-        "isVisible" | "showAllButtonVisible" | "showAddReactionButton" | "addReactionButtonActive"
+        "isVisible" | "showAllButtonVisible" | "showAddReactionButton" | "addReactionButtonActive" | "addReactionButtonVisible"
     > => ({
-        isVisible: props.isActionable && props.reactionGroupCount > 0,
+        isVisible: props.isActionable && (props.reactionGroupCount > 0 || props.canReact),
         showAllButtonVisible: props.reactionGroupCount > MAX_ITEMS_WHEN_LIMITED + 1 && !props.showAll,
         showAddReactionButton: props.canReact,
+        addReactionButtonVisible: props.canReact,
         addReactionButtonActive: !!props.addReactionButtonActive,
     });
 
@@ -67,7 +68,6 @@ export class ReactionsRowViewModel
         ariaLabel: _t("common|reactions"),
         showAllButtonLabel: _t("action|show_all"),
         addReactionButtonLabel: _t("timeline|reactions|add_reaction_prompt"),
-        addReactionButtonVisible: false,
         ...ReactionsRowViewModel.computeDerivedSnapshot(props),
     });
 
@@ -85,7 +85,7 @@ export class ReactionsRowViewModel
             isActionable,
         };
 
-        const isVisible = this.props.isActionable && this.props.reactionGroupCount > 0;
+        const isVisible = this.props.isActionable && (this.props.reactionGroupCount > 0 || this.props.canReact);
 
         this.snapshot.merge({ isVisible });
     }
@@ -96,7 +96,7 @@ export class ReactionsRowViewModel
             reactionGroupCount,
         };
 
-        const nextIsVisible = this.props.isActionable && this.props.reactionGroupCount > 0;
+        const nextIsVisible = this.props.isActionable && (this.props.reactionGroupCount > 0 || this.props.canReact);
         const nextShowAllButtonVisible =
             this.props.reactionGroupCount > MAX_ITEMS_WHEN_LIMITED + 1 && !this.props.showAll;
         const updates: Partial<ReactionsRowViewSnapshot> = {};
@@ -118,7 +118,11 @@ export class ReactionsRowViewModel
             canReact,
         };
 
-        this.snapshot.merge({ showAddReactionButton: canReact });
+        this.snapshot.merge({
+            showAddReactionButton: canReact,
+            addReactionButtonVisible: canReact,
+            isVisible: this.props.isActionable && (this.props.reactionGroupCount > 0 || canReact),
+        });
     }
 
     public setAddReactionButtonActive(addReactionButtonActive: boolean): void {

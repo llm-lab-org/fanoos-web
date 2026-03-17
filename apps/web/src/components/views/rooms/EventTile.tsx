@@ -47,7 +47,7 @@ import {
 } from "matrix-js-sdk/src/crypto-api";
 import { Tooltip } from "@vector-im/compound-web";
 import { uniqueId, uniqBy } from "lodash";
-import { CircleIcon, CheckCircleIcon, ThreadsIcon } from "@vector-im/compound-design-tokens/assets/web/icons";
+import { ThreadsIcon } from "@vector-im/compound-design-tokens/assets/web/icons";
 import {
     useCreateAutoDisposedViewModel,
     DecryptionFailureBodyView,
@@ -1168,7 +1168,8 @@ export class UnwrappedEventTile extends React.Component<EventTileProps, IState> 
         const showTimestamp =
             this.props.mxEvent.getTs() &&
             !this.props.hideTimestamp &&
-            (this.props.alwaysShowTimestamps ||
+            (this.props.layout === Layout.Bubble ||
+                this.props.alwaysShowTimestamps ||
                 this.props.last ||
                 this.state.hover ||
                 this.state.focusWithin ||
@@ -1496,7 +1497,7 @@ export class UnwrappedEventTile extends React.Component<EventTileProps, IState> 
                             onContextMenu={this.onContextMenu}
                         >
                             {this.renderContextMenu()}
-                            {groupTimestamp}
+                            {this.props.layout !== Layout.Bubble && groupTimestamp}
                             {groupPadlock}
                             {replyChain}
                             {renderTile(this.context.timelineRenderingType, {
@@ -1513,6 +1514,22 @@ export class UnwrappedEventTile extends React.Component<EventTileProps, IState> 
                                 showHiddenEvents: this.context.showHiddenEvents,
                             })}
                             {actionBar}
+                            {this.props.layout === Layout.Bubble && (
+                                <div
+                                    className="mx_EventTile_bubbleBottom"
+                                    onContextMenu={(e) => {
+                                        // Prevent reactions row from triggering a second context menu
+                                        e.stopPropagation();
+                                        this.onContextMenu(e as unknown as React.MouseEvent<HTMLLIElement>);
+                                    }}
+                                >
+                                    {reactionsRow}
+                                    <div className="mx_EventTile_bubbleTimeRow">
+                                        {groupTimestamp}
+                                        {msgOption}
+                                    </div>
+                                </div>
+                            )}
                             {this.props.layout === Layout.IRC && (
                                 <>
                                     {hasFooter && (
@@ -1530,14 +1547,14 @@ export class UnwrappedEventTile extends React.Component<EventTileProps, IState> 
                                 {hasFooter && (
                                     <div className="mx_EventTile_footer">
                                         {(this.props.layout === Layout.Group || !isOwnEvent) && pinnedMessageBadge}
-                                        {reactionsRow}
+                                        {this.props.layout !== Layout.Bubble && reactionsRow}
                                         {this.props.layout === Layout.Bubble && isOwnEvent && pinnedMessageBadge}
                                     </div>
                                 )}
                                 {this.renderThreadInfo()}
                             </>
                         )}
-                        {msgOption}
+                        {this.props.layout !== Layout.Bubble && msgOption}
                     </>,
                 );
             }
@@ -1571,20 +1588,37 @@ function SentReceipt({ messageState }: ISentReceiptProps): JSX.Element {
     const isSent = !messageState || messageState === "sent";
     const isFailed = messageState === "not_sent";
 
-    let icon: JSX.Element | undefined;
     let label: string | undefined;
-    if (messageState === "encrypting") {
-        icon = <CircleIcon />;
+    let tickContent: JSX.Element;
+    if (messageState === "encrypting" || (!isSent && !isFailed)) {
+        // Still encrypting/sending — show a small clock/spinner via CSS circle
         label = _t("timeline|send_state_encrypting");
+        tickContent = (
+            <span className="mx_DeliveryStatus mx_DeliveryStatus_sending" aria-label={label}>
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.5"/>
+                    <path d="M6 3V6L8 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                </svg>
+            </span>
+        );
     } else if (isSent) {
-        icon = <CheckCircleIcon />;
+        // Sent to server — single tick
         label = _t("timeline|send_state_sent");
-    } else if (isFailed) {
-        icon = <NotificationBadge notification={StaticNotificationState.RED_EXCLAMATION} />;
-        label = _t("timeline|send_state_failed");
+        tickContent = (
+            <span className="mx_DeliveryStatus mx_DeliveryStatus_sent" aria-label={label}>
+                <svg width="14" height="10" viewBox="0 0 14 10" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <path d="M1 5L5 9L13 1" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+            </span>
+        );
     } else {
-        icon = <CircleIcon />;
-        label = _t("timeline|send_state_sending");
+        // Failed — keep original icon
+        label = _t("timeline|send_state_failed");
+        tickContent = (
+            <span className="mx_DeliveryStatus mx_DeliveryStatus_failed" aria-label={label}>
+                <NotificationBadge notification={StaticNotificationState.RED_EXCLAMATION} />
+            </span>
+        );
     }
 
     return (
@@ -1592,7 +1626,8 @@ function SentReceipt({ messageState }: ISentReceiptProps): JSX.Element {
             <div className="mx_ReadReceiptGroup">
                 <Tooltip label={label} placement="top-end">
                     <div className="mx_ReadReceiptGroup_button" role="status">
-                        <span className="mx_ReadReceiptGroup_container">{icon}</span>
+                        {tickContent}
+                        <span className="mx_ReadReceiptGroup_container" />
                     </div>
                 </Tooltip>
             </div>
@@ -1844,10 +1879,6 @@ function ReactionsRowWrapper({ mxEvent, reactions }: Readonly<ReactionsRowWrappe
             );
         });
 
-        if (!mappedItems.length) {
-            return undefined;
-        }
-
         return snapshot.showAllButtonVisible ? mappedItems.slice(0, MAX_ITEMS_WHEN_LIMITED) : mappedItems;
     }, [
         reactionGroups,
@@ -1859,12 +1890,12 @@ function ReactionsRowWrapper({ mxEvent, reactions }: Readonly<ReactionsRowWrappe
         snapshot.showAllButtonVisible,
     ]);
 
-    if (!snapshot.isVisible || !items?.length) {
+    if (!snapshot.isVisible) {
         return null;
     }
 
     let contextMenu: JSX.Element | undefined;
-    if (menuDisplayed && menuAnchorRect && reactions && roomContext.canReact) {
+    if (menuDisplayed && menuAnchorRect && roomContext.canReact) {
         contextMenu = (
             <ContextMenu {...aboveLeftOf(menuAnchorRect)} onFinished={closeReactionMenu} managed={false} focusLock>
                 <ReactionPicker mxEvent={mxEvent} reactions={reactions} onFinished={closeReactionMenu} />

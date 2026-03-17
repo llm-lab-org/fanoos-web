@@ -53,6 +53,7 @@ export class Playback extends EventEmitter implements IDestroyable, PlaybackInte
     private waveformObservable = new SimpleObservable<number[]>();
     private readonly clock: PlaybackClock;
     private readonly fileSize: number;
+    private _playbackRate = 1;
 
     /**
      * Creates a new playback instance from a buffer.
@@ -242,6 +243,9 @@ export class Playback extends EventEmitter implements IDestroyable, PlaybackInte
 
         this.source.addEventListener("ended", this.onPlaybackEnd);
         this.source.connect(this.context.destination);
+        if (this._playbackRate !== 1 && this.source instanceof AudioBufferSourceNode) {
+            (this.source as AudioBufferSourceNode).playbackRate.value = this._playbackRate;
+        }
     }
 
     public async pause(): Promise<void> {
@@ -256,6 +260,15 @@ export class Playback extends EventEmitter implements IDestroyable, PlaybackInte
     public async toggle(): Promise<void> {
         if (this.isPlaying) await this.pause();
         else await this.play();
+    }
+
+    public setPlaybackRate(rate: number): void {
+        this._playbackRate = rate;
+        if (this.element) {
+            this.element.playbackRate = rate;
+        } else if (this.source instanceof AudioBufferSourceNode) {
+            this.source.playbackRate.value = rate;
+        }
     }
 
     public async skipTo(timeSeconds: number): Promise<void> {

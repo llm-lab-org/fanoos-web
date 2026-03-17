@@ -125,7 +125,6 @@ const OptionsButton: React.FC<IOptionsButtonProps> = ({
                 className="mx_MessageActionBar_iconButton mx_MessageActionBar_optionsButton"
                 title={_t("common|options")}
                 onClick={onOptionsClick}
-                onContextMenu={onOptionsClick}
                 isExpanded={menuDisplayed}
                 ref={buttonRefCallback}
                 onFocus={onFocus}

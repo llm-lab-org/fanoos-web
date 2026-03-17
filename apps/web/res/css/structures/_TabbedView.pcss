@@ -10,7 +10,8 @@ Please see LICENSE files in the repository root for full details.
 
 .mx_TabbedView {
     margin: 0;
-    padding: 0 0 0 var(--cpd-space-8x);
+    padding: 0;
+    padding-inline-start: var(--cpd-space-8x);
     display: flex;
     flex-direction: column;
     inset: 0;
@@ -30,7 +31,7 @@ Please see LICENSE files in the repository root for full details.
     }
 
     .mx_TabbedView_tabPanel {
-        margin-left: 280px; /* 220px sidebar + 60px padding */
+        margin-inline-start: 280px; /* 220px sidebar + 60px padding */
         flex-direction: column;
     }
 
@@ -100,7 +101,7 @@ Please see LICENSE files in the repository root for full details.
     svg {
         width: 20px;
         height: 20px;
-        margin-right: var(--cpd-space-3x);
+        margin-inline-end: var(--cpd-space-3x);
     }
 }
 
@@ -127,7 +128,7 @@ Please see LICENSE files in the repository root for full details.
             display: none;
         }
         .mx_TabbedView_tabPanel {
-            margin-left: 72px; /* 40px sidebar + 32px padding */
+            margin-inline-start: 72px; /* 40px sidebar + 32px padding */
         }
         .mx_TabbedView_tabLabels {
             width: auto;

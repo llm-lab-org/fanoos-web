@@ -12,18 +12,18 @@ import { type MediaEventContent } from "matrix-js-sdk/src/types";
 import { MsgType } from "matrix-js-sdk/src/matrix";
 import { Button } from "@vector-im/compound-web";
 import {
-    AttachmentIcon,
     DownloadIcon,
     VideoCallSolidIcon,
     VolumeOnSolidIcon,
 } from "@vector-im/compound-design-tokens/assets/web/icons";
+import { FileTypeIcon } from "./FileTypeIcon";
 
 import { _t } from "../../../languageHandler";
 import Modal from "../../../Modal";
 import AccessibleButton from "../elements/AccessibleButton";
 import { mediaFromContent } from "../../../customisations/Media";
 import ErrorDialog from "../dialogs/ErrorDialog";
-import { downloadLabelForFile, presentableTextForFile } from "../../../utils/FileUtils";
+import { downloadLabelForFile, fileSize, presentableTextForFile } from "../../../utils/FileUtils";
 import { type IBodyProps } from "./IBodyProps";
 import { FileDownloader } from "../../../utils/FileDownloader";
 import TextWithTooltip from "../elements/TextWithTooltip";
@@ -196,24 +196,59 @@ export default class MFileBody extends React.Component<IProps, IState> {
 
         let placeholder: React.ReactNode = null;
         if (showGenericPlaceholder) {
-            let icon = <AttachmentIcon />;
             // MFileBody is not generally used for Audio/Video but can be as part of ReplyTile
-            if (this.content.msgtype === MsgType.Audio) {
-                icon = <VolumeOnSolidIcon />;
-            } else if (this.content.msgtype === MsgType.Video) {
-                icon = <VideoCallSolidIcon />;
-            }
+            const isAudio = this.content.msgtype === MsgType.Audio;
+            const isVideo = this.content.msgtype === MsgType.Video;
 
-            placeholder = (
-                <AccessibleButton className="mx_MediaBody mx_MFileBody_info" onClick={this.onPlaceholderClick}>
-                    <span className="mx_MFileBody_info_icon">{icon}</span>
-                    <TextWithTooltip tooltip={presentableTextForFile(this.content, _t("common|attachment"), true)}>
-                        <span className="mx_MFileBody_info_filename">
-                            {presentableTextForFile(this.content, _t("common|attachment"), true, true)}
-                        </span>
-                    </TextWithTooltip>
-                </AccessibleButton>
-            );
+            if (isAudio || isVideo) {
+                // Keep the original compact style for audio/video used in reply tiles
+                const icon = isAudio ? <VolumeOnSolidIcon /> : <VideoCallSolidIcon />;
+                placeholder = (
+                    <AccessibleButton className="mx_MediaBody mx_MFileBody_info" onClick={this.onPlaceholderClick}>
+                        <span className="mx_MFileBody_info_icon">{icon}</span>
+                        <TextWithTooltip tooltip={presentableTextForFile(this.content, _t("common|attachment"), true)}>
+                            <span className="mx_MFileBody_info_filename">
+                                {presentableTextForFile(this.content, _t("common|attachment"), true, true)}
+                            </span>
+                        </TextWithTooltip>
+                    </AccessibleButton>
+                );
+            } else {
+                // Telegram-style file bubble
+                const sizeBytes = this.content.info?.size;
+                const sizeStr = sizeBytes != null ? fileSize(sizeBytes) : null;
+                const mimeLabel = fileType !== "application/octet-stream"
+                    ? fileType.split("/").pop()?.toUpperCase()
+                    : null;
+                const meta = [sizeStr, mimeLabel].filter(Boolean).join(" · ");
+
+                // Display filename without extension in the text area
+                const baseName = this.fileName.replace(/\.[^.]+$/, "") || this.fileName;
+
+                placeholder = (
+                    <div className="mx_MFileBody_tg">
+                        <div className="mx_MFileBody_tg_icon">
+                            <FileTypeIcon mimeType={fileType} size={46} variant="circle" />
+                        </div>
+                        <div className="mx_MFileBody_tg_info">
+                            <TextWithTooltip tooltip={this.fileName}>
+                                <span className="mx_MFileBody_tg_name">{baseName}</span>
+                            </TextWithTooltip>
+                            {meta && <span className="mx_MFileBody_tg_meta">{meta}</span>}
+                        </div>
+                        {!this.props.forExport && (
+                            <button
+                                className="mx_MFileBody_tg_dl"
+                                type="button"
+                                aria-label={_t("action|download")}
+                                onClick={(e) => { e.stopPropagation(); this.onPlaceholderClick(); }}
+                            >
+                                <DownloadIcon width={18} height={18} />
+                            </button>
+                        )}
+                    </div>
+                );
+            }
             showDownloadLink = false;
         }
 

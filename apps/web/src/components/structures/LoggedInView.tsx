@@ -70,6 +70,11 @@ import { MatrixClientContextProvider } from "./MatrixClientContextProvider";
 import { Landmark, LandmarkNavigation } from "../../accessibility/LandmarkNavigation";
 import { ModuleApi } from "../../modules/Api.ts";
 import { SDKContext } from "../../contexts/SDKContext.ts";
+import { getInterfaceDirection } from "../../vector/init";
+import * as languageHandler from "../../languageHandler";
+import { applyAppFont } from "../../fanoos/fonts";
+import { watchFanoosAppearance } from "../../fanoos/appearance";
+import { initCustomEmojiComposerPatch } from "../../fanoos/customEmojiComposerPatch";
 
 // We need to fetch each pinned message individually (if we don't already have it)
 // so each pinned message may trigger a request. Limit the number per room for sanity.
@@ -111,6 +116,7 @@ interface IState {
     useCompactLayout: boolean;
     activeCalls: Array<MatrixCall>;
     backgroundImage?: string;
+    interfaceDirection: "ltr" | "rtl";
 }
 
 const NEW_ROOM_LIST_MIN_WIDTH = 224;
@@ -133,6 +139,9 @@ class LoggedInView extends React.Component<IProps, IState> {
     protected layoutWatcherRef?: string;
     protected compactLayoutWatcherRef?: string;
     protected backgroundImageWatcherRef?: string;
+    protected directionWatcherRef?: string;
+    protected fontWatcherRef?: string;
+    protected appearanceWatcherRefs: string[] = [];
     protected timezoneProfileUpdateRef?: string[];
     protected resizer?: Resizer<ICollapseConfig, CollapseItem>;
 
@@ -148,6 +157,7 @@ class LoggedInView extends React.Component<IProps, IState> {
             useCompactLayout: SettingsStore.getValue("useCompactLayout"),
             usageLimitDismissed: false,
             activeCalls: LegacyCallHandler.instance.getAllActiveCalls(),
+            interfaceDirection: getInterfaceDirection(languageHandler.getCurrentLanguage()),
         };
 
         // stash the MatrixClient in case we log out before we are unmounted
@@ -185,6 +195,14 @@ class LoggedInView extends React.Component<IProps, IState> {
             null,
             this.refreshBackgroundImage,
         );
+        this.directionWatcherRef = SettingsStore.watchSetting(
+            "interfaceDirection",
+            null,
+            this.onInterfaceDirectionChanged,
+        );
+        this.fontWatcherRef = SettingsStore.watchSetting("appFont", null, this.onAppFontChanged);
+        this.appearanceWatcherRefs = watchFanoosAppearance();
+        initCustomEmojiComposerPatch();
 
         this.timezoneProfileUpdateRef = [
             SettingsStore.watchSetting("userTimezonePublish", null, this.onTimezoneUpdate),
@@ -256,6 +274,9 @@ class LoggedInView extends React.Component<IProps, IState> {
         SettingsStore.unwatchSetting(this.layoutWatcherRef);
         SettingsStore.unwatchSetting(this.compactLayoutWatcherRef);
         SettingsStore.unwatchSetting(this.backgroundImageWatcherRef);
+        SettingsStore.unwatchSetting(this.directionWatcherRef);
+        SettingsStore.unwatchSetting(this.fontWatcherRef);
+        this.appearanceWatcherRefs.forEach((r) => SettingsStore.unwatchSetting(r));
         this.timezoneProfileUpdateRef?.forEach((s) => SettingsStore.unwatchSetting(s));
         this.resizer?.detach();
     }
@@ -355,6 +376,16 @@ class LoggedInView extends React.Component<IProps, IState> {
         this.setState({
             useCompactLayout: SettingsStore.getValue("useCompactLayout"),
         });
+    };
+
+    private onInterfaceDirectionChanged = (): void => {
+        const dir = getInterfaceDirection(languageHandler.getCurrentLanguage());
+        document.documentElement.setAttribute("dir", dir);
+        this.setState({ interfaceDirection: dir });
+    };
+
+    private onAppFontChanged = (): void => {
+        applyAppFont(SettingsStore.getValue("appFont"));
     };
 
     private onSync = (syncState: SyncState | null, oldSyncState: SyncState | null, data?: SyncStateData): void => {
@@ -767,6 +798,7 @@ class LoggedInView extends React.Component<IProps, IState> {
                     onKeyDown={this.onReactKeyDown}
                     className={wrapperClasses}
                     aria-hidden={this.props.hideToSRUsers}
+                    dir={this.state.interfaceDirection}
                 >
                     <ToastContainer />
                     <div className={bodyClasses}>

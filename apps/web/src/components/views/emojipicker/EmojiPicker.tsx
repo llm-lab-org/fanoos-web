@@ -21,6 +21,7 @@ import Preview from "./Preview";
 import QuickReactions from "./QuickReactions";
 import Category, { type CategoryKey, type ICategory } from "./Category";
 import { filterBoolean } from "../../../utils/arrays";
+import { CUSTOM_FLOWER_EMOJIS } from "../../../fanoos/customFlowerEmojis";
 import {
     type IAction as RovingAction,
     type IState as RovingState,
@@ -58,6 +59,7 @@ interface IState {
 class EmojiPicker extends React.Component<IProps, IState> {
     private readonly recentlyUsed: IEmoji[];
     private readonly memoizedDataByCategory: Record<CategoryKey, IEmoji[]>;
+    private readonly originalDataByCategory: Record<CategoryKey, IEmoji[]>;
     private readonly categories: ICategory[];
 
     private scrollRef = React.createRef<AutoHideScrollbar<"div">>();
@@ -74,14 +76,213 @@ class EmojiPicker extends React.Component<IProps, IState> {
 
         // Convert recent emoji characters to emoji data, removing unknowns and duplicates
         this.recentlyUsed = Array.from(new Set(filterBoolean(recent.get().map(getEmojiFromUnicode))));
-        this.memoizedDataByCategory = {
+
+        // Flower & plant emoji collection — ordered from most iconic to decorative
+        const flowerUnicodes = [
+            "💐", // Bouquet
+            "🌸", // Cherry Blossom
+            "🌹", // Rose
+            "🌺", // Hibiscus
+            "🌻", // Sunflower
+            "🌼", // Blossom
+            "🌷", // Tulip
+            "🪷", // Lotus
+            "🥀", // Wilted Flower
+            "🌿", // Herb
+            "🍀", // Four Leaf Clover
+            "☘️", // Shamrock
+            "🌱", // Seedling
+            "🌾", // Sheaf of Rice
+            "🍁", // Maple Leaf
+            "🍂", // Fallen Leaf
+            "🍃", // Leaf Fluttering in Wind
+            "🪴", // Potted Plant
+            "🌵", // Cactus
+            "🎋", // Tanabata Tree
+            "🎍", // Pine Decoration
+            "🌲", // Evergreen Tree
+            "🌳", // Deciduous Tree
+            "🌴", // Palm Tree
+        ];
+        // CUSTOM_FLOWER_EMOJIS already includes all 16 custom flowers (E000–E00F)
+        const flowerEmojis = [...CUSTOM_FLOWER_EMOJIS, ...filterBoolean(flowerUnicodes.map(getEmojiFromUnicode))];
+
+        // Happiness & Friendship emoji collection
+        const happyFriendsUnicodes = [
+            "🥰", // Smiling Face with Hearts
+            "😍", // Smiling Face with Heart-Eyes
+            "🤩", // Star-Struck
+            "😄", // Grinning Face with Smiling Eyes
+            "😊", // Smiling Face with Smiling Eyes
+            "😂", // Face with Tears of Joy
+            "🥹", // Face Holding Back Tears
+            "🤗", // Smiling Face with Open Hands
+            "🫂", // People Hugging
+            "🤝", // Handshake
+            "🫶", // Heart Hands
+            "👏", // Clapping Hands
+            "🙌", // Raising Hands
+            "💕", // Two Hearts
+            "💖", // Sparkling Heart
+            "💞", // Revolving Hearts
+            "❤️", // Red Heart
+            "🧡", // Orange Heart
+            "💛", // Yellow Heart
+            "💚", // Green Heart
+            "💙", // Blue Heart
+            "🥳", // Partying Face
+            "🎉", // Party Popper
+            "✨", // Sparkles
+            "🌟", // Glowing Star
+            "🎈", // Balloon
+            "🎊", // Confetti Ball
+        ];
+        const happyFriendsEmojis = filterBoolean(happyFriendsUnicodes.map(getEmojiFromUnicode));
+
+        // Work & Tasks emoji collection
+        const workTaskUnicodes = [
+            "💼", // Briefcase
+            "📋", // Clipboard
+            "✅", // Check Mark Button
+            "❌", // Cross Mark
+            "📝", // Memo
+            "✏️", // Pencil
+            "📌", // Pushpin
+            "📍", // Round Pushpin
+            "📎", // Paperclip
+            "🗂️", // Card Index Dividers
+            "📁", // File Folder
+            "🗓️", // Spiral Calendar
+            "📅", // Calendar
+            "⏰", // Alarm Clock
+            "⏱️", // Stopwatch
+            "💡", // Light Bulb
+            "🎯", // Bullseye
+            "📊", // Bar Chart
+            "📈", // Chart Increasing
+            "📉", // Chart Decreasing
+            "⚙️", // Gear
+            "🔧", // Wrench
+            "💻", // Laptop
+            "🖥️", // Desktop Computer
+            "📧", // E-Mail
+            "📤", // Outbox Tray
+            "🔍", // Magnifying Glass
+            "🏆", // Trophy
+        ];
+        const workTaskEmojis = filterBoolean(workTaskUnicodes.map(getEmojiFromUnicode));
+
+        // Stars & Sky emoji collection
+        const starsSkyUnicodes = [
+            "⭐", // Star
+            "🌟", // Glowing Star
+            "✨", // Sparkles
+            "💫", // Dizzy / Shooting Star
+            "🌠", // Shooting Star
+            "🌌", // Milky Way
+            "🌙", // Crescent Moon
+            "🌛", // First Quarter Moon Face
+            "🌜", // Last Quarter Moon Face
+            "🌝", // Full Moon Face
+            "🌚", // New Moon Face
+            "🌕", // Full Moon
+            "☀️", // Sun
+            "🌤️", // Sun Behind Small Cloud
+            "⛅", // Sun Behind Cloud
+            "☁️", // Cloud
+            "⛈️", // Thunder Cloud and Rain
+            "🌈", // Rainbow
+            "❄️", // Snowflake
+            "☄️", // Comet
+            "🪐", // Ringed Planet (Saturn)
+            "🔭", // Telescope
+            "🚀", // Rocket
+            "🛸", // Flying Saucer
+            "🌅", // Sunrise
+            "🌃", // Night with Stars
+        ];
+        const starsSkyEmojis = filterBoolean(starsSkyUnicodes.map(getEmojiFromUnicode));
+
+        // Empathy emoji collection
+        const empathyUnicodes = [
+            "🥺", // Pleading Face
+            "😢", // Crying Face
+            "😔", // Pensive Face
+            "🤗", // Smiling Face with Open Hands
+            "🫂", // People Hugging
+            "🙏", // Folded Hands
+            "🤲", // Palms Up Together
+            "👂", // Ear (listening)
+            "👐", // Open Hands
+            "💗", // Growing Heart
+            "💓", // Beating Heart
+            "💞", // Revolving Hearts
+            "💝", // Heart with Ribbon
+            "💌", // Love Letter
+            "🩹", // Adhesive Bandage
+            "🕊️", // Dove (peace)
+            "🌈", // Rainbow (hope)
+            "☀️", // Sun (warmth)
+            "🌿", // Herb (calm/healing)
+            "🌊", // Water Wave (calming)
+            "🕯️", // Candle (warmth/remembrance)
+            "🧠", // Brain (mental health)
+            "💬", // Speech Bubble (listening)
+            "🌸", // Cherry Blossom (gentleness)
+        ];
+        const empathyEmojis = filterBoolean(empathyUnicodes.map(getEmojiFromUnicode));
+
+        // Surprise & Dissatisfaction emoji collection
+        const surpriseDisUnicodes = [
+            "😮", // Face with Open Mouth
+            "😲", // Astonished Face
+            "🤯", // Exploding Head
+            "😱", // Face Screaming in Fear
+            "😳", // Flushed Face
+            "🫨", // Shaking Face
+            "😵", // Face with Crossed-Out Eyes
+            "😵‍💫", // Face with Spiral Eyes
+            "🤭", // Face with Hand Over Mouth
+            "👀", // Eyes (wide-eyed surprise)
+            "😒", // Unamused Face
+            "🙄", // Face with Rolling Eyes
+            "😑", // Expressionless Face
+            "😐", // Neutral Face
+            "😤", // Face with Steam from Nose
+            "😠", // Angry Face
+            "😡", // Pouting Face
+            "🤬", // Face with Symbols on Mouth
+            "👎", // Thumbs Down
+            "💔", // Broken Heart
+            "😩", // Weary Face
+            "😫", // Tired Face
+            "😞", // Disappointed Face
+            "🤦", // Person Facepalming
+            "🤷", // Person Shrugging
+        ];
+        const surpriseDisEmojis = filterBoolean(surpriseDisUnicodes.map(getEmojiFromUnicode));
+
+        this.originalDataByCategory = {
+            flowers: flowerEmojis,
+            stars_sky: starsSkyEmojis,
+            happy_friends: happyFriendsEmojis,
+            work_task: workTaskEmojis,
+            empathy: empathyEmojis,
+            surprise_dissatisfaction: surpriseDisEmojis,
             recent: this.recentlyUsed,
             ...DATA_BY_CATEGORY,
         };
+        this.memoizedDataByCategory = { ...this.originalDataByCategory };
 
         const hasRecentlyUsed = this.recentlyUsed.length > 0;
 
         const categoryConfig: Pick<ICategory, "id" | "name" | "emoji">[] = [
+            { id: "flowers", name: _t("emoji|category_flowers_plants"), emoji: "🌸" },
+            { id: "stars_sky", name: _t("emoji|category_stars_sky"), emoji: "⭐" },
+            { id: "happy_friends", name: _t("emoji|category_happy_friends"), emoji: "🥰" },
+            { id: "work_task", name: _t("emoji|category_work_task"), emoji: "💼" },
+            { id: "empathy", name: _t("emoji|category_empathy"), emoji: "🥺" },
+            { id: "surprise_dissatisfaction", name: _t("emoji|category_surprise_dissatisfaction"), emoji: "😲" },
             { id: "recent", name: _t("emoji|category_frequently_used"), emoji: "🕒" },
             { id: "people", name: _t("emoji|category_smileys_people"), emoji: "😀" },
             { id: "nature", name: _t("emoji|category_animals_nature"), emoji: "🐕" },
@@ -97,13 +298,31 @@ class EmojiPicker extends React.Component<IProps, IState> {
             let isEnabled = true;
             let isVisible = false;
             let firstVisible = false;
-            if (config.id === "recent") {
+            if (config.id === "flowers") {
+                isVisible = true;
+                firstVisible = true;
+            } else if (config.id === "stars_sky") {
+                isVisible = true;
+                firstVisible = false;
+            } else if (config.id === "happy_friends") {
+                isVisible = true;
+                firstVisible = false;
+            } else if (config.id === "work_task") {
+                isVisible = true;
+                firstVisible = false;
+            } else if (config.id === "empathy") {
+                isVisible = true;
+                firstVisible = false;
+            } else if (config.id === "surprise_dissatisfaction") {
+                isVisible = true;
+                firstVisible = false;
+            } else if (config.id === "recent") {
                 isEnabled = hasRecentlyUsed;
                 isVisible = hasRecentlyUsed;
-                firstVisible = hasRecentlyUsed;
+                firstVisible = false;
             } else if (config.id === "people") {
                 isVisible = true;
-                firstVisible = !hasRecentlyUsed;
+                firstVisible = false;
             }
             return {
                 ...config,
@@ -286,7 +505,7 @@ class EmojiPicker extends React.Component<IProps, IState> {
             if (lcFilter.includes(this.state.filter)) {
                 emojis = this.memoizedDataByCategory[cat.id];
             } else {
-                emojis = cat.id === "recent" ? this.recentlyUsed : DATA_BY_CATEGORY[cat.id];
+                emojis = this.originalDataByCategory[cat.id] ?? [];
             }
 
             if (lcFilter !== "") {

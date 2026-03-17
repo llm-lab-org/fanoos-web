@@ -31,9 +31,30 @@ interface IProps extends IAudioPlayerBaseProps {
     layout?: PlaybackLayout; // Defaults to Timeline layout
 }
 
+const PLAYBACK_SPEEDS = [1, 1.25, 1.5, 2, 0.75];
+
 export default class RecordingPlayback extends AudioPlayerBase<IProps> {
-    // This component is rendered in two ways: the composer and timeline. They have different
-    // rendering properties (specifically the difference of a waveform or not).
+    private speedIndex = 0;
+
+    private cycleSpeed = (): void => {
+        this.speedIndex = (this.speedIndex + 1) % PLAYBACK_SPEEDS.length;
+        this.props.playback.setPlaybackRate(PLAYBACK_SPEEDS[this.speedIndex]);
+        this.forceUpdate();
+    };
+
+    private renderSpeedButton(): ReactNode {
+        const speed = PLAYBACK_SPEEDS[this.speedIndex];
+        return (
+            <button
+                className="mx_VoicePlayback_speedButton"
+                onClick={this.cycleSpeed}
+                title="Change playback speed"
+                type="button"
+            >
+                {speed}x
+            </button>
+        );
+    }
 
     private renderComposerLook(): ReactNode {
         return (
@@ -51,12 +72,13 @@ export default class RecordingPlayback extends AudioPlayerBase<IProps> {
                     <PlaybackWaveform playback={this.props.playback} />
                     <LegacySeekBar
                         playback={this.props.playback}
-                        tabIndex={0} // allow keyboard users to fall into the seek bar
+                        tabIndex={0}
                         disabled={this.state.playbackPhase === PlaybackState.Decoding}
                         ref={this.seekRef}
                     />
                 </div>
                 <PlaybackClock playback={this.props.playback} />
+                {this.renderSpeedButton()}
             </>
         );
     }
@@ -67,7 +89,7 @@ export default class RecordingPlayback extends AudioPlayerBase<IProps> {
             case PlaybackLayout.Composer:
                 body = this.renderComposerLook();
                 break;
-            case PlaybackLayout.Timeline: // default is timeline, fall through.
+            case PlaybackLayout.Timeline:
             default:
                 body = this.renderTimelineLook();
                 break;

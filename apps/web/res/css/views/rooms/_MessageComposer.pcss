@@ -11,13 +11,15 @@ Please see LICENSE files in the repository root for full details.
     margin: auto;
     border-top: 1px solid $primary-hairline-color;
     position: relative;
-    padding-left: 42px;
-    padding-right: 16px;
+    padding-inline-start: 42px;
+    padding-inline-end: 16px;
+    /* Fanoos: custom background color support */
+    background-color: var(--fanoos-composer-bg, transparent);
 }
 
 .mx_MessageComposer_replaced_wrapper {
-    margin-left: auto;
-    margin-right: auto;
+    margin-inline-start: auto;
+    margin-inline-end: auto;
 }
 
 .mx_MessageComposer_replaced_valign {
@@ -27,8 +29,8 @@ Please see LICENSE files in the repository root for full details.
 }
 
 .mx_MessageComposer_roomReplaced_icon {
-    float: left;
-    margin-right: 20px;
+    float: inline-start;
+    margin-inline-end: 20px;
     margin-top: 5px;
     width: 31px;
     height: 31px;
@@ -54,7 +56,7 @@ Please see LICENSE files in the repository root for full details.
 .mx_MessageComposer {
     .mx_MessageComposer_avatar {
         position: absolute;
-        left: 26px;
+        inset-inline-start: 26px;
 
         .mx_BaseAvatar {
             display: block;
@@ -66,16 +68,26 @@ Please see LICENSE files in the repository root for full details.
     height: 12px; /* Match the height of the E2E icon for alignment */
     width: 12px;
     position: absolute;
-    left: 20px;
+    inset-inline-start: 20px;
     top: 22px;
-    margin-right: 0; /* Counteract the E2EIcon class */
-    margin-left: 3px; /* Counteract the E2EIcon class */
+    margin-inline-end: 0; /* Counteract the E2EIcon class */
+    margin-inline-start: 3px; /* Counteract the E2EIcon class */
 
     .mx_MessageComposer_e2eIcon {
         margin: 0;
         width: inherit;
         height: inherit;
     }
+}
+
+.mx_MessageComposer_e2eActionsIcon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    flex-shrink: 0;
 }
 
 .mx_MessageComposer_noperm_error {
@@ -97,7 +109,7 @@ Please see LICENSE files in the repository root for full details.
     justify-content: flex-start;
     align-items: flex-start;
     font: var(--cpd-font-body-md-regular);
-    margin-right: 6px;
+    margin-inline-end: 6px;
 
     pre {
         background-color: $rte-code-bg-color;
@@ -145,7 +157,7 @@ Please see LICENSE files in the repository root for full details.
     width: 20px;
 
     &:last-child {
-        margin-right: auto;
+        margin-inline-end: auto;
     }
 
     &.mx_MessageComposer_closeButtonMenu {
@@ -166,7 +178,7 @@ Please see LICENSE files in the repository root for full details.
 }
 .mx_MessageComposer_wysiwyg {
     .mx_MessageComposer_wrapper {
-        padding-left: 16px;
+        padding-inline-start: 16px;
         margin-top: 6px;
         margin-bottom: 12px;
     }
@@ -244,14 +256,14 @@ Please see LICENSE files in the repository root for full details.
  */
 
 .mx_MessageComposer.mx_MessageComposer--compact {
-    margin-right: 0;
+    margin-inline-end: 0;
 
     .mx_MessageComposer_wrapper {
         padding: 0 0 0 25px;
     }
 
     .mx_MessageComposer_e2eIconWrapper {
-        left: 0;
+        inset-inline-start: 0;
     }
 
     &:not(.mx_MessageComposer_e2eStatus) {
@@ -261,10 +273,10 @@ Please see LICENSE files in the repository root for full details.
     }
 
     .mx_MessageComposer_button:last-child {
-        margin-right: 0;
+        margin-inline-end: 0;
     }
 
     .mx_MessageComposer_e2eIcon {
-        left: 0;
+        inset-inline-start: 0;
     }
 }

@@ -9,10 +9,14 @@ Please see LICENSE files in the repository root for full details.
 .mx_QuickThemeSwitcher {
     display: flex;
     align-items: center;
+    gap: 12px;
+    padding: 14px 20px 20px;
+    border-top: 1px solid var(--cpd-color-border-disabled);
+    margin-top: 8px;
 
     .mx_Dropdown {
+        flex: 1;
         min-width: 100px;
-        margin-left: auto;
         height: min-content;
     }
 
@@ -23,10 +27,12 @@ Please see LICENSE files in the repository root for full details.
 
 .mx_QuickThemeSwitcher_heading {
     font-weight: var(--cpd-font-weight-semibold);
-    font-size: $font-12px;
-    line-height: $font-15px;
-    color: $secondary-content;
+    font-size: $font-10px;
+    line-height: 1;
+    color: var(--cpd-color-text-secondary);
     text-transform: uppercase;
+    letter-spacing: 0.08em;
     display: inline-block;
     margin: 0;
+    white-space: nowrap;
 }

@@ -6,7 +6,7 @@ SPDX-License-Identifier: AGPL-3.0-only OR GPL-3.0-only OR LicenseRef-Element-Com
 Please see LICENSE files in the repository root for full details.
 */
 
-import React, { type JSX, type PropsWithChildren } from "react";
+import React, { type JSX, type PropsWithChildren, useState } from "react";
 import { type User } from "matrix-js-sdk/src/matrix";
 import { Tooltip } from "@vector-im/compound-web";
 
@@ -70,6 +70,7 @@ export function ReadReceiptGroup({
     isTwelveHour,
 }: Props): JSX.Element {
     const [menuDisplayed, button, openMenu, closeMenu] = useContextMenu();
+    const [searchQuery, setSearchQuery] = useState("");
 
     // If we are above MAX_READ_AVATARS, we’ll have to remove a few to have space for the +n count.
     const hasMore = readReceipts.length > MAX_READ_AVATARS;
@@ -78,7 +79,7 @@ export function ReadReceiptGroup({
     const tooltipMembers: string[] = readReceipts.map((it) => it.roomMember?.name ?? it.userId);
     const tooltipText = readReceiptTooltip(tooltipMembers, maxAvatars);
 
-    // return early if there are no read receipts
+    // return early if there are no read receipts — show single tick (sent)
     if (readReceipts.length === 0) {
         // We currently must include `mx_ReadReceiptGroup_container` in
         // the DOM of all events, as it is the positioned parent of the
@@ -91,6 +92,12 @@ export function ReadReceiptGroup({
             <div className="mx_EventTile_msgOption">
                 <div className="mx_ReadReceiptGroup">
                     <div className="mx_ReadReceiptGroup_button">
+                        {/* Single tick: message sent to server */}
+                        <span className="mx_DeliveryStatus mx_DeliveryStatus_sent" aria-label="Sent">
+                            <svg width="14" height="10" viewBox="0 0 14 10" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                                <path d="M1 5L5 9L13 1" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                        </span>
                         <span className="mx_ReadReceiptGroup_container" />
                     </div>
                 </div>
@@ -131,33 +138,49 @@ export function ReadReceiptGroup({
         })
         .reverse();
 
-    let remText: JSX.Element | undefined;
-    const remainder = readReceipts.length - maxAvatars;
-    if (remainder > 0) {
-        remText = (
-            <span className="mx_ReadReceiptGroup_remainder" aria-live="off">
-                +{remainder}
-            </span>
-        );
-    }
+    const filteredReceipts = searchQuery.trim()
+        ? readReceipts.filter((r) => {
+              const q = searchQuery.toLowerCase();
+              return (r.roomMember?.name ?? r.userId).toLowerCase().includes(q) || r.userId.toLowerCase().includes(q);
+          })
+        : readReceipts;
 
     let contextMenu: JSX.Element | undefined;
     if (menuDisplayed && button.current) {
         const buttonRect = button.current.getBoundingClientRect();
         contextMenu = (
-            <ContextMenu menuClassName="mx_ReadReceiptGroup_popup" onFinished={closeMenu} {...aboveLeftOf(buttonRect)}>
+            <ContextMenu
+                menuClassName="mx_ReadReceiptGroup_popup"
+                onFinished={() => { setSearchQuery(""); closeMenu(); }}
+                {...aboveLeftOf(buttonRect)}
+            >
+                <SectionHeader className="mx_ReadReceiptGroup_title">
+                    {_t("timeline|read_receipt_title", { count: readReceipts.length })}
+                </SectionHeader>
+                {readReceipts.length > 4 && (
+                    <div className="mx_ReadReceiptGroup_search">
+                        <input
+                            type="text"
+                            className="mx_ReadReceiptGroup_searchInput"
+                            placeholder={_t("action|search")}
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            autoFocus
+                        />
+                    </div>
+                )}
                 <AutoHideScrollbar>
-                    <SectionHeader className="mx_ReadReceiptGroup_title">
-                        {_t("timeline|read_receipt_title", { count: readReceipts.length })}
-                    </SectionHeader>
-                    {readReceipts.map((receipt) => (
+                    {filteredReceipts.map((receipt) => (
                         <ReadReceiptPerson
                             key={receipt.userId}
                             {...receipt}
                             isTwelveHour={isTwelveHour}
-                            onAfterClick={closeMenu}
+                            onAfterClick={() => { setSearchQuery(""); closeMenu(); }}
                         />
                     ))}
+                    {filteredReceipts.length === 0 && (
+                        <p className="mx_ReadReceiptGroup_noResults">{_t("common|no_results")}</p>
+                    )}
                 </AutoHideScrollbar>
             </ContextMenu>
         );
@@ -178,15 +201,17 @@ export function ReadReceiptGroup({
                         aria-haspopup="true"
                         onClick={openMenu}
                     >
-                        {remText}
+                        {/* Double tick: message seen — click to see who */}
+                        <span className="mx_DeliveryStatus mx_DeliveryStatus_seen" aria-label="Seen">
+                            <svg width="18" height="10" viewBox="0 0 18 10" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                                <path d="M1 5L5 9L13 1" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                                <path d="M5 5L9 9L17 1" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                        </span>
+                        {/* Keep avatars in DOM for animation anchoring, but visually hidden */}
                         <span
                             className="mx_ReadReceiptGroup_container"
-                            style={{
-                                width:
-                                    Math.min(maxAvatars, readReceipts.length) * READ_AVATAR_OFFSET +
-                                    READ_AVATAR_SIZE -
-                                    READ_AVATAR_OFFSET,
-                            }}
+                            style={{ width: 0, height: 0, overflow: "hidden", position: "absolute" }}
                         >
                             {avatars}
                         </span>

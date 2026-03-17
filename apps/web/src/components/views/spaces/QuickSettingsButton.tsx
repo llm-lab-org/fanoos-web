@@ -31,6 +31,18 @@ import QuickThemeSwitcher from "./QuickThemeSwitcher";
 import Modal from "../../../Modal";
 import DevtoolsDialog from "../dialogs/DevtoolsDialog";
 import { SdkContextClass } from "../../../contexts/SDKContext";
+import SettingsStore from "../../../settings/SettingsStore";
+import { SettingLevel } from "../../../settings/SettingLevel";
+import { getInterfaceDirection } from "../../../vector/init";
+import * as languageHandler from "../../../languageHandler";
+import { FontWatcher } from "../../../settings/watchers/FontWatcher";
+
+// Languages offered as quick toggles in the settings menu
+const QUICK_LANGUAGES = [
+    { code: "fa", label: "فارسی" },
+    { code: "en", label: "English" },
+    { code: "ar", label: "العربية" },
+];
 
 const QuickSettingsButton: React.FC<{
     isPanelCollapsed: boolean;
@@ -45,6 +57,29 @@ const QuickSettingsButton: React.FC<{
     // "Favourites" and "People" meta spaces are not available in the new room list
     const newRoomListEnabled = useSettingValue("feature_new_room_list");
 
+    const currentDirection = useSettingValue("interfaceDirection") as string;
+    const currentLang = languageHandler.getCurrentLanguage();
+    const fontSizeDelta = useSettingValue("fontSizeDelta") as number;
+    const browserDefault = FontWatcher.getBrowserDefaultFontSize();
+    const currentFontSize = browserDefault + (fontSizeDelta ?? 0);
+
+    const changeFontSize = (delta: number): void => {
+        const newDelta = (fontSizeDelta ?? 0) + delta;
+        const newSize = browserDefault + newDelta;
+        if (newSize < 9 || newSize > 36) return;
+        SettingsStore.setValue("fontSizeDelta", null, SettingLevel.DEVICE, newDelta);
+    };
+
+    const handleLanguageChange = async (langCode: string): Promise<void> => {
+        await SettingsStore.setValue("language", null, SettingLevel.DEVICE, langCode);
+        // Apply direction immediately based on new language (if direction is auto)
+        const dir = getInterfaceDirection(langCode);
+        document.documentElement.setAttribute("lang", langCode);
+        document.documentElement.setAttribute("dir", dir);
+        // Reload to fully apply the new language strings
+        window.location.reload();
+    };
+
     let contextMenu: JSX.Element | undefined;
     if (menuDisplayed && handle.current) {
         contextMenu = (
@@ -53,7 +88,6 @@ const QuickSettingsButton: React.FC<{
                 wrapperClassName={classNames("mx_QuickSettingsButton_ContextMenuWrapper", {
                     mx_QuickSettingsButton_ContextMenuWrapper_new_room_list: newRoomListEnabled,
                 })}
-                // Eventually replace with a properly aria-labelled menu
                 data-testid="quick-settings-menu"
                 onFinished={closeMenu}
                 managed={false}
@@ -88,6 +122,95 @@ const QuickSettingsButton: React.FC<{
                         {_t("devtools|title")}
                     </AccessibleButton>
                 )}
+
+                {/* Fanoos: Language quick switcher */}
+                <h4 className="mx_QuickSettingsButton_sectionHeading">
+                    🌐 {_t("quick_settings|language")}
+                </h4>
+                <div className="mx_QuickSettingsButton_langRow">
+                    {QUICK_LANGUAGES.map((lang) => (
+                        <AccessibleButton
+                            key={lang.code}
+                            className={classNames("mx_QuickSettingsButton_langButton", {
+                                mx_QuickSettingsButton_langButton_active: currentLang.startsWith(lang.code),
+                            })}
+                            onClick={() => handleLanguageChange(lang.code)}
+                        >
+                            {lang.label}
+                        </AccessibleButton>
+                    ))}
+                </div>
+
+                {/* Fanoos: Direction quick toggle */}
+                <h4 className="mx_QuickSettingsButton_sectionHeading">
+                    ↔ {_t("quick_settings|direction")}
+                </h4>
+                <div className="mx_QuickSettingsButton_langRow">
+                    <AccessibleButton
+                        className={classNames("mx_QuickSettingsButton_langButton", {
+                            mx_QuickSettingsButton_langButton_active: currentDirection === "rtl",
+                        })}
+                        onClick={() => {
+                            SettingsStore.setValue("interfaceDirection", null, SettingLevel.DEVICE, "rtl");
+                            document.documentElement.setAttribute("dir", "rtl");
+                        }}
+                    >
+                        ← RTL
+                    </AccessibleButton>
+                    <AccessibleButton
+                        className={classNames("mx_QuickSettingsButton_langButton", {
+                            mx_QuickSettingsButton_langButton_active: currentDirection === "auto",
+                        })}
+                        onClick={() => {
+                            SettingsStore.setValue("interfaceDirection", null, SettingLevel.DEVICE, "auto");
+                            const dir = getInterfaceDirection(languageHandler.getCurrentLanguage());
+                            document.documentElement.setAttribute("dir", dir);
+                        }}
+                    >
+                        Auto
+                    </AccessibleButton>
+                    <AccessibleButton
+                        className={classNames("mx_QuickSettingsButton_langButton", {
+                            mx_QuickSettingsButton_langButton_active: currentDirection === "ltr",
+                        })}
+                        onClick={() => {
+                            SettingsStore.setValue("interfaceDirection", null, SettingLevel.DEVICE, "ltr");
+                            document.documentElement.setAttribute("dir", "ltr");
+                        }}
+                    >
+                        LTR →
+                    </AccessibleButton>
+                </div>
+
+                {/* Fanoos: Font size quick control */}
+                <h4 className="mx_QuickSettingsButton_sectionHeading">
+                    Aa {_t("settings|appearance|font_size")}
+                </h4>
+                <div className="mx_QuickSettingsButton_fontSizeWidget">
+                    <AccessibleButton
+                        className="mx_QuickSettingsButton_fontSizeStep"
+                        onClick={() => changeFontSize(-1)}
+                        disabled={(fontSizeDelta ?? 0) + browserDefault <= 9}
+                        aria-label="Decrease font size"
+                    >
+                        A
+                    </AccessibleButton>
+                    <div className="mx_QuickSettingsButton_fontSizeTrack">
+                        <div
+                            className="mx_QuickSettingsButton_fontSizeBar"
+                            style={{ width: `${Math.round(((currentFontSize - 9) / (36 - 9)) * 100)}%` }}
+                        />
+                        <span className="mx_QuickSettingsButton_fontSizeLabel">{currentFontSize}px</span>
+                    </div>
+                    <AccessibleButton
+                        className="mx_QuickSettingsButton_fontSizeStep mx_QuickSettingsButton_fontSizeStepBig"
+                        onClick={() => changeFontSize(1)}
+                        disabled={(fontSizeDelta ?? 0) + browserDefault >= 36}
+                        aria-label="Increase font size"
+                    >
+                        A
+                    </AccessibleButton>
+                </div>
 
                 {!newRoomListEnabled && (
                     <>

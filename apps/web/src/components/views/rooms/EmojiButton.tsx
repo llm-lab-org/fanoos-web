@@ -11,7 +11,7 @@ import React, { type JSX, useContext } from "react";
 import { ReactionIcon } from "@vector-im/compound-design-tokens/assets/web/icons";
 
 import { _t } from "../../../languageHandler";
-import ContextMenu, { aboveLeftOf, type MenuProps, useContextMenu } from "../../structures/ContextMenu";
+import ContextMenu, { aboveLeftOf, aboveRightOf, type MenuProps, useContextMenu } from "../../structures/ContextMenu";
 import EmojiPicker from "../emojipicker/EmojiPicker";
 import { CollapsibleButton } from "./CollapsibleButton";
 import { OverflowMenuContext } from "./MessageComposerButtons";
@@ -28,7 +28,9 @@ export function EmojiButton({ addEmoji, menuPosition, className }: IEmojiButtonP
 
     let contextMenu: React.ReactElement | null = null;
     if (menuDisplayed && button.current) {
-        const position = menuPosition ?? aboveLeftOf(button.current.getBoundingClientRect());
+        const rect = button.current.getBoundingClientRect();
+        const isRtl = document.documentElement.dir === "rtl";
+        const position = menuPosition ?? (isRtl ? aboveRightOf(rect) : aboveLeftOf(rect));
         const onFinished = (): void => {
             closeMenu();
             overflowMenuCloser?.();

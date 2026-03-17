@@ -96,7 +96,7 @@ export function ReactionsRowButtonView({ vm }: Readonly<ReactionsRowButtonViewPr
             >
                 {reactionContent}
                 <span className={styles.reactionsRowButtonCount} aria-hidden="true">
-                    {count}
+                    {count.toLocaleString(document.documentElement.lang || undefined)}
                 </span>
             </button>
         </ReactionsRowButtonTooltipView>

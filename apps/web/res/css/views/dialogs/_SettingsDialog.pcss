@@ -21,8 +21,9 @@ Please see LICENSE files in the repository root for full details.
 
     .mx_TabbedView .mx_SettingsTab {
         box-sizing: border-box;
-        min-width: 580px;
-        padding-right: 100px;
+        min-width: 0; /* allow flex shrink in RTL */
+        padding-inline-end: 48px;
+        padding-inline-start: 8px;
         display: flex;
         flex-direction: column;
 
@@ -39,7 +40,7 @@ Please see LICENSE files in the repository root for full details.
         background-color: var(--cpd-color-icon-critical-primary);
         clip-path: circle(4px);
         position: absolute;
-        right: var(--cpd-space-4x);
+        inset-inline-end: var(--cpd-space-4x);
     }
 }
 
@@ -50,7 +51,7 @@ Please see LICENSE files in the repository root for full details.
     .mx_SpaceSettingsDialog,
     .mx_SpacePreferencesDialog {
         .mx_SettingsDialog_tabLabelsAlert::after {
-            right: var(--cpd-space-1x);
+            inset-inline-end: var(--cpd-space-1x);
             top: var(--cpd-space-1x);
         }
     }

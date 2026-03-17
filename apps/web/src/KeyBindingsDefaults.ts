@@ -56,6 +56,13 @@ const messageComposerBindings = (): KeyBinding[] => {
             },
         });
         bindings.push({
+            action: KeyBindingAction.SendMessage,
+            keyCombo: {
+                key: Key.ENTER,
+                ctrlOrCmdKey: true,
+            },
+        });
+        bindings.push({
             action: KeyBindingAction.NewLine,
             keyCombo: {
                 key: Key.ENTER,

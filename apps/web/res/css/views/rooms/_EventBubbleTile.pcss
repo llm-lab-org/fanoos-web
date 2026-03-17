@@ -21,7 +21,7 @@ Please see LICENSE files in the repository root for full details.
     --avatarSize: 32px;
     --gutterSize: 11px;
     --cornerRadius: 12px;
-    --maxWidth: 70%;
+    --maxWidth: 88%;
 
     /* For both event tile and event list summary */
     --EventTile_bubble-margin-inline-start: 49px;
@@ -35,6 +35,8 @@ Please see LICENSE files in the repository root for full details.
     --EventTile_bubble_line-margin-inline-start: -9px;
     --EventTile_bubble_line-margin-inline-end: -12px;
     --EventTile_bubble_gap-inline: 5px;
+    margin-bottom: 6px;
+
 
     .mx_MessageTimestamp {
         width: unset; /* Cancel the default width */
@@ -144,6 +146,7 @@ Please see LICENSE files in the repository root for full details.
         top: -2px;
         left: 2px;
         font-size: $font-15px;
+        z-index: 10;
     }
 
     .mx_MessageActionBar {
@@ -178,6 +181,9 @@ Please see LICENSE files in the repository root for full details.
     }
 
     &[data-self="false"] {
+        /* Keep start margin for the avatar, shrink end so bubble extends to the right */
+        margin-inline-end: 8px;
+
         .mx_EventTile_line {
             border-bottom-right-radius: var(--cornerRadius);
 
@@ -192,7 +198,9 @@ Please see LICENSE files in the repository root for full details.
         }
 
         .mx_EventTile_avatar {
-            left: -36px;
+            left: 4px;
+            top: -16px;
+            z-index: 8;
         }
 
         .mx_MessageActionBar {
@@ -213,9 +221,17 @@ Please see LICENSE files in the repository root for full details.
         }
 
         --backgroundColor: $eventbubble-others-bg;
+
+        > .mx_DisambiguatedProfile,
+        .mx_EventTile_senderDetails > .mx_DisambiguatedProfile {
+            left: 52px;
+        }
     }
 
     &[data-self="true"] {
+        /* Keep end margin for the avatar, shrink start so bubble extends to the left */
+        margin-inline-start: 8px;
+
         .mx_EventTile_line {
             margin-inline-start: auto;
             border-bottom-left-radius: var(--cornerRadius);
@@ -262,8 +278,9 @@ Please see LICENSE files in the repository root for full details.
         }
 
         .mx_EventTile_avatar {
-            top: -19px; /* height of the sender block */
-            right: -38px;
+            top: -24px;
+            right: 4px;
+            z-index: 8;
         }
 
         .mx_MediaBody {

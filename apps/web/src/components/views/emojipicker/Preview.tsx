@@ -10,6 +10,8 @@ Please see LICENSE files in the repository root for full details.
 import React from "react";
 import { type Emoji } from "@matrix-org/emojibase-bindings";
 
+import { CUSTOM_EMOJI_IMAGES } from "../../../fanoos/customFlowerEmojis";
+
 interface IProps {
     emoji: Emoji;
 }
@@ -24,7 +26,13 @@ class Preview extends React.PureComponent<IProps> {
 
         return (
             <div className="mx_EmojiPicker_footer mx_EmojiPicker_preview">
-                <div className="mx_EmojiPicker_preview_emoji">{unicode}</div>
+                <div className="mx_EmojiPicker_preview_emoji">
+                    {CUSTOM_EMOJI_IMAGES[unicode] ? (
+                        <img src={CUSTOM_EMOJI_IMAGES[unicode]} alt={label} width={32} height={32} />
+                    ) : (
+                        unicode
+                    )}
+                </div>
                 <div className="mx_EmojiPicker_preview_text">
                     <div className="mx_EmojiPicker_name mx_EmojiPicker_preview_name">{label}</div>
                     <div className="mx_EmojiPicker_shortcode">{shortcode}</div>

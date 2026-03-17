@@ -26,7 +26,7 @@ import {
 
 import { _t } from "../../../languageHandler";
 import { CollapsibleButton } from "./CollapsibleButton";
-import { type MenuProps } from "../../structures/ContextMenu";
+import { aboveLeftOf, aboveRightOf, type MenuProps } from "../../structures/ContextMenu";
 import dis from "../../../dispatcher/dispatcher";
 import ErrorDialog from "../dialogs/ErrorDialog";
 import { LocationButton } from "../location";
@@ -67,6 +67,7 @@ export const OverflowMenuContext = createContext<OverflowMenuCloser | null>(null
 const MessageComposerButtons: React.FC<IProps> = (props: IProps) => {
     const matrixClient = useContext(MatrixClientContext);
     const { room, narrow } = useScopedRoomContext("room", "narrow");
+    const moreButtonRef = useRef<HTMLDivElement | null>(null);
 
     const isWysiwygLabEnabled = useSettingValue("feature_wysiwyg_composer");
 
@@ -133,6 +134,7 @@ const MessageComposerButtons: React.FC<IProps> = (props: IProps) => {
                     className={moreOptionsClasses}
                     onClick={props.toggleButtonMenu}
                     title={_t("quick_settings|sidebar_settings")}
+                    ref={moreButtonRef}
                 >
                     <OverflowHorizontalIcon />
                 </AccessibleButton>
@@ -140,7 +142,11 @@ const MessageComposerButtons: React.FC<IProps> = (props: IProps) => {
             {props.isMenuOpen && (
                 <IconizedContextMenu
                     onFinished={props.toggleButtonMenu}
-                    {...props.menuPosition}
+                    {...(moreButtonRef.current
+                        ? (document.documentElement.dir === "rtl"
+                            ? aboveRightOf(moreButtonRef.current.getBoundingClientRect())
+                            : aboveLeftOf(moreButtonRef.current.getBoundingClientRect()))
+                        : props.menuPosition)}
                     wrapperClassName="mx_MessageComposer_Menu"
                     compact={true}
                 >
@@ -158,7 +164,6 @@ function emojiButton(props: IProps): ReactElement {
         <EmojiButton
             key="emoji_button"
             addEmoji={props.addEmoji}
-            menuPosition={props.menuPosition}
             className="mx_MessageComposer_button"
         />
     );

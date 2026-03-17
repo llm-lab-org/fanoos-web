@@ -14,6 +14,7 @@ import {
 
 import { mediaFromMxc } from "../../customisations/Media";
 import { _t } from "../../languageHandler";
+import { CUSTOM_EMOJI_IMAGES } from "../../fanoos/customFlowerEmojis";
 import { formatList } from "../../utils/FormattingUtils";
 import dis from "../../dispatcher/dispatcher";
 import { ReactionsRowButtonTooltipViewModel } from "./ReactionsRowButtonTooltipViewModel";
@@ -109,7 +110,10 @@ export class ReactionsRowButtonViewModel
 
         let imageSrc: string | undefined;
         let imageAlt: string | undefined;
-        if (customReactionImagesEnabled && content.startsWith("mxc://")) {
+        if (CUSTOM_EMOJI_IMAGES[content]) {
+            imageSrc = CUSTOM_EMOJI_IMAGES[content];
+            imageAlt = customReactionName || content;
+        } else if (customReactionImagesEnabled && content.startsWith("mxc://")) {
             const resolved = mediaFromMxc(content).srcHttp;
             if (resolved) {
                 imageSrc = resolved;

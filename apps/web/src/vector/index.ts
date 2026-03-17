@@ -117,6 +117,7 @@ async function start(): Promise<void> {
         loadConfig,
         loadLanguage,
         loadTheme,
+        loadFont,
         loadApp,
         loadModules,
         loadPlugins,
@@ -169,6 +170,8 @@ async function start(): Promise<void> {
         const loadLanguagePromise = loadLanguage();
         // as quickly as we possibly can, set a default theme...
         const loadThemePromise = loadTheme();
+        // apply the chosen app font (IRANSansX by default for Fanoos)
+        loadFont();
         // await things settling so that any errors we have to render have features like i18n running
         await settled(loadThemePromise, loadLanguagePromise);
 

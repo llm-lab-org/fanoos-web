@@ -7,7 +7,12 @@ Please see LICENSE files in the repository root for full details.
 */
 
 .mx_NewRoomIntro {
-    margin: 40px 0 48px 64px;
+    margin: 40px auto 48px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    max-width: 480px;
 
     .mx_MiniAvatarUploader_hasAvatar:not(.mx_MiniAvatarUploader_busy):not(:hover) {
         .mx_MiniAvatarUploader_indicator {
@@ -19,6 +24,7 @@ Please see LICENSE files in the repository root for full details.
         margin-top: 28px;
         display: flex;
         flex-flow: wrap;
+        justify-content: center;
         gap: 14px 12px;
 
         .mx_AccessibleButton {
@@ -43,8 +49,9 @@ Please see LICENSE files in the repository root for full details.
     }
 
     > p {
-        margin: 0;
+        margin: 8px 0 0;
         font-size: $font-15px;
         color: $secondary-content;
+        line-height: 1.5;
     }
 }

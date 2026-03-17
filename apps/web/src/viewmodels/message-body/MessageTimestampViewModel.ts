@@ -68,27 +68,38 @@ export class MessageTimestampViewModel
     public onClick?: MouseEventHandler<HTMLElement>;
     public onContextMenu?: MouseEventHandler<HTMLElement>;
 
+    /**
+     * Convert ASCII digits 0-9 to their Persian/Farsi equivalents ۰-۹ (U+06F0–U+06F9).
+     * No-op when the document lang is not Farsi.
+     */
+    private static toFarsiDigits(str: string): string {
+        if (typeof document === "undefined" || !document.documentElement.lang?.startsWith("fa")) return str;
+        // U+0030 ('0') → U+06F0 ('۰'), offset = 0x06C0
+        return str.replace(/[0-9]/g, (d) => String.fromCharCode(d.charCodeAt(0) + 0x06c0));
+    }
+
     private static readonly computeSnapshot = (
         props: MessageTimestampViewModelProps,
     ): MessageTimestampViewSnapshotInterface => {
+        const fmt = MessageTimestampViewModel.toFarsiDigits.bind(MessageTimestampViewModel);
         const date = new Date(props.ts);
-        const sentAt = formatFullDate(date, props.showTwelveHour);
+        const sentAt = fmt(formatFullDate(date, props.showTwelveHour));
 
         let timestamp: string;
         if (props.showRelative) {
-            timestamp = formatRelativeTime(date, props.showTwelveHour);
+            timestamp = fmt(formatRelativeTime(date, props.showTwelveHour));
         } else if (props.showFullDate) {
-            timestamp = formatFullDate(date, props.showTwelveHour, props.showSeconds);
+            timestamp = fmt(formatFullDate(date, props.showTwelveHour, props.showSeconds));
         } else if (props.showSeconds) {
-            timestamp = formatFullTime(date, props.showTwelveHour);
+            timestamp = fmt(formatFullTime(date, props.showTwelveHour));
         } else {
-            timestamp = formatTime(date, props.showTwelveHour);
+            timestamp = fmt(formatTime(date, props.showTwelveHour));
         }
 
         let receivedAt: string | undefined;
         if (props.receivedTs !== undefined) {
             const receivedDate = new Date(props.receivedTs);
-            receivedAt = formatFullDate(receivedDate, props.showTwelveHour);
+            receivedAt = fmt(formatFullDate(receivedDate, props.showTwelveHour));
         }
 
         return {

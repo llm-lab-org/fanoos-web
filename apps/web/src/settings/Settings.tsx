@@ -287,6 +287,20 @@ export interface Settings {
     "webrtc_audio_echoCancellation": IBaseSetting<boolean>;
     "webrtc_audio_noiseSuppression": IBaseSetting<boolean>;
     "language": IBaseSetting<string>;
+    "interfaceDirection": IBaseSetting<string>;
+    "appFont": IBaseSetting<string>;
+    "fanoos.chatBgUrl": IBaseSetting<string | null>;
+    "fanoos.chatBgPattern": IBaseSetting<string>;
+    "fanoos.chatBgOpacity": IBaseSetting<number>;
+    "fanoos.chatBgColor": IBaseSetting<string | null>;
+    "fanoos.leftPanelColor": IBaseSetting<string | null>;
+    "fanoos.headerColor": IBaseSetting<string | null>;
+    "fanoos.composerColor": IBaseSetting<string | null>;
+    "fanoos.sentMsgColor": IBaseSetting<string | null>;
+    "fanoos.receivedMsgColor": IBaseSetting<string | null>;
+    "fanoos.accentColor": IBaseSetting<string | null>;
+    "fanoos.palette": IBaseSetting<string>;
+    "fanoos.audioPlayerStyle": IBaseSetting<string>;
     "breadcrumb_rooms": IBaseSetting<string[]>;
     "recent_emoji": IBaseSetting<RecentEmojiData>;
     "showMediaEventIds": IBaseSetting<{ [eventId: string]: boolean }>;
@@ -1030,6 +1044,64 @@ export const SETTINGS: Settings = {
         default: "en",
         // For privacy
         shouldExportToRageshake: false,
+    },
+    "interfaceDirection": {
+        supportedLevels: LEVELS_DEVICE_ONLY_SETTINGS,
+        default: "auto",
+    },
+    "appFont": {
+        supportedLevels: LEVELS_DEVICE_ONLY_SETTINGS_WITH_CONFIG,
+        default: "IRANSansX",
+    },
+    "fanoos.chatBgUrl": {
+        supportedLevels: LEVELS_DEVICE_ONLY_SETTINGS,
+        default: null,
+    },
+    "fanoos.chatBgPattern": {
+        supportedLevels: LEVELS_DEVICE_ONLY_SETTINGS,
+        default: "none",
+    },
+    "fanoos.chatBgOpacity": {
+        supportedLevels: LEVELS_DEVICE_ONLY_SETTINGS,
+        default: 0.15,
+    },
+    "fanoos.chatBgColor": {
+        supportedLevels: LEVELS_DEVICE_ONLY_SETTINGS,
+        default: null,
+    },
+    "fanoos.leftPanelColor": {
+        supportedLevels: LEVELS_DEVICE_ONLY_SETTINGS,
+        default: null,
+    },
+    "fanoos.headerColor": {
+        supportedLevels: LEVELS_DEVICE_ONLY_SETTINGS,
+        default: null,
+    },
+    "fanoos.composerColor": {
+        supportedLevels: LEVELS_DEVICE_ONLY_SETTINGS,
+        default: null,
+    },
+    "fanoos.sentMsgColor": {
+        supportedLevels: LEVELS_DEVICE_ONLY_SETTINGS,
+        default: null,
+    },
+    "fanoos.receivedMsgColor": {
+        supportedLevels: LEVELS_DEVICE_ONLY_SETTINGS,
+        default: null,
+    },
+    "fanoos.accentColor": {
+        supportedLevels: LEVELS_DEVICE_ONLY_SETTINGS,
+        default: null,
+    },
+    "fanoos.palette": {
+        supportedLevels: LEVELS_DEVICE_ONLY_SETTINGS,
+        default: "default",
+    },
+    "fanoos.audioPlayerStyle": {
+        // "default" = original Element waveform player
+        // "minimal" | "telegram" | "modern" = Fanoos native HTML5 players
+        supportedLevels: LEVELS_DEVICE_ONLY_SETTINGS,
+        default: "default",
     },
     "breadcrumb_rooms": {
         // not really a setting

@@ -25,9 +25,21 @@ import ElectronPlatform from "./platform/ElectronPlatform";
 import PWAPlatform from "./platform/PWAPlatform";
 import WebPlatform from "./platform/WebPlatform";
 import { initRageshake, initRageshakeStore } from "./rageshakesetup";
+import { applyAppFont } from "../fanoos/fonts";
+import { applyFanoosAppearance } from "../fanoos/appearance";
 import { ModuleApi } from "../modules/Api.ts";
 
 export const rageshakePromise = initRageshake();
+
+const RTL_LANGUAGES = ["fa", "ar", "he", "ur", "yi", "dv"];
+
+export function getInterfaceDirection(language: string): "rtl" | "ltr" {
+    const setting = SettingsStore.getValue("interfaceDirection");
+    if (setting === "rtl") return "rtl";
+    if (setting === "ltr") return "ltr";
+    // "auto": derive from language
+    return RTL_LANGUAGES.some((l) => language.toLowerCase().startsWith(l)) ? "rtl" : "ltr";
+}
 
 export function preparePlatform(): void {
     if (window.electron) {
@@ -76,7 +88,9 @@ export async function loadLanguage(): Promise<void> {
     }
     try {
         await languageHandler.setLanguage(...langs);
-        document.documentElement.setAttribute("lang", languageHandler.getCurrentLanguage());
+        const currentLang = languageHandler.getCurrentLanguage();
+        document.documentElement.setAttribute("lang", currentLang);
+        document.documentElement.setAttribute("dir", getInterfaceDirection(currentLang));
     } catch (e) {
         logger.error("Unable to set language", e);
     }
@@ -84,6 +98,11 @@ export async function loadLanguage(): Promise<void> {
 
 export async function loadTheme(): Promise<void> {
     return setTheme();
+}
+
+export function loadFont(): void {
+    applyAppFont(SettingsStore.getValue("appFont"));
+    applyFanoosAppearance();
 }
 
 export async function loadApp(fragParams: QueryDict): Promise<void> {
