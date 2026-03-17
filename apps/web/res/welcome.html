@@ -49,21 +49,14 @@
         -webkit-align-items: center;
         -ms-flex-align: center;
         align-items: center;
-        justify-content: space-between;
+        justify-content: center;
         box-sizing: border-box;
-        margin: 12px 0 0;
+        margin: 16px 0 0;
+        gap: 16px;
     }
 
     .mx_ButtonRow > * {
-        margin: 0 10px;
-    }
-
-    .mx_ButtonRow > *:first-child {
-        margin-left: 0;
-    }
-
-    .mx_ButtonRow > *:last-child {
-        margin-right: 0;
+        margin: 0;
     }
 
     .mx_ButtonParent {
@@ -165,9 +158,7 @@ we don't have an account and should hide them. No account == no guest account ei
 </style>
 
 <div class="mx_Parent">
-    <a href="https://element.io" target="_blank" rel="noopener">
-        <img src="$logoUrl" alt="$brand" class="mx_Logo" />
-    </a>
+    <img src="$logoUrl" alt="$brand" class="mx_Logo" />
     <h1 class="mx_Header_title">_t("welcome_to_element")</h1>
     <!-- XXX: Our translations system isn't smart enough to recognize variables in the HTML, so we manually do it -->
     <h2 class="mx_Header_subtitle">_t("powered_by_matrix_with_logo")</h2>
