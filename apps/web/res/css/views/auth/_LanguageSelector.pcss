@@ -8,28 +8,13 @@ Please see LICENSE files in the repository root for full details.
 .mx_LanguageSelector_wrapper {
     display: flex;
     align-items: center;
-    gap: 8px;
-    width: 100%;
-    box-sizing: border-box;
-}
-
-.mx_LanguageSelector_icon {
-    color: #555e6e;
-    flex-shrink: 0;
-}
-
-.mx_AuthBody_language {
-    flex: 1;
-    min-width: 0;
-}
-
-.mx_AuthBody_language .mx_Dropdown_input {
+    gap: 0;
     background: rgba(255, 255, 255, 0.55);
     border: 1px solid rgba(0, 0, 0, 0.1);
     border-radius: 20px;
-    padding: 4px 8px;
-    font: var(--cpd-font-body-md-semibold);
-    color: #333d4b;
+    padding: 5px 10px 5px 10px;
+    width: 100%;
+    box-sizing: border-box;
     transition: background 0.15s ease, border-color 0.15s ease;
 
     &:hover {
@@ -38,16 +23,47 @@ Please see LICENSE files in the repository root for full details.
     }
 }
 
+.mx_LanguageSelector_icon {
+    color: #555e6e;
+    flex-shrink: 0;
+    margin-right: 7px;
+    margin-top: 1px;
+}
+
+.mx_AuthBody_language {
+    flex: 1;
+    min-width: 0;
+}
+
+.mx_AuthBody_language .mx_Dropdown_input {
+    border: none;
+    background: transparent;
+    border-radius: 0;
+    padding: 0;
+    font: var(--cpd-font-body-md-semibold);
+    font-size: 13px;
+    color: #333d4b;
+
+    &:focus {
+        border: none;
+    }
+}
+
 .mx_AuthBody_language .mx_Dropdown_arrow {
     color: #555e6e;
+    width: 16px;
+    height: 16px;
 }
 
 .mx_AuthBody_language .mx_Dropdown_option {
     font-size: 13px;
+    padding: 0 6px;
 }
 
 .mx_AuthBody_language .mx_Dropdown_menu {
     z-index: 1000;
     top: auto;
-    bottom: calc(100% + 4px);
+    bottom: calc(100% + 8px);
+    border-radius: 10px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
 }

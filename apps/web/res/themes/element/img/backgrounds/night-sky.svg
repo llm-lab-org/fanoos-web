@@ -49,6 +49,20 @@
       </feMerge>
     </filter>
 
+    <!-- Persian text glow -->
+    <filter id="textGlow" x="-20%" y="-60%" width="140%" height="220%">
+      <feGaussianBlur stdDeviation="10" result="blur"/>
+      <feColorMatrix in="blur" type="matrix"
+        values="1 0.9 0.4 0 0
+                0.9 0.8 0.3 0 0
+                0.3 0.2 0.0 0 0
+                0   0   0   0.6 0" result="glow"/>
+      <feMerge>
+        <feMergeNode in="glow"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
     <!-- Milky Way gradient -->
     <radialGradient id="milkyWay1" cx="50%" cy="50%" r="50%">
       <stop offset="0%" stop-color="#4a4a8a" stop-opacity="0.18"/>
@@ -326,6 +340,19 @@
     <circle cx="1638" cy="215" r="11" fill="#ccbc80" opacity="0.25"/>
     <circle cx="1505" cy="250" r="8" fill="#d8ca92" opacity="0.22"/>
   </g>
+
+  <!-- Persian poem — centered in the sky -->
+  <text
+    x="780" y="430"
+    text-anchor="middle"
+    font-family="'IRANSansX', 'Vazirmatn', 'Noto Naskh Arabic', 'Scheherazade New', serif"
+    font-size="38"
+    font-weight="400"
+    fill="#f5e8b0"
+    opacity="0.82"
+    direction="rtl"
+    filter="url(#textGlow)"
+    letter-spacing="2">ای روشنای قلب من، فانوس راهت می‌شوم</text>
 
   <!-- Dune layer 1 — farthest/lightest, near horizon -->
   <path d="M0,750 Q120,695 280,718 Q420,740 560,705 Q700,668 850,690 Q980,710 1120,678 Q1260,645 1400,668 Q1540,690 1680,658 Q1800,632 1920,650 L1920,1080 L0,1080 Z"
