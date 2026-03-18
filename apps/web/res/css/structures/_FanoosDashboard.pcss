@@ -2247,10 +2247,42 @@ Please see LICENSE files in the repository root for full details.
 
 /* ── Left panel system text colour override ──────────────────────── */
 
-.mx_SpacePanel,
-.mx_LeftPanel_wrapper .mx_LeftPanel {
+.mx_SpacePanel {
     --cpd-color-text-primary: #ffffff;
     --cpd-color-text-secondary: rgb(255, 255, 255, 0.75);
     --cpd-color-text-placeholder: rgb(255, 255, 255, 0.4);
     color: #ffffff;
+}
+
+/* ── HTML body in chat history ───────────────────────────────────── */
+
+.mx_FanoosDashboard_chHtmlBody {
+    ol,
+    ul {
+        padding-inline-start: 1.5em;
+        margin: 0.2em 0;
+    }
+
+    li {
+        margin: 0.1em 0;
+    }
+
+    strong,
+    b {
+        font-weight: 700;
+    }
+
+    em,
+    i {
+        font-style: italic;
+    }
+
+    u {
+        text-decoration: underline;
+    }
+
+    s,
+    del {
+        text-decoration: line-through;
+    }
 }

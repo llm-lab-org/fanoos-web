@@ -779,6 +779,23 @@ function computeSendWindowPos(clientX: number, clientY: number): { x: number; y:
 // ─── Custom flower body renderer ─────────────────────────────────────────────
 
 /** Render a message body, substituting PUA flower chars with <img> elements */
+function renderHtmlBody(html: string): React.ReactElement {
+    // Inline-replace any PUA flower chars still present as raw text
+    let safeHtml = html;
+    for (const [char, src] of Object.entries(CUSTOM_EMOJI_IMAGES)) {
+        safeHtml = safeHtml.replaceAll(
+            char,
+            `<img src="${src}" alt="${char}" class="mx_FanoosDashboard_flowerEmoji" style="width:1.2em;height:1.2em;vertical-align:middle">`,
+        );
+    }
+    return (
+        <span
+            className="mx_FanoosDashboard_chBody mx_FanoosDashboard_chHtmlBody"
+            dangerouslySetInnerHTML={{ __html: safeHtml }}
+        />
+    );
+}
+
 function renderBody(text: string): React.ReactNode[] {
     const parts: React.ReactNode[] = [];
     let current = "";
@@ -1161,6 +1178,8 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({ roomId, client, isDayMode }) 
                 const isOwn = ev.getSender() === myId;
                 const senderName = ev.sender?.name || ev.getSender() || "";
                 const body = ev.getContent().body as string;
+                const formattedBody = ev.getContent().formatted_body as string | undefined;
+                const isHtmlMsg = ev.getContent().format === "org.matrix.custom.html" && !!formattedBody;
                 const ts = new Date(ev.getTs());
                 const timeStr = ts.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
                 const msgType = ev.getContent().msgtype;
@@ -1232,6 +1251,8 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({ roomId, client, isDayMode }) 
                                         })()
                                     ) : isMedia ? (
                                         <span className="mx_FanoosDashboard_chMedia">📎 {body}</span>
+                                    ) : isHtmlMsg ? (
+                                        renderHtmlBody(formattedBody!)
                                     ) : (
                                         <span className="mx_FanoosDashboard_chBody">{renderBody(body)}</span>
                                     )}
@@ -1613,13 +1634,37 @@ const SendWindow: React.FC<SendWindowProps> = ({
     const insertEmoji = (emoji: string): void => {
         if (htmlMode) {
             const imgSrc = CUSTOM_EMOJI_IMAGES[emoji];
-            htmlEditorRef.current?.focus();
+            const editor = htmlEditorRef.current;
+            if (!editor) {
+                setShowEmojiPicker(null);
+                return;
+            }
+            editor.focus();
             if (imgSrc) {
-                document.execCommand(
-                    "insertHTML",
-                    false,
-                    `<img src="${imgSrc}" alt="${emoji}" style="width:1.2em;height:1.2em;vertical-align:middle">`,
-                );
+                // Use Range API for reliable img insertion (execCommand truncates data URLs)
+                const sel = window.getSelection();
+                let range: Range;
+                if (sel && sel.rangeCount > 0 && editor.contains(sel.getRangeAt(0).commonAncestorContainer)) {
+                    range = sel.getRangeAt(0);
+                } else {
+                    range = document.createRange();
+                    range.selectNodeContents(editor);
+                    range.collapse(false);
+                }
+                range.deleteContents();
+                const img = document.createElement("img");
+                img.src = imgSrc;
+                img.alt = emoji;
+                img.style.width = "1.2em";
+                img.style.height = "1.2em";
+                img.style.verticalAlign = "middle";
+                range.insertNode(img);
+                range.setStartAfter(img);
+                range.collapse(true);
+                if (sel) {
+                    sel.removeAllRanges();
+                    sel.addRange(range);
+                }
                 setHtmlFlowers((prev) => [...prev, emoji]);
             } else {
                 document.execCommand("insertText", false, emoji);
@@ -1911,7 +1956,7 @@ const SendWindow: React.FC<SendWindowProps> = ({
                                         }}
                                         title={_t("fanoos_dashboard|html_ltr")}
                                     >
-                                        LTR
+                                        ⇒
                                     </button>
                                     <button
                                         onMouseDown={(e) => e.preventDefault()}
@@ -1921,7 +1966,7 @@ const SendWindow: React.FC<SendWindowProps> = ({
                                         }}
                                         title={_t("fanoos_dashboard|html_rtl")}
                                     >
-                                        RTL
+                                        ⇐
                                     </button>
                                     <span className="mx_FanoosDashboard_htmlToolbarDivider" />
                                     <button
