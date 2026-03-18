@@ -21,6 +21,7 @@ import UIStore from "../../stores/UIStore";
 import { mediaFromMxc } from "../../customisations/Media";
 import EmojiPicker from "../views/emojipicker/EmojiPicker";
 import { uploadFile } from "../../ContentMessages";
+import { CUSTOM_EMOJI_IMAGES } from "../../fanoos/customFlowerEmojis";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -28,6 +29,7 @@ interface SendWindowState {
     recipients: Array<{ id: string; roomId: string; name: string }>;
     msgText: string;
     pos: { x: number; y: number };
+    size: { w: number; h: number };
     minimized: boolean;
     showRecipients: boolean;
     showAnalysis: boolean;
@@ -701,7 +703,7 @@ function renderSVG(
                             : "rgba(199,210,254,0.88)"
                         : isDayMode
                           ? "rgba(15,23,42,0.82)"
-                          : "rgba(226,232,240,0.80)";
+                          : "rgba(255,255,255,0.92)";
                 parts.push(
                     `<text x="${tx.toFixed(1)}" y="${ty.toFixed(1)}" text-anchor="middle" dominant-baseline="middle" transform="rotate(${rotDeg.toFixed(1)},${tx.toFixed(1)},${ty.toFixed(1)})" fill="${tColor}" font-size="${fontSize}" font-weight="${isVirtual ? 700 : 500}" font-family="system-ui,sans-serif" pointer-events="none">${escHtml(label)}</text>`,
                 );
@@ -774,70 +776,28 @@ function computeSendWindowPos(clientX: number, clientY: number): { x: number; y:
     return { x: Math.max(0, x), y };
 }
 
-// ─── Common emoji sets ─────────────────────────────────────────────────────────
+// ─── Custom flower body renderer ─────────────────────────────────────────────
 
-// Quick reaction bar: happiness + standard flower emoji
-const QUICK_REACTIONS = [
-    "🥰",
-    "😍",
-    "😊",
-    "❤️",
-    "😂",
-    "🥹",
-    "🤗",
-    "🫶",
-    "👏",
-    "🙌",
-    "💕",
-    "💖",
-    "💞",
-    "🧡",
-    "💛",
-    "💚",
-    "💙",
-    "🥳",
-    "🎉",
-    "✨",
-    "🌟",
-    "🎈",
-    "🎊",
-    "💐",
-    "🌸",
-    "🌹",
-    "🌺",
-    "🌻",
-    "🌼",
-    "🌷",
-    "🪷",
-    "🥀",
-    "🌿",
-    "🍀",
-    "🌱",
-    "🌾",
-    "🍁",
-    "🌵",
-    "🌴",
-];
-const STICKER_EMOJIS = [
-    "🎊",
-    "🎂",
-    "🎁",
-    "🌟",
-    "💝",
-    "🏆",
-    "🌈",
-    "🦁",
-    "🐶",
-    "🌺",
-    "⚡",
-    "💫",
-    "🎵",
-    "🍕",
-    "☕",
-    "🚀",
-    "🎈",
-    "🎯",
-];
+/** Render a message body, substituting PUA flower chars with <img> elements */
+function renderBody(text: string): React.ReactNode[] {
+    const parts: React.ReactNode[] = [];
+    let current = "";
+    let key = 0;
+    for (const char of text) {
+        const imgSrc = CUSTOM_EMOJI_IMAGES[char];
+        if (imgSrc) {
+            if (current) {
+                parts.push(current);
+                current = "";
+            }
+            parts.push(<img key={key++} src={imgSrc} alt={char} className="mx_FanoosDashboard_flowerEmoji" />);
+        } else {
+            current += char;
+        }
+    }
+    if (current) parts.push(current);
+    return parts;
+}
 
 // ─── Interval + age helpers ───────────────────────────────────────────────────
 
@@ -1063,7 +1023,7 @@ const EmojiPickerPortal: React.FC<EmojiPickerPortalProps> = ({ anchor, onChoose,
 
     if (!anchor) return null;
 
-    const PICKER_H = 450;
+    const PICKER_H = 360;
     const top = anchor.y - PICKER_H - 8 < 0 ? anchor.y + 8 : anchor.y - PICKER_H - 8;
 
     return createPortal(
@@ -1093,7 +1053,10 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({ roomId, client, isDayMode }) 
     const [events, setEvents] = useState<MatrixEvent[]>([]);
     const [loading, setLoading] = useState(false);
     const [canLoadMore, setCanLoadMore] = useState(true);
-    const [reactionTargetId, setReactionTargetId] = useState<string | null>(null);
+    const reactionTargetIdRef = useRef<string | null>(null);
+    const setReactionTargetId = (v: string | null): void => {
+        reactionTargetIdRef.current = v;
+    };
     const [reactionTick, setReactionTick] = useState(0);
     const [emojiPickerAnchor, setEmojiPickerAnchor] = useState<{ x: number; y: number } | null>(null);
     const [emojiPickerTargetId, setEmojiPickerTargetId] = useState<string | null>(null);
@@ -1202,7 +1165,8 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({ roomId, client, isDayMode }) 
                 const timeStr = ts.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
                 const msgType = ev.getContent().msgtype;
                 const isAudio = msgType === "m.audio";
-                const isMedia = msgType === "m.image" || msgType === "m.file" || msgType === "m.video";
+                const isImage = msgType === "m.image";
+                const isMedia = msgType === "m.file" || msgType === "m.video";
 
                 const sendReaction = (emoji: string, closeAll = true): void => {
                     if (closeAll) {
@@ -1236,44 +1200,54 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({ roomId, client, isDayMode }) 
                 };
 
                 return (
-                    <div
-                        key={evId}
-                        className={`mx_FanoosDashboard_chRow${isOwn ? " own" : ""}`}
-                        onMouseLeave={() => {
-                            setReactionTargetId(null);
-                        }}
-                    >
+                    <div key={evId} className={`mx_FanoosDashboard_chRow${isOwn ? " own" : ""}`}>
                         {!isOwn && (
                             <div className="mx_FanoosDashboard_chAvatar">{senderName.slice(0, 2).toUpperCase()}</div>
                         )}
                         <div className="mx_FanoosDashboard_chContent">
                             {!isOwn && <div className="mx_FanoosDashboard_chSender">{senderName}</div>}
-                            <div
-                                className={`mx_FanoosDashboard_chBubble${isOwn ? " own" : ""}`}
-                                dir="auto"
-                                onMouseEnter={() => setReactionTargetId(evId)}
-                            >
-                                {isAudio ? (
-                                    (() => {
-                                        const mxcUrl = ev.getContent().url as string | undefined;
-                                        const httpUrl = mxcUrl ? (mediaFromMxc(mxcUrl).srcHttp ?? "") : "";
-                                        const durMs = (ev.getContent().info as { duration?: number } | undefined)
-                                            ?.duration;
-                                        return httpUrl ? (
-                                            <VoicePlayer url={httpUrl} durationMs={durMs} isDayMode={isDayMode} />
-                                        ) : (
-                                            <span className="mx_FanoosDashboard_chMedia">🎵 {body}</span>
-                                        );
-                                    })()
-                                ) : isMedia ? (
-                                    <span className="mx_FanoosDashboard_chMedia">📎 {body}</span>
-                                ) : (
-                                    <span className="mx_FanoosDashboard_chBody">{body}</span>
-                                )}
-                                <span className="mx_FanoosDashboard_chTime">{timeStr}</span>
+                            <div className={`mx_FanoosDashboard_chBubbleRow${isOwn ? " own" : ""}`}>
+                                <div className={`mx_FanoosDashboard_chBubble${isOwn ? " own" : ""}`} dir="auto">
+                                    {isAudio ? (
+                                        (() => {
+                                            const mxcUrl = ev.getContent().url as string | undefined;
+                                            const httpUrl = mxcUrl ? (mediaFromMxc(mxcUrl).srcHttp ?? "") : "";
+                                            const durMs = (ev.getContent().info as { duration?: number } | undefined)
+                                                ?.duration;
+                                            return httpUrl ? (
+                                                <VoicePlayer url={httpUrl} durationMs={durMs} isDayMode={isDayMode} />
+                                            ) : (
+                                                <span className="mx_FanoosDashboard_chMedia">🎵 {body}</span>
+                                            );
+                                        })()
+                                    ) : isImage ? (
+                                        (() => {
+                                            const mxcUrl = ev.getContent().url as string | undefined;
+                                            const httpUrl = mxcUrl ? (mediaFromMxc(mxcUrl).srcHttp ?? "") : "";
+                                            return httpUrl ? (
+                                                <img src={httpUrl} alt={body} className="mx_FanoosDashboard_chImage" />
+                                            ) : (
+                                                <span className="mx_FanoosDashboard_chMedia">📎 {body}</span>
+                                            );
+                                        })()
+                                    ) : isMedia ? (
+                                        <span className="mx_FanoosDashboard_chMedia">📎 {body}</span>
+                                    ) : (
+                                        <span className="mx_FanoosDashboard_chBody">{renderBody(body)}</span>
+                                    )}
+                                    <span className="mx_FanoosDashboard_chTime">{timeStr}</span>
+                                </div>
+                                <button
+                                    className="mx_FanoosDashboard_chReactionMore"
+                                    onMouseDown={(e) => e.stopPropagation()}
+                                    onClick={openFullPicker}
+                                    title={_t("fanoos_dashboard|add_reaction")}
+                                >
+                                    ☺
+                                </button>
                             </div>
 
-                            {/* Existing reactions display */}
+                            {/* Reactions display */}
                             {reactionGroups.length > 0 && (
                                 <div className={`mx_FanoosDashboard_chReactions${isOwn ? " own" : ""}`}>
                                     {reactionGroups.map(([emoji, evSet]) => {
@@ -1287,37 +1261,11 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({ roomId, client, isDayMode }) 
                                                 onClick={() => sendReaction(emoji)}
                                                 title={`${evSet.size} reaction${evSet.size !== 1 ? "s" : ""}`}
                                             >
-                                                {emoji}{" "}
+                                                {renderBody(emoji)}
                                                 <span className="mx_FanoosDashboard_chReactionCount">{evSet.size}</span>
                                             </button>
                                         );
                                     })}
-                                </div>
-                            )}
-
-                            {/* Quick reaction bar on hover */}
-                            {reactionTargetId === evId && (
-                                <div className={`mx_FanoosDashboard_chReactionBar${isOwn ? " own" : ""}`}>
-                                    <div className="mx_FanoosDashboard_chReactionScroll">
-                                        {QUICK_REACTIONS.map((em) => (
-                                            <button
-                                                key={em}
-                                                className="mx_FanoosDashboard_chReactionBtn"
-                                                onMouseDown={(e) => e.stopPropagation()}
-                                                onClick={() => sendReaction(em)}
-                                            >
-                                                {em}
-                                            </button>
-                                        ))}
-                                    </div>
-                                    <button
-                                        className="mx_FanoosDashboard_chReactionMore"
-                                        onMouseDown={(e) => e.stopPropagation()}
-                                        onClick={openFullPicker}
-                                        title="More reactions"
-                                    >
-                                        ＋
-                                    </button>
                                 </div>
                             )}
                         </div>
@@ -1490,10 +1438,37 @@ const SendWindow: React.FC<SendWindowProps> = ({
     const [recording, setRecording] = useState(false);
     const [recipientSearch, setRecipientSearch] = useState("");
     const [sent, setSent] = useState<string[]>([]);
-    const [showEmojiPicker, setShowEmojiPicker] = useState<"emoji" | "sticker" | null>(null);
+    const [showEmojiPicker, setShowEmojiPicker] = useState<"emoji" | null>(null);
     const [emojiPickerAnchor, setEmojiPickerAnchor] = useState<{ x: number; y: number } | null>(null);
+    const [htmlMode, setHtmlMode] = useState(false);
+    const [htmlFlowers, setHtmlFlowers] = useState<string[]>([]);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const htmlEditorRef = useRef<HTMLDivElement>(null);
+    const colorInputRef = useRef<HTMLInputElement>(null);
+    const htmlSavedRangeRef = useRef<Range | null>(null);
     const [uploading, setUploading] = useState(false);
+
+    const saveHtmlSelection = (): void => {
+        const sel = window.getSelection();
+        if (sel && sel.rangeCount > 0) htmlSavedRangeRef.current = sel.getRangeAt(0).cloneRange();
+    };
+
+    const restoreHtmlSelection = (): void => {
+        const range = htmlSavedRangeRef.current;
+        if (!range) return;
+        const sel = window.getSelection();
+        if (sel) {
+            sel.removeAllRanges();
+            sel.addRange(range);
+        }
+    };
+
+    const applyForeColor = (color: string): void => {
+        htmlEditorRef.current?.focus();
+        restoreHtmlSelection();
+        document.execCommand("foreColor", false, color);
+    };
     const stateRef = useRef(state);
     useEffect(() => {
         stateRef.current = state;
@@ -1565,7 +1540,10 @@ const SendWindow: React.FC<SendWindowProps> = ({
             const ox = e.clientX - stateRef.current.pos.x;
             const oy = e.clientY - stateRef.current.pos.y;
             const onMove = (ev: MouseEvent): void => {
-                const x = Math.max(0, Math.min(ev.clientX - ox, UIStore.instance.windowWidth - 360));
+                const x = Math.max(
+                    0,
+                    Math.min(ev.clientX - ox, UIStore.instance.windowWidth - stateRef.current.size.w),
+                );
                 const y = Math.max(0, Math.min(ev.clientY - oy, UIStore.instance.windowHeight - 40));
                 onChange({ ...stateRef.current, pos: { x, y } });
             };
@@ -1579,17 +1557,52 @@ const SendWindow: React.FC<SendWindowProps> = ({
         [onChange],
     );
 
+    const handleResizeStart = useCallback(
+        (e: React.MouseEvent<HTMLDivElement>): void => {
+            if (e.button !== 0) return;
+            e.preventDefault();
+            e.stopPropagation();
+            const startX = e.clientX;
+            const startY = e.clientY;
+            const startW = stateRef.current.size.w;
+            const startH = stateRef.current.size.h;
+            const onMove = (ev: MouseEvent): void => {
+                const w = Math.max(280, startW + ev.clientX - startX);
+                const h = Math.max(300, startH + ev.clientY - startY);
+                onChange({ ...stateRef.current, size: { w, h } });
+            };
+            const onUp = (): void => {
+                document.removeEventListener("mousemove", onMove);
+                document.removeEventListener("mouseup", onUp);
+            };
+            document.addEventListener("mousemove", onMove);
+            document.addEventListener("mouseup", onUp);
+        },
+        [onChange],
+    );
+
     const send = async (): Promise<void> => {
-        if (!state.msgText.trim() || sending || !state.recipients.length) return;
+        const htmlEl = htmlEditorRef.current;
+        const textContent = htmlMode ? (htmlEl?.textContent?.trim() ?? "") : state.msgText.trim();
+        if (!textContent || sending || !state.recipients.length) return;
         setSending(true);
         const results: string[] = [];
         try {
             for (const r of state.recipients) {
-                await client.sendTextMessage(r.roomId, state.msgText.trim());
+                if (htmlMode && htmlEl) {
+                    await client.sendHtmlMessage(r.roomId, htmlEl.textContent ?? "", htmlEl.innerHTML);
+                } else {
+                    await client.sendTextMessage(r.roomId, state.msgText.trim());
+                }
                 results.push(r.name);
             }
             setSent(results);
-            onChange({ ...state, msgText: "" });
+            if (htmlMode && htmlEl) {
+                htmlEl.innerHTML = "";
+                setHtmlFlowers([]);
+            } else {
+                onChange({ ...state, msgText: "" });
+            }
         } catch (e) {
             console.error("Failed to send:", e);
         } finally {
@@ -1598,16 +1611,36 @@ const SendWindow: React.FC<SendWindowProps> = ({
     };
 
     const insertEmoji = (emoji: string): void => {
-        onChange({ ...stateRef.current, msgText: stateRef.current.msgText + emoji });
-        setShowEmojiPicker(null);
-    };
-
-    const sendSticker = async (emoji: string): Promise<void> => {
-        setShowEmojiPicker(null);
-        if (!stateRef.current.recipients.length) return;
-        for (const r of stateRef.current.recipients) {
-            await client.sendTextMessage(r.roomId, emoji);
+        if (htmlMode) {
+            const imgSrc = CUSTOM_EMOJI_IMAGES[emoji];
+            htmlEditorRef.current?.focus();
+            if (imgSrc) {
+                document.execCommand(
+                    "insertHTML",
+                    false,
+                    `<img src="${imgSrc}" alt="${emoji}" style="width:1.2em;height:1.2em;vertical-align:middle">`,
+                );
+                setHtmlFlowers((prev) => [...prev, emoji]);
+            } else {
+                document.execCommand("insertText", false, emoji);
+            }
+        } else {
+            const ta = textareaRef.current;
+            if (ta) {
+                const start = ta.selectionStart ?? stateRef.current.msgText.length;
+                const end = ta.selectionEnd ?? stateRef.current.msgText.length;
+                const txt = stateRef.current.msgText;
+                const newText = txt.slice(0, start) + emoji + txt.slice(end);
+                onChange({ ...stateRef.current, msgText: newText });
+                requestAnimationFrame(() => {
+                    ta.selectionStart = ta.selectionEnd = start + emoji.length;
+                    ta.focus();
+                });
+            } else {
+                onChange({ ...stateRef.current, msgText: stateRef.current.msgText + emoji });
+            }
         }
+        setShowEmojiPicker(null);
     };
 
     const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>): Promise<void> => {
@@ -1684,7 +1717,12 @@ const SendWindow: React.FC<SendWindowProps> = ({
     return (
         <div
             className={`mx_FanoosDashboard_sendWindow${isDayMode ? " day" : ""}${state.minimized ? " minimized" : ""}${showSidePanel ? " withPanel" : ""}${state.showAnalysis && !state.minimized && singleRecipient ? " withAnalysis" : ""}`}
-            style={{ left: state.pos.x, top: state.pos.y }}
+            style={{
+                left: state.pos.x,
+                top: state.pos.y,
+                width: state.size.w,
+                height: state.minimized ? undefined : state.size.h,
+            }}
         >
             {/* Header / drag handle */}
             <div className="mx_FanoosDashboard_cbHdr" onMouseDown={handleDragStart}>
@@ -1695,7 +1733,7 @@ const SendWindow: React.FC<SendWindowProps> = ({
                         className={`mx_FanoosDashboard_cbCtrl${state.showAnalysis ? " active" : ""}`}
                         onMouseDown={(e) => e.stopPropagation()}
                         onClick={toggleAnalysis}
-                        title="Analysis"
+                        title={_t("fanoos_dashboard|analysis")}
                     >
                         📊
                     </button>
@@ -1710,7 +1748,7 @@ const SendWindow: React.FC<SendWindowProps> = ({
                             showAnalysis: false,
                         })
                     }
-                    title="Recipients"
+                    title={_t("fanoos_dashboard|recipients")}
                 >
                     👥
                 </button>
@@ -1718,7 +1756,7 @@ const SendWindow: React.FC<SendWindowProps> = ({
                     className="mx_FanoosDashboard_cbCtrl"
                     onMouseDown={(e) => e.stopPropagation()}
                     onClick={() => onChange({ ...stateRef.current, minimized: !stateRef.current.minimized })}
-                    title={state.minimized ? "Expand" : "Minimize"}
+                    title={state.minimized ? _t("fanoos_dashboard|expand") : _t("fanoos_dashboard|minimize")}
                 >
                     {state.minimized ? "▲" : "▼"}
                 </button>
@@ -1726,7 +1764,7 @@ const SendWindow: React.FC<SendWindowProps> = ({
                     className="mx_FanoosDashboard_cbCtrl"
                     onMouseDown={(e) => e.stopPropagation()}
                     onClick={onClose}
-                    title="Close"
+                    title={_t("fanoos_dashboard|close")}
                 >
                     ✕
                 </button>
@@ -1808,38 +1846,192 @@ const SendWindow: React.FC<SendWindowProps> = ({
                         )}
 
                         <div className="mx_FanoosDashboard_cbCompose">
-                            {/* Sticker picker panel (inline, above textarea) */}
-                            {showEmojiPicker === "sticker" && (
-                                <div className={`mx_FanoosDashboard_emojiPicker${isDayMode ? " day" : ""}`}>
-                                    {STICKER_EMOJIS.map((em) => (
-                                        <button
-                                            key={em}
-                                            className="mx_FanoosDashboard_emojiBtn"
-                                            onClick={() => void sendSticker(em)}
-                                        >
-                                            {em}
-                                        </button>
+                            {/* HTML toolbar (shown in HTML mode) */}
+                            {htmlMode && (
+                                <div className="mx_FanoosDashboard_htmlToolbar">
+                                    <button
+                                        onMouseDown={(e) => e.preventDefault()}
+                                        onClick={() => document.execCommand("bold")}
+                                        title={_t("fanoos_dashboard|html_bold")}
+                                    >
+                                        <b>B</b>
+                                    </button>
+                                    <button
+                                        onMouseDown={(e) => e.preventDefault()}
+                                        onClick={() => document.execCommand("italic")}
+                                        title={_t("fanoos_dashboard|html_italic")}
+                                    >
+                                        <i>I</i>
+                                    </button>
+                                    <button
+                                        onMouseDown={(e) => e.preventDefault()}
+                                        onClick={() => document.execCommand("underline")}
+                                        title={_t("fanoos_dashboard|html_underline")}
+                                    >
+                                        <u>U</u>
+                                    </button>
+                                    <button
+                                        onMouseDown={(e) => e.preventDefault()}
+                                        onClick={() => document.execCommand("strikeThrough")}
+                                        title={_t("fanoos_dashboard|html_strikethrough")}
+                                    >
+                                        <s>S</s>
+                                    </button>
+                                    <span className="mx_FanoosDashboard_htmlToolbarDivider" />
+                                    <label
+                                        className="mx_FanoosDashboard_htmlColorBtn"
+                                        title={_t("fanoos_dashboard|html_color")}
+                                        onMouseDown={(e) => {
+                                            e.preventDefault();
+                                            saveHtmlSelection();
+                                        }}
+                                        onClick={() => colorInputRef.current?.click()}
+                                    >
+                                        <span>A</span>
+                                        <input
+                                            ref={colorInputRef}
+                                            type="color"
+                                            defaultValue="#e879f9"
+                                            style={{
+                                                position: "absolute",
+                                                opacity: 0,
+                                                width: 0,
+                                                height: 0,
+                                                pointerEvents: "none",
+                                            }}
+                                            onChange={(e) => applyForeColor(e.target.value)}
+                                        />
+                                    </label>
+                                    <span className="mx_FanoosDashboard_htmlToolbarDivider" />
+                                    <button
+                                        onMouseDown={(e) => e.preventDefault()}
+                                        onClick={() => {
+                                            const el = htmlEditorRef.current;
+                                            if (el) el.dir = "ltr";
+                                        }}
+                                        title={_t("fanoos_dashboard|html_ltr")}
+                                    >
+                                        LTR
+                                    </button>
+                                    <button
+                                        onMouseDown={(e) => e.preventDefault()}
+                                        onClick={() => {
+                                            const el = htmlEditorRef.current;
+                                            if (el) el.dir = "rtl";
+                                        }}
+                                        title={_t("fanoos_dashboard|html_rtl")}
+                                    >
+                                        RTL
+                                    </button>
+                                    <span className="mx_FanoosDashboard_htmlToolbarDivider" />
+                                    <button
+                                        onMouseDown={(e) => e.preventDefault()}
+                                        onClick={() => document.execCommand("insertUnorderedList")}
+                                        title={_t("fanoos_dashboard|html_ul")}
+                                    >
+                                        •≡
+                                    </button>
+                                    <button
+                                        onMouseDown={(e) => e.preventDefault()}
+                                        onClick={() => document.execCommand("insertOrderedList")}
+                                        title={_t("fanoos_dashboard|html_ol")}
+                                    >
+                                        1≡
+                                    </button>
+                                    <button
+                                        onMouseDown={(e) => e.preventDefault()}
+                                        onClick={() => document.execCommand("indent")}
+                                        title={_t("fanoos_dashboard|html_indent")}
+                                    >
+                                        →
+                                    </button>
+                                    <button
+                                        onMouseDown={(e) => e.preventDefault()}
+                                        onClick={() => document.execCommand("outdent")}
+                                        title={_t("fanoos_dashboard|html_outdent")}
+                                    >
+                                        ←
+                                    </button>
+                                </div>
+                            )}
+
+                            {/* Plain text textarea (normal mode) */}
+                            {!htmlMode && (
+                                <textarea
+                                    ref={textareaRef}
+                                    className="mx_FanoosDashboard_cbInput"
+                                    dir="auto"
+                                    value={state.msgText}
+                                    onChange={(e) => onChange({ ...state, msgText: e.target.value })}
+                                    onKeyDown={(e) => {
+                                        if (e.key === "Enter" && !e.shiftKey) {
+                                            e.preventDefault();
+                                            void send();
+                                        }
+                                    }}
+                                    placeholder={
+                                        state.recipients.length > 1
+                                            ? _t("fanoos_dashboard|send_to_channels", {
+                                                  count: state.recipients.length,
+                                              })
+                                            : _t("fanoos_dashboard|send_placeholder")
+                                    }
+                                    rows={2}
+                                />
+                            )}
+
+                            {/* HTML contenteditable editor (HTML mode) */}
+                            {htmlMode && (
+                                <div
+                                    ref={htmlEditorRef}
+                                    className="mx_FanoosDashboard_cbInput mx_FanoosDashboard_cbHtmlEditor"
+                                    contentEditable
+                                    dir="auto"
+                                    suppressContentEditableWarning
+                                    onKeyDown={(e) => {
+                                        if (e.key === "Enter" && !e.shiftKey) {
+                                            e.preventDefault();
+                                            void send();
+                                        }
+                                    }}
+                                    data-placeholder={
+                                        state.recipients.length > 1
+                                            ? _t("fanoos_dashboard|send_to_channels", {
+                                                  count: state.recipients.length,
+                                              })
+                                            : _t("fanoos_dashboard|send_placeholder")
+                                    }
+                                />
+                            )}
+
+                            {/* Flower chips row */}
+                            {!htmlMode && state.msgText && /[\uE000-\uE00F]/.test(state.msgText) && (
+                                <div className="mx_FanoosDashboard_cbFlowerChips">
+                                    {[...state.msgText]
+                                        .filter((ch) => CUSTOM_EMOJI_IMAGES[ch])
+                                        .map((ch, i) => (
+                                            <img
+                                                key={i}
+                                                src={CUSTOM_EMOJI_IMAGES[ch]}
+                                                alt={ch}
+                                                className="mx_FanoosDashboard_cbFlowerChip"
+                                            />
+                                        ))}
+                                </div>
+                            )}
+                            {htmlMode && htmlFlowers.length > 0 && (
+                                <div className="mx_FanoosDashboard_cbFlowerChips">
+                                    {htmlFlowers.map((ch, i) => (
+                                        <img
+                                            key={i}
+                                            src={CUSTOM_EMOJI_IMAGES[ch]}
+                                            alt={ch}
+                                            className="mx_FanoosDashboard_cbFlowerChip"
+                                        />
                                     ))}
                                 </div>
                             )}
-                            <textarea
-                                className="mx_FanoosDashboard_cbInput"
-                                dir="auto"
-                                value={state.msgText}
-                                onChange={(e) => onChange({ ...state, msgText: e.target.value })}
-                                onKeyDown={(e) => {
-                                    if (e.key === "Enter" && !e.shiftKey) {
-                                        e.preventDefault();
-                                        void send();
-                                    }
-                                }}
-                                placeholder={
-                                    state.recipients.length > 1
-                                        ? `Send to ${state.recipients.length} channels…`
-                                        : _t("fanoos_dashboard|send_placeholder")
-                                }
-                                rows={2}
-                            />
+
                             <div className="mx_FanoosDashboard_cbActions">
                                 {/* Hidden file input */}
                                 <input
@@ -1863,23 +2055,23 @@ const SendWindow: React.FC<SendWindowProps> = ({
                                             setShowEmojiPicker("emoji");
                                         }
                                     }}
-                                    title="Emoji"
+                                    title={_t("fanoos_dashboard|emoji_btn")}
                                 >
                                     😊
                                 </button>
                                 <button
-                                    className={`mx_FanoosDashboard_cbEmojiBtn${showEmojiPicker === "sticker" ? " active" : ""}`}
+                                    className={`mx_FanoosDashboard_cbEmojiBtn${htmlMode ? " active" : ""}`}
                                     onMouseDown={(e) => e.stopPropagation()}
-                                    onClick={() => setShowEmojiPicker((v) => (v === "sticker" ? null : "sticker"))}
-                                    title="Sticker"
+                                    onClick={() => setHtmlMode((v) => !v)}
+                                    title={_t("fanoos_dashboard|html_editor")}
                                 >
-                                    🎭
+                                    🖊
                                 </button>
                                 <button
                                     className="mx_FanoosDashboard_cbEmojiBtn"
                                     onMouseDown={(e) => e.stopPropagation()}
                                     onClick={() => fileInputRef.current?.click()}
-                                    title="Send file or image"
+                                    title={_t("fanoos_dashboard|send_file")}
                                     disabled={uploading}
                                 >
                                     📎
@@ -1887,7 +2079,11 @@ const SendWindow: React.FC<SendWindowProps> = ({
                                 <button
                                     className={`mx_FanoosDashboard_cbMic${recording ? " recording" : ""}`}
                                     onClick={() => void toggleRecording()}
-                                    title={recording ? "Stop recording" : "Record voice message"}
+                                    title={
+                                        recording
+                                            ? _t("fanoos_dashboard|stop_recording")
+                                            : _t("fanoos_dashboard|record_voice")
+                                    }
                                     disabled={sending || uploading}
                                 >
                                     🎙
@@ -1918,6 +2114,9 @@ const SendWindow: React.FC<SendWindowProps> = ({
                     setEmojiPickerAnchor(null);
                 }}
             />
+
+            {/* Resize grip */}
+            {!state.minimized && <div className="mx_FanoosDashboard_swResize" onMouseDown={handleResizeStart} />}
         </div>
     );
 };
@@ -2361,6 +2560,7 @@ const FanoosDashboard: React.FC = () => {
                             recipients: [{ id: n.id, roomId: n.matrixRoomId!, name: n.name }],
                             msgText: "",
                             pos,
+                            size: { w: 320, h: 480 },
                             minimized: false,
                             showRecipients: true,
                             showAnalysis: false,
@@ -2430,6 +2630,7 @@ const FanoosDashboard: React.FC = () => {
                         recipients,
                         msgText: "",
                         pos,
+                        size: { w: 320, h: 480 },
                         minimized: false,
                         showRecipients: false,
                         showAnalysis: false,
@@ -2451,6 +2652,7 @@ const FanoosDashboard: React.FC = () => {
                 recipients: [{ id: n.id, roomId: n.matrixRoomId, name: n.name }],
                 msgText: "",
                 pos,
+                size: { w: 320, h: 480 },
                 minimized: false,
                 showRecipients: false,
                 showAnalysis: false,

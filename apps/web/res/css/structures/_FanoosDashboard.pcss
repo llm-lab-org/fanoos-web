@@ -633,6 +633,13 @@ Please see LICENSE files in the repository root for full details.
     align-items: flex-end;
 }
 
+/* Wrapper that holds bubble + reaction button side by side */
+.mx_FanoosDashboard_chBubbleRow {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
 .mx_FanoosDashboard_chSender {
     font-size: 10px;
     font-weight: 600;
@@ -782,6 +789,14 @@ Please see LICENSE files in the repository root for full details.
         transform 0.1s;
     line-height: 1;
 
+    /* flower emoji images inside chips */
+    img {
+        width: 16px;
+        height: 16px;
+        object-fit: contain;
+        vertical-align: middle;
+    }
+
     &:hover {
         background: #ffffff;
         transform: scale(1.06);
@@ -798,63 +813,25 @@ Please see LICENSE files in the repository root for full details.
     color: #444;
 }
 
-/* ── Quick reaction bar (on hover) ──────────────────────────────── */
+/* ── Reaction picker button (on hover) ──────────────────────────── */
 
 .mx_FanoosDashboard_chReactionBar {
     display: flex;
     align-items: center;
-    gap: 2px;
     margin-top: 3px;
-    max-width: 260px;
 
     &.own {
         justify-content: flex-end;
-        flex-direction: row-reverse;
-    }
-}
-
-.mx_FanoosDashboard_chReactionScroll {
-    display: flex;
-    gap: 2px;
-    overflow-x: auto;
-    flex: 1;
-    scrollbar-width: none;
-    &::-webkit-scrollbar {
-        display: none;
-    }
-}
-
-.mx_FanoosDashboard_chReactionBtn {
-    background: rgb(255, 255, 255, 0.72);
-    border: 1px solid rgb(0, 0, 0, 0.1);
-    border-radius: 999px;
-    font-size: 15px;
-    min-width: 28px;
-    height: 28px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    padding: 0 4px;
-    line-height: 1;
-    flex-shrink: 0;
-    transition:
-        background 0.12s,
-        transform 0.1s;
-
-    &:hover {
-        background: #ffffff;
-        transform: scale(1.18);
     }
 }
 
 .mx_FanoosDashboard_chReactionMore {
-    background: rgb(99, 102, 241, 0.15);
-    border: 1px solid rgb(99, 102, 241, 0.3);
+    background: transparent;
+    border: none;
     border-radius: 999px;
-    font-size: 13px;
-    width: 28px;
-    height: 28px;
+    font-size: 14px;
+    width: 22px;
+    height: 22px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -862,63 +839,154 @@ Please see LICENSE files in the repository root for full details.
     color: #6366f1;
     padding: 0;
     flex-shrink: 0;
-    transition: background 0.12s;
-
-    &:hover {
-        background: rgb(99, 102, 241, 0.28);
-    }
-}
-
-/* ── Emoji / Sticker Picker (inline above textarea) ─────────────── */
-
-.mx_FanoosDashboard_emojiPicker {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 3px;
-    padding: 6px 8px;
-    background: rgb(255, 255, 255, 0.06);
-    border: 1px solid rgb(255, 255, 255, 0.1);
-    border-radius: 8px;
-    margin-bottom: 4px;
-    max-height: 100px;
-    overflow-y: auto;
-
-    &.day {
-        background: #f0f4f8;
-        border-color: #e2e8f0;
-    }
-}
-
-.mx_FanoosDashboard_emojiBtn {
-    background: transparent;
-    border: none;
-    font-size: 20px;
-    width: 32px;
-    height: 32px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 6px;
-    cursor: pointer;
-    padding: 0;
+    opacity: 0.25;
     transition:
-        background 0.1s,
-        transform 0.1s;
+        opacity 0.15s,
+        background 0.12s;
 
     &:hover {
-        background: rgb(255, 255, 255, 0.12);
-        transform: scale(1.15);
+        opacity: 1;
+        background: rgb(99, 102, 241, 0.15);
     }
-}
-
-.mx_FanoosDashboard_emojiPicker.day .mx_FanoosDashboard_emojiBtn:hover {
-    background: rgb(0, 0, 0, 0.06);
 }
 
 /* Portal container for the full EmojiPicker */
 .mx_FanoosDashboard_emojiPickerPortal {
     z-index: 500;
     filter: drop-shadow(0 4px 24px rgb(0, 0, 0, 0.35));
+
+    .mx_EmojiPicker {
+        background: rgb(255, 255, 255, 0.65) !important;
+        backdrop-filter: blur(14px);
+        width: 280px !important;
+        height: 360px !important;
+    }
+
+    .mx_EmojiPicker_list,
+    .mx_EmojiPicker_category_label {
+        width: 248px !important;
+    }
+}
+
+/* ── Custom flower emoji inline images ───────────────────────────── */
+
+.mx_FanoosDashboard_flowerEmoji {
+    width: 1.2em;
+    height: 1.2em;
+    vertical-align: middle;
+    display: inline-block;
+}
+
+/* ── Sent image rendering ────────────────────────────────────────── */
+
+.mx_FanoosDashboard_chImage {
+    max-width: 220px;
+    max-height: 220px;
+    border-radius: 10px;
+    display: block;
+    object-fit: contain;
+}
+
+/* ── Compose flower chips (below textarea) ───────────────────────── */
+
+.mx_FanoosDashboard_cbFlowerChips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 3px 2px 0;
+}
+
+.mx_FanoosDashboard_cbFlowerChip {
+    width: 22px;
+    height: 22px;
+    object-fit: contain;
+    vertical-align: middle;
+}
+
+/* ── HTML editor toolbar ─────────────────────────────────────────── */
+
+.mx_FanoosDashboard_htmlToolbar {
+    display: flex;
+    gap: 2px;
+    padding: 2px 4px 4px;
+    flex-wrap: wrap;
+    align-items: center;
+
+    button {
+        background: rgb(255, 255, 255, 0.07);
+        border: 1px solid rgb(255, 255, 255, 0.1);
+        border-radius: 4px;
+        color: #cbd5e1;
+        font-size: 11px;
+        min-width: 26px;
+        height: 24px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        padding: 0 3px;
+        transition: background 0.1s;
+
+        &:hover {
+            background: rgb(99, 102, 241, 0.2);
+            color: #c7d2fe;
+        }
+    }
+}
+
+.mx_FanoosDashboard_htmlToolbarDivider {
+    width: 1px;
+    height: 18px;
+    background: rgb(255, 255, 255, 0.12);
+    margin: 0 2px;
+    flex-shrink: 0;
+}
+
+.mx_FanoosDashboard_htmlColorBtn {
+    background: rgb(255, 255, 255, 0.07);
+    border: 1px solid rgb(255, 255, 255, 0.1);
+    border-radius: 4px;
+    color: #cbd5e1;
+    font-size: 13px;
+    font-weight: 700;
+    width: 26px;
+    height: 24px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    position: relative;
+    transition: background 0.1s;
+
+    span {
+        background: linear-gradient(135deg, #f472b6, #818cf8, #34d399);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        font-weight: 900;
+        line-height: 1;
+    }
+
+    &:hover {
+        background: rgb(99, 102, 241, 0.2);
+    }
+}
+
+/* ── HTML contenteditable input ──────────────────────────────────── */
+
+.mx_FanoosDashboard_cbHtmlEditor {
+    min-height: 52px;
+    max-height: 140px;
+    overflow-y: auto;
+    outline: none;
+    white-space: pre-wrap;
+    word-break: break-word;
+
+    &:empty::before {
+        content: attr(data-placeholder);
+        color: rgb(148, 163, 184, 0.5);
+        pointer-events: none;
+    }
 }
 
 .mx_FanoosDashboard_cbEmojiBtn {
@@ -959,8 +1027,8 @@ Please see LICENSE files in the repository root for full details.
 
 .mx_FanoosDashboard_sendWindow {
     position: fixed;
-    width: 320px;
-    height: 480px;
+    min-width: 280px;
+    min-height: 300px;
     background: #1e293b;
     border: 1px solid rgb(255, 255, 255, 0.12);
     border-radius: 12px;
@@ -972,13 +1040,28 @@ Please see LICENSE files in the repository root for full details.
     flex-direction: column;
 
     &.minimized {
-        height: auto;
+        height: auto !important;
     }
-    &.withPanel {
-        width: 540px;
-    }
-    &.withAnalysis {
-        width: 600px;
+}
+
+.mx_FanoosDashboard_swResize {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 18px;
+    height: 18px;
+    cursor: se-resize;
+    z-index: 10;
+
+    &::after {
+        content: "";
+        position: absolute;
+        right: 3px;
+        bottom: 3px;
+        width: 10px;
+        height: 10px;
+        border-right: 2px solid rgb(255, 255, 255, 0.25);
+        border-bottom: 2px solid rgb(255, 255, 255, 0.25);
     }
 }
 
@@ -1995,6 +2078,28 @@ Please see LICENSE files in the repository root for full details.
     color: #1e293b;
     box-shadow: 0 8px 32px rgb(0, 0, 0, 0.18);
 
+    .mx_FanoosDashboard_swResize::after {
+        border-color: rgb(0, 0, 0, 0.2);
+    }
+    .mx_FanoosDashboard_htmlToolbar button,
+    .mx_FanoosDashboard_htmlColorBtn {
+        background: rgb(0, 0, 0, 0.04);
+        border-color: #e2e8f0;
+        color: #475569;
+        &:hover {
+            background: rgb(99, 102, 241, 0.1);
+            color: #4338ca;
+        }
+    }
+    .mx_FanoosDashboard_htmlToolbarDivider {
+        background: #cbd5e1;
+    }
+    .mx_FanoosDashboard_cbHtmlEditor {
+        &:empty::before {
+            color: #94a3b8;
+        }
+    }
+
     .mx_FanoosDashboard_cbHdr {
         background: rgb(0, 0, 0, 0.02);
         border-bottom-color: #e2e8f0;
@@ -2138,4 +2243,14 @@ Please see LICENSE files in the repository root for full details.
             background: rgb(99, 102, 241, 0.22);
         }
     }
+}
+
+/* ── Left panel system text colour override ──────────────────────── */
+
+.mx_SpacePanel,
+.mx_LeftPanel_wrapper .mx_LeftPanel {
+    --cpd-color-text-primary: #ffffff;
+    --cpd-color-text-secondary: rgb(255, 255, 255, 0.75);
+    --cpd-color-text-placeholder: rgb(255, 255, 255, 0.4);
+    color: #ffffff;
 }
