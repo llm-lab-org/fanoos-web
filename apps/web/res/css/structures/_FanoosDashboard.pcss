@@ -2313,12 +2313,19 @@ Please see LICENSE files in the repository root for full details.
     margin-right: 0 !important;
 }
 
-/* Bubble layout: allow wider messages and reduce side margins */
+/* Bubble layout: allow wider messages and reduce side margins.
+   Use !important on custom properties because _FanoosDashboard.pcss is imported
+   before _EventBubbleTile.pcss in _components.pcss (line 63 vs 271). */
 .mx_EventTile[data-layout="bubble"],
 .mx_GenericEventListSummary[data-layout="bubble"] {
-    --EventTile_bubble-margin-inline-start: 12px;
-    --EventTile_bubble-margin-inline-end: 12px;
-    --maxWidth: 94%;
+    --EventTile_bubble-margin-inline-start: 12px !important;
+    --EventTile_bubble-margin-inline-end: 12px !important;
+    --maxWidth: 94% !important;
+}
+
+/* Direct margin override for received messages (data-self="false" doesn't override start) */
+.mx_EventTile[data-layout="bubble"][data-self="false"] {
+    margin-inline-start: 12px !important;
 }
 
 /* Increase max-width on bubble tiles themselves */
@@ -2331,6 +2338,7 @@ Please see LICENSE files in the repository root for full details.
     .mx_RoomView_timeline,
     .mx_RoomView_statusArea,
     .mx_MessageComposer {
-        max-width: 100%;
+        max-width: 100% !important;
+        margin-inline: 0 !important;
     }
 }
