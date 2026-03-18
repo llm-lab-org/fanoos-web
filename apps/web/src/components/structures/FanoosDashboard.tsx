@@ -27,12 +27,12 @@ import { mediaFromMxc } from "../../customisations/Media";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-interface BroadcastState {
-    spaceId: string;
-    spaceName: string;
-    channels: Array<{ id: string; roomId: string; name: string; selected: boolean }>;
+interface SendWindowState {
+    recipients: Array<{ id: string; roomId: string; name: string }>;
     msgText: string;
     pos: { x: number; y: number };
+    minimized: boolean;
+    showRecipients: boolean;
 }
 
 interface TreeNode {
@@ -62,15 +62,6 @@ interface HoverInfo {
     nodeId: string;
     clientX: number;
     clientY: number;
-}
-
-interface ChatBoxState {
-    roomId: string;
-    roomName: string;
-    minimized: boolean;
-    msgText: string;
-    pos: { x: number; y: number };
-    showAnalysis: boolean;
 }
 
 // ─── Arc constants ─────────────────────────────────────────────────────────────
@@ -850,117 +841,26 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({ roomId, client, isDayMode }) 
     );
 };
 
-// ─── Analysis Panel ────────────────────────────────────────────────────────────
+// ─── Send Window (unified single/multi-channel compose) ───────────────────────
 
-interface AnalysisPanelProps {
-    roomId: string;
-    tree: TreeNode[];
-    sentiment: Record<string, number | null>;
-    sentDetail: Record<string, SentDetail>;
-    unread: Record<string, number>;
-    isDayMode: boolean;
-    client: ReturnType<typeof useMatrixClientContext>;
-}
-
-const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ roomId, tree, sentiment, sentDetail, unread, isDayMode, client }) => {
-    const n = tree.find((x) => x.matrixRoomId === roomId);
-    if (!n) return null;
-
-    const score = sentiment[roomId] ?? null;
-    const det = sentDetail[roomId] ?? { pos: [], neg: [], msgCount: 0 };
-    const un = unread[roomId] || 0;
-    const pct = score !== null ? Math.round(score * 100) : null;
-    const color = sentimentColor(score, isDayMode);
-    const band = sentimentBand(score);
-    const room = client.getRoom(roomId);
-    const members = room ? room.getJoinedMembers().slice(0, 15) : [];
-
-    const bandColors: Record<string, string> = {
-        positive: "#22c55e",
-        neutral: "#eab308",
-        negative: "#ef4444",
-        "no-data": isDayMode ? "#94a3b8" : "#475569",
-    };
-
-    return (
-        <div className={`mx_FanoosDashboard_analysisPanel${isDayMode ? " day" : ""}`}>
-            <div className="mx_FanoosDashboard_apHdr">
-                <span>{n.type === "dm" ? "👤" : n.type === "space" ? "⬡" : "💬"}</span>
-                <span className="mx_FanoosDashboard_apHdrName">{n.name}</span>
-                {un > 0 && <span className="mx_FanoosDashboard_apUnread">{un}</span>}
-            </div>
-
-            {pct !== null && (
-                <div className="mx_FanoosDashboard_apScoreSection">
-                    <div className="mx_FanoosDashboard_apBandRow">
-                        <span className="mx_FanoosDashboard_apBand" style={{ color: bandColors[band] }}>{band}</span>
-                        <span className="mx_FanoosDashboard_apPct" style={{ color }}>{pct}%</span>
-                    </div>
-                    <div className="mx_FanoosDashboard_apTrack">
-                        <div className="mx_FanoosDashboard_apFill" style={{ width: `${pct}%`, background: color }} />
-                    </div>
-                </div>
-            )}
-
-            {det.msgCount > 0 && (
-                <div className="mx_FanoosDashboard_apMsgCount">{det.msgCount} {_t("fanoos_dashboard|messages_analysed")}</div>
-            )}
-
-            {det.pos.length > 0 && (
-                <div className="mx_FanoosDashboard_apKwGroup">
-                    <span className="mx_FanoosDashboard_apKwLabel pos">{_t("fanoos_dashboard|positive")}</span>
-                    <div className="mx_FanoosDashboard_apKws">
-                        {det.pos.map((k) => <span key={k} className="mx_FanoosDashboard_apKw pos">{k}</span>)}
-                    </div>
-                </div>
-            )}
-
-            {det.neg.length > 0 && (
-                <div className="mx_FanoosDashboard_apKwGroup">
-                    <span className="mx_FanoosDashboard_apKwLabel neg">{_t("fanoos_dashboard|issues")}</span>
-                    <div className="mx_FanoosDashboard_apKws">
-                        {det.neg.map((k) => <span key={k} className="mx_FanoosDashboard_apKw neg">{k}</span>)}
-                    </div>
-                </div>
-            )}
-
-            {members.length > 0 && (
-                <div className="mx_FanoosDashboard_apMembers">
-                    <div className="mx_FanoosDashboard_apMembersHdr">{_t("fanoos_dashboard|members")}</div>
-                    <div className="mx_FanoosDashboard_apMembersList">
-                        {members.map((m) => (
-                            <span key={m.userId} className="mx_FanoosDashboard_apMemberChip">
-                                <span className="mx_FanoosDashboard_apMemberAv">{(m.name || "?").slice(0, 2).toUpperCase()}</span>
-                                <span className="mx_FanoosDashboard_apMemberName">{m.name || m.userId}</span>
-                            </span>
-                        ))}
-                    </div>
-                </div>
-            )}
-        </div>
-    );
-};
-
-// ─── Chat Box ─────────────────────────────────────────────────────────────────
-
-interface ChatBoxProps {
-    state: ChatBoxState;
-    onChange: (s: ChatBoxState) => void;
+interface SendWindowProps {
+    state: SendWindowState;
+    onChange: (s: SendWindowState) => void;
     onClose: () => void;
     client: ReturnType<typeof useMatrixClientContext>;
     isDayMode: boolean;
     tree: TreeNode[];
-    sentiment: Record<string, number | null>;
-    sentDetail: Record<string, SentDetail>;
     unread: Record<string, number>;
 }
 
-const ChatBox: React.FC<ChatBoxProps> = ({ state, onChange, onClose, client, isDayMode, tree, sentiment, sentDetail, unread }) => {
+const SendWindow: React.FC<SendWindowProps> = ({ state, onChange, onClose, client, isDayMode, tree, unread }) => {
     const [sending, setSending] = useState(false);
+    const [recording, setRecording] = useState(false);
+    const [recipientSearch, setRecipientSearch] = useState("");
+    const [sent, setSent] = useState<string[]>([]);
     const stateRef = useRef(state);
     useEffect(() => { stateRef.current = state; }, [state]);
 
-    const [recording, setRecording] = useState(false);
     const mediaRecRef = useRef<MediaRecorder | null>(null);
     const audioChunksRef = useRef<Blob[]>([]);
     const recordStartRef = useRef<number>(0);
@@ -970,13 +870,15 @@ const ChatBox: React.FC<ChatBoxProps> = ({ state, onChange, onClose, client, isD
         try {
             const upload = await client.uploadContent(blob, { type: "audio/ogg; codecs=opus", name: "voice-message.ogg" });
             const mxcUrl = (upload as { content_uri: string }).content_uri;
-            await client.sendMessage(stateRef.current.roomId, {
-                msgtype: "m.audio",
-                body: "Voice message",
-                url: mxcUrl,
-                info: { mimetype: "audio/ogg; codecs=opus", size: blob.size, duration: durationMs },
-                "org.matrix.msc3245.voice": {},
-            });
+            for (const r of stateRef.current.recipients) {
+                await client.sendMessage(r.roomId, {
+                    msgtype: "m.audio",
+                    body: "Voice message",
+                    url: mxcUrl,
+                    info: { mimetype: "audio/ogg; codecs=opus", size: blob.size, duration: durationMs },
+                    "org.matrix.msc3245.voice": {},
+                });
+            }
         } catch (e) {
             console.error("Failed to send voice message:", e);
         } finally {
@@ -994,8 +896,8 @@ const ChatBox: React.FC<ChatBoxProps> = ({ state, onChange, onClose, client, isD
             const mr = new MediaRecorder(stream, { mimeType: "audio/webm" });
             audioChunksRef.current = [];
             recordStartRef.current = Date.now();
-            mr.ondataavailable = (e: BlobEvent): void => {
-                if (e.data.size > 0) audioChunksRef.current.push(e.data);
+            mr.ondataavailable = (ev: BlobEvent): void => {
+                if (ev.data.size > 0) audioChunksRef.current.push(ev.data);
             };
             mr.onstop = (): void => {
                 stream.getTracks().forEach((t) => t.stop());
@@ -1012,25 +914,14 @@ const ChatBox: React.FC<ChatBoxProps> = ({ state, onChange, onClose, client, isD
         }
     }, [recording, sendVoiceMessage]);
 
-    const toggleAnalysis = useCallback((): void => {
-        const next = !stateRef.current.showAnalysis;
-        const winW = UIStore.instance.windowWidth;
-        const newX = next
-            ? Math.max(0, stateRef.current.pos.x - 280)
-            : Math.min(winW - 320, stateRef.current.pos.x + 280);
-        onChange({ ...stateRef.current, showAnalysis: next, pos: { x: newX, y: stateRef.current.pos.y } });
-    }, [onChange]);
-
-    const handleDragStart = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const handleDragStart = useCallback((e: React.MouseEvent<HTMLDivElement>): void => {
         if (e.button !== 0) return;
         e.preventDefault();
         const ox = e.clientX - stateRef.current.pos.x;
         const oy = e.clientY - stateRef.current.pos.y;
         const onMove = (ev: MouseEvent): void => {
-            const winW = UIStore.instance.windowWidth;
-            const winH = UIStore.instance.windowHeight;
-            const x = Math.max(0, Math.min(ev.clientX - ox, winW - 320));
-            const y = Math.max(0, Math.min(ev.clientY - oy, winH - 40));
+            const x = Math.max(0, Math.min(ev.clientX - ox, UIStore.instance.windowWidth - 360));
+            const y = Math.max(0, Math.min(ev.clientY - oy, UIStore.instance.windowHeight - 40));
             onChange({ ...stateRef.current, pos: { x, y } });
         };
         const onUp = (): void => {
@@ -1042,37 +933,66 @@ const ChatBox: React.FC<ChatBoxProps> = ({ state, onChange, onClose, client, isD
     }, [onChange]);
 
     const send = async (): Promise<void> => {
-        if (!state.msgText.trim() || sending) return;
+        if (!state.msgText.trim() || sending || !state.recipients.length) return;
         setSending(true);
+        const results: string[] = [];
         try {
-            await client.sendTextMessage(state.roomId, state.msgText.trim());
+            for (const r of state.recipients) {
+                await client.sendTextMessage(r.roomId, state.msgText.trim());
+                results.push(r.name);
+            }
+            setSent(results);
             onChange({ ...state, msgText: "" });
         } catch (e) {
-            console.error("Failed to send message:", e);
+            console.error("Failed to send:", e);
         } finally {
             setSending(false);
         }
     };
 
+    const removeRecipient = (id: string): void => {
+        onChange({ ...stateRef.current, recipients: stateRef.current.recipients.filter((r) => r.id !== id) });
+    };
+
+    const toggleRecipient = (nodeId: string): void => {
+        const n = tree.find((x) => x.id === nodeId);
+        if (!n?.matrixRoomId) return;
+        const already = stateRef.current.recipients.find((r) => r.id === nodeId);
+        if (already) {
+            onChange({ ...stateRef.current, recipients: stateRef.current.recipients.filter((r) => r.id !== nodeId) });
+        } else {
+            onChange({ ...stateRef.current, recipients: [...stateRef.current.recipients, { id: n.id, roomId: n.matrixRoomId!, name: n.name }] });
+        }
+    };
+
+    const singleRecipient = state.recipients.length === 1 ? state.recipients[0] : null;
+    const allRooms = tree.filter((n) => n.matrixRoomId && n.type !== "space" && n.type !== "virtual");
+    const q = recipientSearch.trim().toLowerCase();
+    const filteredRooms = q ? allRooms.filter((n) => n.name.toLowerCase().includes(q)) : allRooms;
+    const firstNode = singleRecipient ? tree.find((n) => n.id === singleRecipient.id) : null;
+    const title = singleRecipient
+        ? `${firstNode?.type === "dm" ? "👤" : "💬"} ${singleRecipient.name}`
+        : `📤 ${_t("fanoos_dashboard|send")} (${state.recipients.length})`;
+
     return (
         <div
-            className={`mx_FanoosDashboard_chatBox${isDayMode ? " day" : ""}${state.minimized ? " minimized" : ""}${state.showAnalysis && !state.minimized ? " withAnalysis" : ""}`}
+            className={`mx_FanoosDashboard_sendWindow${isDayMode ? " day" : ""}${state.minimized ? " minimized" : ""}${state.showRecipients && !state.minimized ? " withPanel" : ""}`}
             style={{ left: state.pos.x, top: state.pos.y }}
         >
-            {/* Header / Drag handle */}
+            {/* Header / drag handle */}
             <div className="mx_FanoosDashboard_cbHdr" onMouseDown={handleDragStart}>
                 <span className="mx_FanoosDashboard_cbDragHandle">⠿</span>
-                <span className="mx_FanoosDashboard_cbTitle">💬 {state.roomName}</span>
+                <span className="mx_FanoosDashboard_cbTitle">{title}</span>
                 <button
-                    className={`mx_FanoosDashboard_cbCtrl${state.showAnalysis ? " active" : ""}`}
+                    className={`mx_FanoosDashboard_cbCtrl${state.showRecipients ? " active" : ""}`}
                     onMouseDown={(e) => e.stopPropagation()}
-                    onClick={toggleAnalysis}
-                    title="Analysis"
-                >📊</button>
+                    onClick={() => onChange({ ...stateRef.current, showRecipients: !stateRef.current.showRecipients })}
+                    title="Recipients"
+                >👥</button>
                 <button
                     className="mx_FanoosDashboard_cbCtrl"
                     onMouseDown={(e) => e.stopPropagation()}
-                    onClick={() => onChange({ ...state, minimized: !state.minimized })}
+                    onClick={() => onChange({ ...stateRef.current, minimized: !stateRef.current.minimized })}
                     title={state.minimized ? "Expand" : "Minimize"}
                 >
                     {state.minimized ? "▲" : "▼"}
@@ -1086,22 +1006,61 @@ const ChatBox: React.FC<ChatBoxProps> = ({ state, onChange, onClose, client, isD
             </div>
 
             {!state.minimized && (
-                <div className={`mx_FanoosDashboard_cbBody${state.showAnalysis ? " withAnalysis" : ""}`}>
-                    {/* Analysis panel */}
-                    {state.showAnalysis && (
-                        <AnalysisPanel
-                            roomId={state.roomId}
-                            tree={tree}
-                            sentiment={sentiment}
-                            sentDetail={sentDetail}
-                            unread={unread}
-                            isDayMode={isDayMode}
-                            client={client}
-                        />
+                <div className={`mx_FanoosDashboard_swBody${state.showRecipients ? " withPanel" : ""}`}>
+                    {/* Recipients panel – search + add/remove rooms */}
+                    {state.showRecipients && (
+                        <div className="mx_FanoosDashboard_swRecipientsPanel">
+                            <div className="mx_FanoosDashboard_swRpHdr">Recipients</div>
+                            <input
+                                className="mx_FanoosDashboard_swRpSearch"
+                                type="search"
+                                placeholder={_t("fanoos_dashboard|search_placeholder")}
+                                value={recipientSearch}
+                                onChange={(e) => setRecipientSearch(e.target.value)}
+                            />
+                            <div className="mx_FanoosDashboard_swRpList">
+                                {filteredRooms.map((n) => {
+                                    const isSelected = state.recipients.some((r) => r.id === n.id);
+                                    const un = n.matrixRoomId ? unread[n.matrixRoomId] || 0 : 0;
+                                    return (
+                                        <div
+                                            key={n.id}
+                                            className={`mx_FanoosDashboard_swRpRow${isSelected ? " selected" : ""}`}
+                                            onClick={() => toggleRecipient(n.id)}
+                                        >
+                                            <span className="mx_FanoosDashboard_swRpCheck">{isSelected ? "✓" : "+"}</span>
+                                            <span className="mx_FanoosDashboard_swRpName">{n.type === "dm" ? "👤" : "💬"} {n.name}</span>
+                                            {un > 0 && <span className="mx_FanoosDashboard_swRpBadge">{un}</span>}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
                     )}
-                    {/* Chat column */}
-                    <div className="mx_FanoosDashboard_cbChatCol">
-                        <ChatHistory roomId={state.roomId} client={client} isDayMode={isDayMode} />
+
+                    {/* Main column */}
+                    <div className="mx_FanoosDashboard_swMain">
+                        {/* Recipient chips when multiple */}
+                        {state.recipients.length > 1 && (
+                            <div className="mx_FanoosDashboard_swChips">
+                                {state.recipients.map((r) => (
+                                    <span key={r.id} className="mx_FanoosDashboard_swChip">
+                                        {r.name}
+                                        <button className="mx_FanoosDashboard_swChipX" onClick={() => removeRecipient(r.id)}>✕</button>
+                                    </span>
+                                ))}
+                            </div>
+                        )}
+
+                        {sent.length > 0 && (
+                            <div className="mx_FanoosDashboard_swSentBanner">✓ {sent.join(", ")}</div>
+                        )}
+
+                        {/* Chat history only for single recipient */}
+                        {singleRecipient && (
+                            <ChatHistory roomId={singleRecipient.roomId} client={client} isDayMode={isDayMode} />
+                        )}
+
                         <div className="mx_FanoosDashboard_cbCompose">
                             <textarea
                                 className="mx_FanoosDashboard_cbInput"
@@ -1109,7 +1068,9 @@ const ChatBox: React.FC<ChatBoxProps> = ({ state, onChange, onClose, client, isD
                                 value={state.msgText}
                                 onChange={(e) => onChange({ ...state, msgText: e.target.value })}
                                 onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void send(); } }}
-                                placeholder={_t("fanoos_dashboard|send_placeholder")}
+                                placeholder={state.recipients.length > 1
+                                    ? `Send to ${state.recipients.length} channels…`
+                                    : _t("fanoos_dashboard|send_placeholder")}
                                 rows={2}
                             />
                             <div className="mx_FanoosDashboard_cbActions">
@@ -1124,9 +1085,9 @@ const ChatBox: React.FC<ChatBoxProps> = ({ state, onChange, onClose, client, isD
                                 <button
                                     className={`mx_FanoosDashboard_cbSend${sending ? " sending" : ""}`}
                                     onClick={() => void send()}
-                                    disabled={sending}
+                                    disabled={sending || !state.recipients.length}
                                 >
-                                    {_t("fanoos_dashboard|send")}
+                                    {state.recipients.length > 1 ? "📢 " : ""}{_t("fanoos_dashboard|send")}
                                 </button>
                             </div>
                         </div>
@@ -1302,122 +1263,6 @@ const InfoPanel: React.FC<InfoPanelProps> = ({ nodeId, tree, sentiment, sentDeta
     );
 };
 
-// ─── Broadcast Dialog ──────────────────────────────────────────────────────────
-
-interface BroadcastDialogProps {
-    state: BroadcastState;
-    onChange: (s: BroadcastState) => void;
-    onClose: () => void;
-    client: ReturnType<typeof useMatrixClientContext>;
-    isDayMode: boolean;
-}
-
-const BroadcastDialog: React.FC<BroadcastDialogProps> = ({ state, onChange, onClose, client, isDayMode }) => {
-    const [sending, setSending] = useState(false);
-    const [sent, setSent] = useState<string[]>([]);
-    const stateRef = useRef(state);
-    useEffect(() => { stateRef.current = state; }, [state]);
-
-    const dragOffsetRef = useRef<{ ox: number; oy: number } | null>(null);
-    const handleDragStart = useCallback((e: React.MouseEvent<HTMLDivElement>): void => {
-        if (e.button !== 0) return;
-        e.preventDefault();
-        dragOffsetRef.current = { ox: e.clientX - stateRef.current.pos.x, oy: e.clientY - stateRef.current.pos.y };
-        const onMove = (ev: MouseEvent): void => {
-            if (!dragOffsetRef.current) return;
-            const x = Math.max(0, Math.min(ev.clientX - dragOffsetRef.current.ox, UIStore.instance.windowWidth - 360));
-            const y = Math.max(0, Math.min(ev.clientY - dragOffsetRef.current.oy, UIStore.instance.windowHeight - 80));
-            onChange({ ...stateRef.current, pos: { x, y } });
-        };
-        const onUp = (): void => {
-            dragOffsetRef.current = null;
-            document.removeEventListener("mousemove", onMove);
-            document.removeEventListener("mouseup", onUp);
-        };
-        document.addEventListener("mousemove", onMove);
-        document.addEventListener("mouseup", onUp);
-    }, [onChange]);
-
-    const toggleChannel = useCallback((id: string): void => {
-        const channels = stateRef.current.channels.map((c) => c.id === id ? { ...c, selected: !c.selected } : c);
-        onChange({ ...stateRef.current, channels });
-    }, [onChange]);
-
-    const sendBroadcast = useCallback(async (): Promise<void> => {
-        const text = stateRef.current.msgText.trim();
-        if (!text || sending) return;
-        const targets = stateRef.current.channels.filter((c) => c.selected);
-        if (!targets.length) return;
-        setSending(true);
-        const results: string[] = [];
-        for (const ch of targets) {
-            try {
-                await client.sendTextMessage(ch.roomId, text);
-                results.push(ch.name);
-            } catch (e) {
-                console.error(`Failed to send to ${ch.name}:`, e);
-            }
-        }
-        setSent(results);
-        setSending(false);
-        onChange({ ...stateRef.current, msgText: "" });
-    }, [client, sending, onChange]);
-
-    const selectedCount = state.channels.filter((c) => c.selected).length;
-
-    return (
-        <div
-            className={`mx_FanoosDashboard_broadcastDialog${isDayMode ? " day" : ""}`}
-            style={{ left: state.pos.x, top: state.pos.y }}
-        >
-            <div className="mx_FanoosDashboard_bdHdr" onMouseDown={handleDragStart}>
-                <span className="mx_FanoosDashboard_cbDragHandle">⠿</span>
-                <span className="mx_FanoosDashboard_bdTitle">📢 {state.spaceName}</span>
-                <button className="mx_FanoosDashboard_cbCtrl" onMouseDown={(e) => e.stopPropagation()} onClick={onClose}>✕</button>
-            </div>
-
-            {sent.length > 0 && (
-                <div className="mx_FanoosDashboard_bdSentBanner">
-                    ✓ Sent to: {sent.join(", ")}
-                </div>
-            )}
-
-            <div className="mx_FanoosDashboard_bdChannelList">
-                {state.channels.map((ch) => (
-                    <label key={ch.id} className={`mx_FanoosDashboard_bdChannelRow${ch.selected ? " selected" : ""}`}>
-                        <input
-                            type="checkbox"
-                            checked={ch.selected}
-                            onChange={() => toggleChannel(ch.id)}
-                            className="mx_FanoosDashboard_bdCheck"
-                        />
-                        <span className="mx_FanoosDashboard_bdChannelName">{ch.name}</span>
-                    </label>
-                ))}
-            </div>
-
-            <div className="mx_FanoosDashboard_bdCompose">
-                <textarea
-                    className="mx_FanoosDashboard_cbInput"
-                    dir="auto"
-                    value={state.msgText}
-                    onChange={(e) => onChange({ ...state, msgText: e.target.value })}
-                    onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void sendBroadcast(); } }}
-                    placeholder={`Send to ${selectedCount} channel${selectedCount !== 1 ? "s" : ""}…`}
-                    rows={2}
-                />
-                <button
-                    className={`mx_FanoosDashboard_cbSend${sending ? " sending" : ""}`}
-                    onClick={() => void sendBroadcast()}
-                    disabled={sending || !selectedCount}
-                >
-                    📢 {_t("fanoos_dashboard|send")}
-                </button>
-            </div>
-        </div>
-    );
-};
-
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 const DASH_SETTINGS_KEY = "fanoosDashboardSettings";
@@ -1454,7 +1299,6 @@ const FanoosDashboard: React.FC = () => {
     const [showNames, setShowNames] = useState(true);
     const [infoPanelNode, setInfoPanelNode] = useState<string | null>(null);
     const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
-    const [selectedIds] = useState(new Set<string>());
     const [dims, setDims] = useState({ w: 800, h: 500 });
     const [transformStyle, setTransformStyle] = useState("");
     const [isDayMode, setIsDayMode] = useState(true);
@@ -1462,8 +1306,7 @@ const FanoosDashboard: React.FC = () => {
     const [lastReloaded, setLastReloaded] = useState(new Date());
     const [reloadAgeStr, setReloadAgeStr] = useState(_t("fanoos_dashboard|just_now"));
     const [hoverInfo, setHoverInfo] = useState<HoverInfo | null>(null);
-    const [chatBox, setChatBox] = useState<ChatBoxState | null>(null);
-    const [broadcast, setBroadcast] = useState<BroadcastState | null>(null);
+    const [sendWindow, setSendWindow] = useState<SendWindowState | null>(null);
 
     // Restore persisted settings on mount
     useEffect(() => {
@@ -1543,6 +1386,12 @@ const FanoosDashboard: React.FC = () => {
         return () => ro.disconnect();
     }, []);
 
+    // Derive selectedIds from sendWindow recipients so selected cells are highlighted
+    const selectedIds = useMemo(
+        () => (sendWindow ? new Set(sendWindow.recipients.map((r) => r.id)) : new Set<string>()),
+        [sendWindow],
+    );
+
     // Render SVG
     const rendered = useMemo(() => {
         if (!tree.length || dims.w < 100) return null;
@@ -1557,12 +1406,30 @@ const FanoosDashboard: React.FC = () => {
         setSearchHits(rendered.hits);
     }, [rendered]);
 
-    // Click → toggle info panel + navigate to room
+    // Click → toggle info panel + navigate to room; shift-click → add/remove from send window
     const handleClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
         const nodeId = (e.target as Element).closest("[data-nodeid]")?.getAttribute("data-nodeid");
         if (!nodeId) return;
-        setInfoPanelNode((prev) => (prev === nodeId ? null : nodeId));
         const n = tree.find((x) => x.id === nodeId);
+
+        if (e.shiftKey && n?.matrixRoomId && n.type !== "space" && n.type !== "virtual") {
+            setSendWindow((prev) => {
+                if (!prev) {
+                    const winW = UIStore.instance.windowWidth;
+                    const winH = UIStore.instance.windowHeight;
+                    const pos = { x: Math.max(0, winW - 380), y: Math.max(0, winH - 520) };
+                    return { recipients: [{ id: n.id, roomId: n.matrixRoomId!, name: n.name }], msgText: "", pos, minimized: false, showRecipients: true };
+                }
+                const already = prev.recipients.find((r) => r.id === nodeId);
+                if (already) {
+                    return { ...prev, recipients: prev.recipients.filter((r) => r.id !== nodeId) };
+                }
+                return { ...prev, recipients: [...prev.recipients, { id: n.id, roomId: n.matrixRoomId!, name: n.name }] };
+            });
+            return;
+        }
+
+        setInfoPanelNode((prev) => (prev === nodeId ? null : nodeId));
         if (n?.matrixRoomId && n.type !== "space" && n.type !== "virtual") {
             setActiveRoomId(n.matrixRoomId);
             dis.dispatch({ action: Action.ViewRoom, room_id: n.matrixRoomId });
@@ -1584,10 +1451,10 @@ const FanoosDashboard: React.FC = () => {
         setHoverInfo(next);
     }, []);
 
-    // Right-click → open chat box
+    // Right-click → open unified send window (marks room as read for room nodes)
     const handleContextMenu = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
         e.preventDefault();
-        e.stopPropagation(); // Prevent event from reaching scrollable ancestors (avoids page jump)
+        e.stopPropagation();
         const nodeId = (e.target as Element).closest("[data-nodeid]")?.getAttribute("data-nodeid");
         if (!nodeId) return;
         const n = tree.find((x) => x.id === nodeId);
@@ -1596,17 +1463,24 @@ const FanoosDashboard: React.FC = () => {
         const winH = UIStore.instance.windowHeight;
         const pos = { x: Math.max(0, winW - 380), y: Math.max(0, winH - 520) };
         if (n.type === "space" || n.type === "virtual") {
-            const channels = tree
+            const recipients = tree
                 .filter((c) => c.parentId === n.id && c.matrixRoomId)
-                .map((c) => ({ id: c.id, roomId: c.matrixRoomId!, name: c.name, selected: true }));
-            if (channels.length > 0) {
-                setBroadcast({ spaceId: n.id, spaceName: n.name, channels, msgText: "", pos });
+                .map((c) => ({ id: c.id, roomId: c.matrixRoomId!, name: c.name }));
+            if (recipients.length > 0) {
+                setSendWindow({ recipients, msgText: "", pos, minimized: false, showRecipients: false });
             }
             return;
         }
         if (!n.matrixRoomId) return;
-        setChatBox({ roomId: n.matrixRoomId, roomName: n.name, minimized: false, msgText: "", pos, showAnalysis: false });
-    }, [tree]);
+        // Mark room as read when opening the send window
+        const room = client.getRoom(n.matrixRoomId);
+        if (room) {
+            const evs = room.getLiveTimeline().getEvents();
+            const lastEv = evs[evs.length - 1];
+            if (lastEv) { void client.sendReadReceipt(lastEv); }
+        }
+        setSendWindow({ recipients: [{ id: n.id, roomId: n.matrixRoomId, name: n.name }], msgText: "", pos, minimized: false, showRecipients: false });
+    }, [tree, client]);
 
     // Prevent right-button mousedown from bubbling (some browsers scroll-to-top on right mousedown)
     const handleMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
@@ -1614,7 +1488,7 @@ const FanoosDashboard: React.FC = () => {
     }, []);
 
     // Search navigation
-    const focusOnNode = useCallback((nodeId: string) => {
+    const focusOnNode = useCallback((nodeId: string): void => {
         const seg = layoutRef.current.get(nodeId);
         const { W, H, CX, CY } = dimsRef.current;
         if (!seg || !W) return;
@@ -1809,29 +1683,16 @@ const FanoosDashboard: React.FC = () => {
                 />
             )}
 
-            {/* ── Chat box (bottom-right, minimizable) ── */}
-            {chatBox && createPortal(
-                <ChatBox
-                    state={chatBox}
-                    onChange={setChatBox}
-                    onClose={() => setChatBox(null)}
+            {/* ── Send window (unified single/multi-channel compose) ── */}
+            {sendWindow && createPortal(
+                <SendWindow
+                    state={sendWindow}
+                    onChange={setSendWindow}
+                    onClose={() => setSendWindow(null)}
                     client={client}
                     isDayMode={isDayMode}
                     tree={tree}
-                    sentiment={sentiment}
-                    sentDetail={sentDetail}
                     unread={unread}
-                />,
-                document.body,
-            )}
-
-            {broadcast && createPortal(
-                <BroadcastDialog
-                    state={broadcast}
-                    onChange={setBroadcast}
-                    onClose={() => setBroadcast(null)}
-                    client={client}
-                    isDayMode={isDayMode}
                 />,
                 document.body,
             )}
