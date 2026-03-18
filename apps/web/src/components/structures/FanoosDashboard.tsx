@@ -13,6 +13,7 @@ import React, {
     useRef,
     useState,
 } from "react";
+import { createPortal } from "react-dom";
 import { EventType, RoomEvent, type MatrixEvent } from "matrix-js-sdk/src/matrix";
 
 import { useMatrixClientContext } from "../../contexts/MatrixClientContext";
@@ -60,6 +61,7 @@ interface ChatBoxState {
     minimized: boolean;
     msgText: string;
     pos: { x: number; y: number };
+    showAnalysis: boolean;
 }
 
 // ─── Arc constants ─────────────────────────────────────────────────────────────
@@ -384,6 +386,8 @@ function renderSVG(
         }
     });
 
+    const envParts: string[] = [];
+
     // Segment pass
     layout.forEach((seg, id) => {
         const n = tree.find((x) => x.id === id);
@@ -469,15 +473,13 @@ function renderSVG(
 
         // ── Unread envelope at outer cell border ──────────────────────────────
         if (un > 0 && !dim) {
-            // Place envelope CENTER at the outer edge of the segment
             const envR = seg.r2 - gapPx;
             if (envR > seg.r1 + gapPx + 6) {
                 const ex = CX + envR * Math.cos(seg.mid);
                 const ey = CY - envR * Math.sin(seg.mid);
                 const ew = 10;
                 const eh = 7;
-                // White envelope body
-                parts.push(
+                envParts.push(
                     `<g filter="url(#tdDropShadow)" pointer-events="none">` +
                     `<rect x="${(ex - ew).toFixed(1)}" y="${(ey - eh).toFixed(1)}" width="${(ew * 2).toFixed(1)}" height="${(eh * 2).toFixed(1)}" rx="2.5" fill="white" stroke="rgba(0,0,0,0.15)" stroke-width="0.5"/>` +
                     `<path d="M${(ex - ew).toFixed(1)},${(ey - eh).toFixed(1)} L${ex.toFixed(1)},${(ey + 2).toFixed(1)} L${(ex + ew).toFixed(1)},${(ey - eh).toFixed(1)}" fill="none" stroke="rgba(0,0,0,0.18)" stroke-width="1" stroke-linejoin="round"/>` +
@@ -485,9 +487,8 @@ function renderSVG(
                 );
                 const badge = un > 99 ? "99+" : String(un);
                 const br = un > 9 ? 8 : 7;
-                // Red badge at top-right of envelope
-                parts.push(`<circle cx="${(ex + ew).toFixed(1)}" cy="${(ey - eh).toFixed(1)}" r="${br}" fill="#ef4444" stroke="white" stroke-width="1" pointer-events="none"/>`);
-                parts.push(`<text x="${(ex + ew).toFixed(1)}" y="${(ey - eh).toFixed(1)}" text-anchor="middle" dominant-baseline="middle" font-size="7" font-weight="800" fill="white" pointer-events="none">${badge}</text>`);
+                envParts.push(`<circle cx="${(ex + ew).toFixed(1)}" cy="${(ey - eh).toFixed(1)}" r="${br}" fill="#ef4444" stroke="white" stroke-width="1" pointer-events="none"/>`);
+                envParts.push(`<text x="${(ex + ew).toFixed(1)}" y="${(ey - eh).toFixed(1)}" text-anchor="middle" dominant-baseline="middle" font-size="7" font-weight="800" fill="white" pointer-events="none">${badge}</text>`);
             }
         }
 
@@ -495,6 +496,11 @@ function renderSVG(
         parts.push(`<path d="${path}" id="tdnode-${safeId}" data-nodeid="${id}" fill="transparent" style="cursor:pointer"/>`);
         parts.push("</g>");
     });
+
+    // Envelope overlay — drawn on top of all segments so they're always visible
+    if (envParts.length) {
+        parts.push(`<g id="tdEnvOverlay">${envParts.join("")}</g>`);
+    }
 
     const svgStr = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg" style="display:block">${parts.join("\n")}</svg>`;
     return { svg: svgStr, layout, dims, hits };
@@ -568,11 +574,16 @@ const HoverTooltip: React.FC<HoverTooltipProps> = ({ info, tree, sentiment, sent
 
     const isRtl = document.documentElement.dir === "rtl";
     const winW = UIStore.instance.windowWidth;
+    const TIP_W = 250;
+    const tipX = isRtl
+        ? Math.max(0, info.clientX - TIP_W - 14)
+        : Math.min(info.clientX + 14, winW - TIP_W - 4);
+    const tipY = Math.max(8, Math.min(info.clientY - 10, UIStore.instance.windowHeight - 200));
     const tipStyle: React.CSSProperties = isRtl
-        ? { right: Math.min(winW - info.clientX + 14, winW - 250), top: Math.max(8, info.clientY - 10) }
-        : { left: Math.min(info.clientX + 14, winW - 250), top: Math.max(8, info.clientY - 10) };
+        ? { right: winW - tipX - TIP_W, top: tipY }
+        : { left: tipX, top: tipY };
 
-    return (
+    return createPortal(
         <div
             className={`mx_FanoosDashboard_hoverTip${isDayMode ? " day" : ""}`}
             style={tipStyle}
@@ -620,7 +631,8 @@ const HoverTooltip: React.FC<HoverTooltipProps> = ({ info, tree, sentiment, sent
             {allMembers.length > 0 && (
                 <div className="mx_FanoosDashboard_htMembers">{membersLine}</div>
             )}
-        </div>
+        </div>,
+        document.body,
     );
 };
 
@@ -749,7 +761,7 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({ roomId, client, isDayMode }) 
                         )}
                         <div className="mx_FanoosDashboard_chContent">
                             {!isOwn && <div className="mx_FanoosDashboard_chSender">{senderName}</div>}
-                            <div className={`mx_FanoosDashboard_chBubble${isOwn ? " own" : ""}`}>
+                            <div className={`mx_FanoosDashboard_chBubble${isOwn ? " own" : ""}`} dir="auto">
                                 {isMedia ? (
                                     <span className="mx_FanoosDashboard_chMedia">📎 {body}</span>
                                 ) : (
@@ -767,6 +779,69 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({ roomId, client, isDayMode }) 
     );
 };
 
+// ─── Analysis Panel ────────────────────────────────────────────────────────────
+
+interface AnalysisPanelProps {
+    roomId: string;
+    tree: TreeNode[];
+    sentiment: Record<string, number | null>;
+    sentDetail: Record<string, SentDetail>;
+    unread: Record<string, number>;
+    isDayMode: boolean;
+}
+
+const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ roomId, tree, sentiment, sentDetail, unread, isDayMode }) => {
+    const roomNode = tree.find((n) => n.matrixRoomId === roomId);
+    const parentId = roomNode?.parentId ?? null;
+    const siblings = parentId
+        ? tree.filter((n) => n.parentId === parentId && n.matrixRoomId && n.type !== "space" && n.type !== "virtual")
+        : (roomNode ? [roomNode] : []);
+
+    const renderRow = (n: TreeNode): React.ReactNode => {
+        const score = n.matrixRoomId ? sentiment[n.matrixRoomId] : null;
+        const det = n.matrixRoomId ? sentDetail[n.matrixRoomId] : null;
+        const un = n.matrixRoomId ? unread[n.matrixRoomId] || 0 : 0;
+        const pct = score !== null ? Math.round(score * 100) : null;
+        const color = sentimentColor(score, isDayMode);
+        const band = sentimentBand(score);
+        const isCurrent = n.matrixRoomId === roomId;
+        return (
+            <div key={n.id} className={`mx_FanoosDashboard_apRow${isCurrent ? " current" : ""}${isDayMode ? " day" : ""}`}>
+                <div className="mx_FanoosDashboard_apRowTop">
+                    <span className="mx_FanoosDashboard_apRoomName">{n.name}</span>
+                    {un > 0 && <span className="mx_FanoosDashboard_apUnread">{un}</span>}
+                </div>
+                {pct !== null && (
+                    <div className="mx_FanoosDashboard_apScoreRow">
+                        <div className="mx_FanoosDashboard_apTrack">
+                            <div className="mx_FanoosDashboard_apFill" style={{ width: `${pct}%`, background: color }} />
+                        </div>
+                        <span className="mx_FanoosDashboard_apBand" style={{ color }}>{band}</span>
+                    </div>
+                )}
+                {det && (det.pos.length > 0 || det.neg.length > 0) && (
+                    <div className="mx_FanoosDashboard_apKws">
+                        {det.pos.slice(0, 3).map((k) => <span key={k} className="mx_FanoosDashboard_apKw pos">{k}</span>)}
+                        {det.neg.slice(0, 3).map((k) => <span key={k} className="mx_FanoosDashboard_apKw neg">{k}</span>)}
+                    </div>
+                )}
+                {det && det.msgCount > 0 && (
+                    <div className="mx_FanoosDashboard_apMsgCount">{det.msgCount} msgs</div>
+                )}
+            </div>
+        );
+    };
+
+    return (
+        <div className={`mx_FanoosDashboard_analysisPanel${isDayMode ? " day" : ""}`}>
+            <div className="mx_FanoosDashboard_apHdr">📊 Analysis</div>
+            <div className="mx_FanoosDashboard_apList">
+                {siblings.map(renderRow)}
+            </div>
+        </div>
+    );
+};
+
 // ─── Chat Box ─────────────────────────────────────────────────────────────────
 
 interface ChatBoxProps {
@@ -775,12 +850,25 @@ interface ChatBoxProps {
     onClose: () => void;
     client: ReturnType<typeof useMatrixClientContext>;
     isDayMode: boolean;
+    tree: TreeNode[];
+    sentiment: Record<string, number | null>;
+    sentDetail: Record<string, SentDetail>;
+    unread: Record<string, number>;
 }
 
-const ChatBox: React.FC<ChatBoxProps> = ({ state, onChange, onClose, client, isDayMode }) => {
+const ChatBox: React.FC<ChatBoxProps> = ({ state, onChange, onClose, client, isDayMode, tree, sentiment, sentDetail, unread }) => {
     const [sending, setSending] = useState(false);
     const stateRef = useRef(state);
     useEffect(() => { stateRef.current = state; }, [state]);
+
+    const toggleAnalysis = useCallback((): void => {
+        const next = !stateRef.current.showAnalysis;
+        const winW = UIStore.instance.windowWidth;
+        const newX = next
+            ? Math.max(0, stateRef.current.pos.x - 280)
+            : Math.min(winW - 320, stateRef.current.pos.x + 280);
+        onChange({ ...stateRef.current, showAnalysis: next, pos: { x: newX, y: stateRef.current.pos.y } });
+    }, [onChange]);
 
     const handleDragStart = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
         if (e.button !== 0) return;
@@ -817,13 +905,19 @@ const ChatBox: React.FC<ChatBoxProps> = ({ state, onChange, onClose, client, isD
 
     return (
         <div
-            className={`mx_FanoosDashboard_chatBox${isDayMode ? " day" : ""}${state.minimized ? " minimized" : ""}`}
+            className={`mx_FanoosDashboard_chatBox${isDayMode ? " day" : ""}${state.minimized ? " minimized" : ""}${state.showAnalysis && !state.minimized ? " withAnalysis" : ""}`}
             style={{ left: state.pos.x, top: state.pos.y }}
         >
             {/* Header / Drag handle */}
             <div className="mx_FanoosDashboard_cbHdr" onMouseDown={handleDragStart}>
                 <span className="mx_FanoosDashboard_cbDragHandle">⠿</span>
                 <span className="mx_FanoosDashboard_cbTitle">💬 {state.roomName}</span>
+                <button
+                    className={`mx_FanoosDashboard_cbCtrl${state.showAnalysis ? " active" : ""}`}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onClick={toggleAnalysis}
+                    title="Analysis"
+                >📊</button>
                 <button
                     className="mx_FanoosDashboard_cbCtrl"
                     onMouseDown={(e) => e.stopPropagation()}
@@ -841,29 +935,41 @@ const ChatBox: React.FC<ChatBoxProps> = ({ state, onChange, onClose, client, isD
             </div>
 
             {!state.minimized && (
-                <>
-                    {/* Full chat history with lazy loading */}
-                    <ChatHistory roomId={state.roomId} client={client} isDayMode={isDayMode} />
-
-                    {/* Compose area */}
-                    <div className="mx_FanoosDashboard_cbCompose">
-                        <textarea
-                            className="mx_FanoosDashboard_cbInput"
-                            value={state.msgText}
-                            onChange={(e) => onChange({ ...state, msgText: e.target.value })}
-                            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void send(); } }}
-                            placeholder={_t("fanoos_dashboard|send_placeholder")}
-                            rows={2}
+                <div className={`mx_FanoosDashboard_cbBody${state.showAnalysis ? " withAnalysis" : ""}`}>
+                    {/* Analysis panel */}
+                    {state.showAnalysis && (
+                        <AnalysisPanel
+                            roomId={state.roomId}
+                            tree={tree}
+                            sentiment={sentiment}
+                            sentDetail={sentDetail}
+                            unread={unread}
+                            isDayMode={isDayMode}
                         />
-                        <button
-                            className={`mx_FanoosDashboard_cbSend${sending ? " sending" : ""}`}
-                            onClick={() => void send()}
-                            disabled={sending}
-                        >
-                            {_t("fanoos_dashboard|send")}
-                        </button>
+                    )}
+                    {/* Chat column */}
+                    <div className="mx_FanoosDashboard_cbChatCol">
+                        <ChatHistory roomId={state.roomId} client={client} isDayMode={isDayMode} />
+                        <div className="mx_FanoosDashboard_cbCompose">
+                            <textarea
+                                className="mx_FanoosDashboard_cbInput"
+                                dir="auto"
+                                value={state.msgText}
+                                onChange={(e) => onChange({ ...state, msgText: e.target.value })}
+                                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void send(); } }}
+                                placeholder={_t("fanoos_dashboard|send_placeholder")}
+                                rows={2}
+                            />
+                            <button
+                                className={`mx_FanoosDashboard_cbSend${sending ? " sending" : ""}`}
+                                onClick={() => void send()}
+                                disabled={sending}
+                            >
+                                {_t("fanoos_dashboard|send")}
+                            </button>
+                        </div>
                     </div>
-                </>
+                </div>
             )}
         </div>
     );
@@ -1036,6 +1142,8 @@ const InfoPanel: React.FC<InfoPanelProps> = ({ nodeId, tree, sentiment, sentDeta
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
+const DASH_SETTINGS_KEY = "fanoosDashboardSettings";
+
 const FanoosDashboard: React.FC = () => {
     const client = useMatrixClientContext();
     const svgWrapRef = useRef<HTMLDivElement>(null);
@@ -1061,6 +1169,22 @@ const FanoosDashboard: React.FC = () => {
     const [reloadAgeStr, setReloadAgeStr] = useState(_t("fanoos_dashboard|just_now"));
     const [hoverInfo, setHoverInfo] = useState<HoverInfo | null>(null);
     const [chatBox, setChatBox] = useState<ChatBoxState | null>(null);
+
+    // Restore persisted settings on mount
+    useEffect(() => {
+        try {
+            const s = JSON.parse(localStorage.getItem(DASH_SETTINGS_KEY) ?? "{}") as Record<string, unknown>;
+            if (s.level === 1 || s.level === 2) setLevel(s.level as number);
+            if (typeof s.showNames === "boolean") setShowNames(s.showNames);
+            if (typeof s.isDayMode === "boolean") setIsDayMode(s.isDayMode);
+            if (typeof s.intervalVal === "string") setIntervalVal(s.intervalVal);
+        } catch { /* ignore */ }
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Persist settings on change
+    useEffect(() => {
+        localStorage.setItem(DASH_SETTINGS_KEY, JSON.stringify({ level, showNames, isDayMode, intervalVal }));
+    }, [level, showNames, isDayMode, intervalVal]);
 
     const layoutRef = useRef<Map<string, Segment>>(new Map());
     const dimsRef = useRef({ W: 800, H: 500, CX: 400, CY: 496 });
@@ -1181,7 +1305,7 @@ const FanoosDashboard: React.FC = () => {
         const winW = UIStore.instance.windowWidth;
         const winH = UIStore.instance.windowHeight;
         const pos = { x: Math.max(0, winW - 336), y: Math.max(0, winH - 500) };
-        setChatBox({ roomId: n.matrixRoomId, roomName: n.name, minimized: false, msgText: "", pos });
+        setChatBox({ roomId: n.matrixRoomId, roomName: n.name, minimized: false, msgText: "", pos, showAnalysis: false });
     }, [tree]);
 
     // Prevent right-button mousedown from bubbling (some browsers scroll-to-top on right mousedown)
@@ -1393,6 +1517,10 @@ const FanoosDashboard: React.FC = () => {
                     onClose={() => setChatBox(null)}
                     client={client}
                     isDayMode={isDayMode}
+                    tree={tree}
+                    sentiment={sentiment}
+                    sentDetail={sentDetail}
+                    unread={unread}
                 />
             )}
         </div>
