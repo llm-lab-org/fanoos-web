@@ -58,6 +58,11 @@ export enum Action {
     ViewHomePage = "view_home_page",
 
     /**
+     * Navigates to the Fanoos room dashboard
+     */
+    ViewDashboard = "view_dashboard",
+
+    /**
      * Forces the theme to reload. No additional payload information required.
      */
     RecheckTheme = "recheck_theme",

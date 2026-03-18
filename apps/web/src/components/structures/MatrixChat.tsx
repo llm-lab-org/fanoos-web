@@ -842,6 +842,10 @@ export default class MatrixChat extends React.PureComponent<IProps, IState> {
             case Action.ViewHomePage:
                 this.viewHome(payload.justRegistered);
                 break;
+            case Action.ViewDashboard:
+                this.setStateForNewView({ view: Views.LOGGED_IN, currentRoomId: null });
+                this.setPage(PageType.DashboardPage);
+                break;
             case Action.Share:
                 this.viewShare(payload.format, payload.msg);
                 break;

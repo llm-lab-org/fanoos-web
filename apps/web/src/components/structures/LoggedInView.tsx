@@ -53,6 +53,7 @@ import { UPDATE_EVENT } from "../../stores/AsyncStore";
 import { RoomView } from "./RoomView";
 import ToastContainer from "./ToastContainer";
 import UserView from "./UserView";
+import FanoosDashboard from "./FanoosDashboard";
 import { BackdropPanel } from "./BackdropPanel";
 import { mediaFromMxc } from "../../customisations/Media";
 import { UserTab } from "../views/dialogs/UserTab";
@@ -760,6 +761,10 @@ class LoggedInView extends React.Component<IProps, IState> {
                         <UserView userId={this.props.currentUserId} resizeNotifier={this.context.resizeNotifier} />
                     );
                 }
+                break;
+
+            case PageTypes.DashboardPage:
+                pageElement = <FanoosDashboard />;
                 break;
             default: {
                 if (moduleRenderer) {

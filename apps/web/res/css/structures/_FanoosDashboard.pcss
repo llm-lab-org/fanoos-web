@@ -1,0 +1,213 @@
+/*
+Copyright 2026 LLM-LAB (Fanoos fork)
+
+SPDX-License-Identifier: AGPL-3.0-only OR GPL-3.0-only OR LicenseRef-Element-Commercial
+Please see LICENSE files in the repository root for full details.
+*/
+
+/* ── Dashboard Button in SpacePanel ──────────────────────────────── */
+
+.mx_FanoosDashboardButton {
+    display: flex;
+    align-items: center;
+    gap: var(--cpd-space-2x);
+    width: 100%;
+    padding: var(--cpd-space-2x) var(--cpd-space-3x);
+    border-radius: 8px;
+    cursor: pointer;
+    color: $secondary-content;
+    background: transparent;
+    border: none;
+    transition: background 0.15s ease, color 0.15s ease;
+    box-sizing: border-box;
+
+    &:hover {
+        background: var(--cpd-color-bg-subtle-primary);
+        color: $primary-content;
+    }
+
+    &.expanded {
+        justify-content: flex-start;
+    }
+
+    svg {
+        flex-shrink: 0;
+        width: 20px;
+        height: 20px;
+    }
+}
+
+.mx_FanoosDashboardButton_label {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ── Dashboard Full-Page View ────────────────────────────────────── */
+
+.mx_FanoosDashboard {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow-y: auto;
+    background: $background;
+    padding: 32px 40px;
+    box-sizing: border-box;
+}
+
+.mx_FanoosDashboard_header {
+    display: flex;
+    align-items: center;
+    gap: var(--cpd-space-3x);
+    margin-bottom: 28px;
+}
+
+.mx_FanoosDashboard_headerIcon {
+    width: 28px;
+    height: 28px;
+    color: var(--cpd-color-icon-accent-primary);
+    flex-shrink: 0;
+}
+
+.mx_FanoosDashboard_title {
+    font: var(--cpd-font-heading-md-semibold);
+    color: $primary-content;
+    margin: 0;
+}
+
+.mx_FanoosDashboard_totalBadge {
+    background: var(--cpd-color-bg-critical-primary);
+    color: #fff;
+    font: var(--cpd-font-body-xs-semibold);
+    border-radius: 999px;
+    padding: 2px 8px;
+    min-width: 20px;
+    text-align: center;
+}
+
+/* ── Room Grid ───────────────────────────────────────────────────── */
+
+.mx_FanoosDashboard_grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+}
+
+.mx_FanoosDashboard_card {
+    display: flex;
+    align-items: center;
+    gap: var(--cpd-space-3x);
+    background: $header-panel-bg-color;
+    border: 1px solid $separator;
+    border-radius: 12px;
+    padding: 16px;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+    width: 100%;
+    box-sizing: border-box;
+
+    &:hover {
+        background: $header-panel-bg-hover;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+        transform: translateY(-1px);
+    }
+
+    &:active {
+        transform: translateY(0);
+    }
+}
+
+.mx_FanoosDashboard_cardAvatar {
+    position: relative;
+    flex-shrink: 0;
+}
+
+/* ── Unread Badges ───────────────────────────────────────────────── */
+
+.mx_FanoosDashboard_badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    min-width: 18px;
+    height: 18px;
+    border-radius: 999px;
+    padding: 0 5px;
+    font: var(--cpd-font-body-xs-semibold);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    border: 2px solid $background;
+    background: $muted-fg-color;
+    color: #fff;
+}
+
+.mx_FanoosDashboard_badge_highlight {
+    background: var(--cpd-color-bg-critical-primary);
+}
+
+.mx_FanoosDashboard_badge_notif {
+    background: var(--cpd-color-icon-accent-primary);
+}
+
+.mx_FanoosDashboard_badge_activity {
+    background: $muted-fg-color;
+}
+
+.mx_FanoosDashboard_badge_dot {
+    width: 10px;
+    height: 10px;
+    min-width: unset;
+    padding: 0;
+    top: -2px;
+    right: -2px;
+}
+
+/* ── Card Content ────────────────────────────────────────────────── */
+
+.mx_FanoosDashboard_cardBody {
+    flex: 1;
+    min-width: 0;
+}
+
+.mx_FanoosDashboard_cardHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: var(--cpd-space-2x);
+    margin-bottom: 4px;
+}
+
+.mx_FanoosDashboard_cardName {
+    font: var(--cpd-font-body-md-semibold);
+    color: $primary-content;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+}
+
+.mx_FanoosDashboard_cardTs {
+    font: var(--cpd-font-body-xs-regular);
+    color: $secondary-content;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.mx_FanoosDashboard_cardPreview {
+    font: var(--cpd-font-body-sm-regular);
+    color: $secondary-content;
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.mx_FanoosDashboard_empty {
+    grid-column: 1 / -1;
+    text-align: center;
+    color: $secondary-content;
+    font: var(--cpd-font-body-md-regular);
+    padding: 60px 0;
+}

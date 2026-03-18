@@ -75,6 +75,7 @@ import { shouldShowComponent } from "../../../customisations/helpers/UIComponent
 import { UIComponent } from "../../../settings/UIFeature";
 import { ThreadsActivityCentre } from "./threads-activity-centre/";
 import AccessibleButton from "../elements/AccessibleButton";
+import { IconButton, Text, Tooltip } from "@vector-im/compound-web";
 import { Landmark, LandmarkNavigation } from "../../../accessibility/LandmarkNavigation";
 import { KeyboardShortcut } from "../settings/KeyboardShortcut";
 import { ModuleApi } from "../../../modules/Api.ts";
@@ -388,6 +389,49 @@ const InnerSpacePanel = React.memo<IInnerSpacePanelProps>(
     },
 );
 
+const DashboardGridIcon: React.FC = () => (
+    <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20" aria-hidden="true">
+        <rect x="3" y="3" width="7" height="7" rx="1.5" />
+        <rect x="14" y="3" width="7" height="7" rx="1.5" />
+        <rect x="3" y="14" width="7" height="7" rx="1.5" />
+        <rect x="14" y="14" width="7" height="7" rx="1.5" />
+    </svg>
+);
+
+const FanoosDashboardButton: React.FC<{ isPanelCollapsed: boolean }> = ({ isPanelCollapsed }) => {
+    const onClick = (): void => {
+        defaultDispatcher.dispatch({ action: Action.ViewDashboard });
+    };
+
+    let button = (
+        <IconButton
+            aria-label="Room Dashboard"
+            className={classNames("mx_FanoosDashboardButton", { expanded: !isPanelCollapsed })}
+            onClick={onClick}
+            title={isPanelCollapsed ? "Room Dashboard" : undefined}
+        >
+            <>
+                <DashboardGridIcon />
+                {!isPanelCollapsed && (
+                    <Text className="mx_FanoosDashboardButton_label" as="span" size="md">
+                        Dashboard
+                    </Text>
+                )}
+            </>
+        </IconButton>
+    );
+
+    if (isPanelCollapsed) {
+        button = (
+            <Tooltip label="Room Dashboard" placement="right">
+                {button}
+            </Tooltip>
+        );
+    }
+
+    return button;
+};
+
 const SpacePanel: React.FC = () => {
     const [dragging, setDragging] = useState(false);
     const [isPanelCollapsed, setPanelCollapsed] = useState(true);
@@ -475,6 +519,8 @@ const SpacePanel: React.FC = () => {
                         </Droppable>
 
                         <ThreadsActivityCentre displayButtonLabel={!isPanelCollapsed} />
+
+                        <FanoosDashboardButton isPanelCollapsed={isPanelCollapsed} />
 
                         <QuickSettingsButton isPanelCollapsed={isPanelCollapsed} />
                     </nav>
