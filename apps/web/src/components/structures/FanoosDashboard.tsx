@@ -21,6 +21,7 @@ import dis from "../../dispatcher/dispatcher";
 import { Action } from "../../dispatcher/actions";
 import { useEventEmitter } from "../../hooks/useEventEmitter";
 import { _t } from "../../languageHandler";
+import UIStore from "../../stores/UIStore";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -99,7 +100,7 @@ const NEG_WORDS = new Set([
     "اضطراری","گم","مفقود","ایراد","کرش","قطع","خاموش","کند",
 ]);
 
-const TOKENIZE_RE = /[\s\u060c\u061b\u061f\u06d4،؟!,.;:'"()\[\]{}|/\\@#$%^&*+=<>~`]+/u;
+const TOKENIZE_RE = /[\s\u060c\u061b\u061f\u06d4،؟!,.;:'"()[\]{}|/\\@#$%^&*+=<>~`]+/u;
 
 function tokenize(text: string): string[] {
     return text.toLowerCase().split(TOKENIZE_RE).filter((t) => t.length > 1);
@@ -108,7 +109,8 @@ function tokenize(text: string): string[] {
 /** Analyse messages in a single pass — returns score + keyword lists. */
 function analyzeMessages(msgs: { body: string }[]): { score: number | null; detail: SentDetail } {
     if (!msgs.length) return { score: null, detail: { pos: [], neg: [], msgCount: 0 } };
-    let posCount = 0, negCount = 0;
+    let posCount = 0;
+    let negCount = 0;
     const posFound = new Set<string>();
     const negFound = new Set<string>();
     for (const m of msgs) {
@@ -207,18 +209,18 @@ function buildTree(client: ReturnType<typeof useMatrixClientContext>): TreeNode[
 function buildSegmentLayout(
     tree: TreeNode[],
     level: number,
-    R_ROOT: number,
-    R1_IN: number,
-    R1_OUT: number,
-    R2_IN: number,
-    R2_OUT: number,
+    rRoot: number,
+    r1In: number,
+    r1Out: number,
+    r2In: number,
+    r2Out: number,
 ): Map<string, Segment> {
     const layout = new Map<string, Segment>();
     const root = tree.find((n) => !n.parentId);
     if (!root) return layout;
     const totalArc = ARC_START - ARC_END;
 
-    layout.set(root.id, { a1: ARC_END, a2: ARC_START, r1: 0, r2: R_ROOT, depth: 0, mid: (ARC_START + ARC_END) / 2 });
+    layout.set(root.id, { a1: ARC_END, a2: ARC_START, r1: 0, r2: rRoot, depth: 0, mid: (ARC_START + ARC_END) / 2 });
 
     const d1 = tree.filter((n) => n.parentId === root.id);
     if (!d1.length) return layout;
@@ -229,24 +231,27 @@ function buildSegmentLayout(
 
     for (let i = 0; i < d1.length; i++) {
         const groupArc = (weights[i] / totalWeight) * totalArc;
-        const a1 = a, a2 = a + groupArc;
-        const r2d1 = level <= 1 ? R2_OUT : R1_OUT;
-        layout.set(d1[i].id, { a1, a2, r1: R1_IN, r2: r2d1, depth: 1, mid: a1 + groupArc / 2 });
+        const a1 = a;
+        const a2 = a + groupArc;
+        const r2d1 = level <= 1 ? r2Out : r1Out;
+        layout.set(d1[i].id, { a1, a2, r1: r1In, r2: r2d1, depth: 1, mid: a1 + groupArc / 2 });
 
         if (level >= 2) {
             const kids = tree.filter((c) => c.parentId === d1[i].id);
             if (kids.length) {
                 const N = kids.length;
-                const radH = R2_OUT - R2_IN;
-                const midR = (R2_IN + R2_OUT) / 2;
+                const radH = r2Out - r2In;
+                const midR = (r2In + r2Out) / 2;
                 const arcW = groupArc * midR;
                 const cols = Math.max(1, Math.round(Math.sqrt((N * arcW) / Math.max(radH, 1))));
                 const rows = Math.ceil(N / cols);
                 const arcPerCol = groupArc / cols;
                 const radPerRow = radH / rows;
                 kids.forEach((kid, j) => {
-                    const col = j % cols, row = Math.floor(j / cols);
-                    const ka1 = a1 + col * arcPerCol, kr1 = R2_IN + row * radPerRow;
+                    const col = j % cols;
+                    const row = Math.floor(j / cols);
+                    const ka1 = a1 + col * arcPerCol;
+                    const kr1 = r2In + row * radPerRow;
                     layout.set(kid.id, { a1: ka1, a2: ka1 + arcPerCol, r1: kr1, r2: kr1 + radPerRow, depth: 2, mid: ka1 + arcPerCol / 2 });
                 });
             }
@@ -261,12 +266,14 @@ function makeSegPath(cx: number, cy: number, seg: Segment, gapPx = 3): string {
     if (r2 - r1 < 4) return "";
     const midR = (r1 + r2) / 2;
     const angGap = Math.min(gapPx / Math.max(midR, 1), 0.1);
-    const ra1 = a1 + angGap, ra2 = a2 - angGap;
-    const ri = r1 + (r1 > 1 ? gapPx : 0), ro = r2 - gapPx;
+    const ra1 = a1 + angGap;
+    const ra2 = a2 - angGap;
+    const ri = r1 + (r1 > 1 ? gapPx : 0);
+    const ro = r2 - gapPx;
     if (ra2 - ra1 < 0.005 || ro - ri < 2) return "";
-    const f = (v: number) => v.toFixed(2);
-    const px = (r: number, a: number) => cx + r * Math.cos(a);
-    const py = (r: number, a: number) => cy - r * Math.sin(a);
+    const f = (v: number): string => v.toFixed(2);
+    const px = (r: number, a: number): number => cx + r * Math.cos(a);
+    const py = (r: number, a: number): number => cy - r * Math.sin(a);
     const large = ra2 - ra1 > Math.PI ? 1 : 0;
     if (ri <= 1) {
         return [`M ${f(px(ro, ra1))} ${f(py(ro, ra1))}`, `A ${f(ro)} ${f(ro)} 0 ${large} 0 ${f(px(ro, ra2))} ${f(py(ro, ra2))}`, `L ${f(cx)} ${f(cy)}`, "Z"].join(" ");
@@ -299,24 +306,27 @@ function renderSVG(
 ): { svg: string; layout: Map<string, Segment>; dims: { W: number; H: number; CX: number; CY: number }; hits: string[] } {
     const CX = W / 2;
     const CY = H - 4;
-    const R_MAX = Math.min(CY - 20, W / 2 - 14);
-    const R_ROOT = Math.max(12, Math.min(24, R_MAX * 0.052));
-    const G_RING = Math.max(5, Math.floor(R_MAX * 0.014));
+    const rMax = Math.min(CY - 20, W / 2 - 14);
+    const rRoot = Math.max(12, Math.min(24, rMax * 0.052));
+    const gRing = Math.max(5, Math.floor(rMax * 0.014));
 
-    let R1_IN: number, R1_OUT: number, R2_IN: number, R2_OUT: number;
+    let r1In: number;
+    let r1Out: number;
+    let r2In: number;
+    let r2Out: number;
     if (level <= 1) {
-        R1_IN = R_ROOT + 8; R1_OUT = R_MAX; R2_IN = R_MAX; R2_OUT = R_MAX;
+        r1In = rRoot + 8; r1Out = rMax; r2In = rMax; r2Out = rMax;
     } else {
-        const area = R_MAX - R_ROOT - 8;
-        R1_IN = R_ROOT + 8;
-        R1_OUT = R1_IN + Math.max(42, Math.floor(area * 0.28));
-        R2_IN = R1_OUT + G_RING;
-        R2_OUT = R_MAX;
+        const area = rMax - rRoot - 8;
+        r1In = rRoot + 8;
+        r1Out = r1In + Math.max(42, Math.floor(area * 0.28));
+        r2In = r1Out + gRing;
+        r2Out = rMax;
     }
 
     const q = searchQuery.trim().toLowerCase();
     const hits = q ? tree.filter((n) => n.name.toLowerCase().includes(q)).map((n) => n.id) : [];
-    const layout = buildSegmentLayout(tree, level, R_ROOT, R1_IN, R1_OUT, R2_IN, R2_OUT);
+    const layout = buildSegmentLayout(tree, level, rRoot, r1In, r1Out, r2In, r2Out);
     const dims = { W, H, CX, CY };
     const parts: string[] = [];
 
@@ -348,15 +358,17 @@ function renderSVG(
         parts.push(`<rect width="${W}" height="${H}" fill="#0a1628"/>`);
     }
 
-    const guideArc = (r: number) => {
-        const x1 = (CX + r * Math.cos(ARC_END)).toFixed(1), y1 = (CY - r * Math.sin(ARC_END)).toFixed(1);
-        const x2 = (CX + r * Math.cos(ARC_START)).toFixed(1), y2 = (CY - r * Math.sin(ARC_START)).toFixed(1);
+    const guideArc = (r: number): string => {
+        const x1 = (CX + r * Math.cos(ARC_END)).toFixed(1);
+        const y1 = (CY - r * Math.sin(ARC_END)).toFixed(1);
+        const x2 = (CX + r * Math.cos(ARC_START)).toFixed(1);
+        const y2 = (CY - r * Math.sin(ARC_START)).toFixed(1);
         return `M ${x1} ${y1} A ${r.toFixed(1)} ${r.toFixed(1)} 0 0 0 ${x2} ${y2}`;
     };
-    if (level >= 2 && R1_OUT < R2_OUT) {
-        parts.push(`<path d="${guideArc(R1_OUT)}" fill="none" stroke="${guideArcColor2}" stroke-width="1"/>`);
+    if (level >= 2 && r1Out < r2Out) {
+        parts.push(`<path d="${guideArc(r1Out)}" fill="none" stroke="${guideArcColor2}" stroke-width="1"/>`);
     }
-    parts.push(`<path d="${guideArc(R_MAX)}" fill="none" stroke="${guideArcColor}" stroke-width="1"/>`);
+    parts.push(`<path d="${guideArc(rMax)}" fill="none" stroke="${guideArcColor}" stroke-width="1"/>`);
 
     // Glow pass
     layout.forEach((seg, id) => {
@@ -378,12 +390,12 @@ function renderSVG(
 
         if (seg.depth === 0) {
             const pc = "#6366f1";
-            parts.push(`<circle cx="${CX.toFixed(1)}" cy="${CY.toFixed(1)}" r="${(R_ROOT + 12).toFixed(1)}" fill="${pc}" opacity="0.12" filter="url(#tdGlowMd)"/>`);
-            parts.push(`<circle cx="${CX.toFixed(1)}" cy="${CY.toFixed(1)}" r="${R_ROOT.toFixed(1)}" fill="${pc}" opacity="0.88"/>`);
-            parts.push(`<circle cx="${CX.toFixed(1)}" cy="${(CY - R_ROOT * 0.3).toFixed(1)}" r="${(R_ROOT * 0.38).toFixed(1)}" fill="white" opacity="0.25"/>`);
+            parts.push(`<circle cx="${CX.toFixed(1)}" cy="${CY.toFixed(1)}" r="${(rRoot + 12).toFixed(1)}" fill="${pc}" opacity="0.12" filter="url(#tdGlowMd)"/>`);
+            parts.push(`<circle cx="${CX.toFixed(1)}" cy="${CY.toFixed(1)}" r="${rRoot.toFixed(1)}" fill="${pc}" opacity="0.88"/>`);
+            parts.push(`<circle cx="${CX.toFixed(1)}" cy="${(CY - rRoot * 0.3).toFixed(1)}" r="${(rRoot * 0.38).toFixed(1)}" fill="white" opacity="0.25"/>`);
             if (showNames) {
                 const tColor = isDayMode ? "rgba(30,41,59,0.55)" : "rgba(255,255,255,0.28)";
-                parts.push(`<text x="${CX.toFixed(1)}" y="${(CY + R_ROOT + 11).toFixed(1)}" text-anchor="middle" fill="${tColor}" font-size="9" font-family="system-ui,sans-serif" pointer-events="none">${escHtml(n.name)}</text>`);
+                parts.push(`<text x="${CX.toFixed(1)}" y="${(CY + rRoot + 11).toFixed(1)}" text-anchor="middle" fill="${tColor}" font-size="9" font-family="system-ui,sans-serif" pointer-events="none">${escHtml(n.name)}</text>`);
             }
             return;
         }
@@ -461,7 +473,8 @@ function renderSVG(
             if (envR > seg.r1 + gapPx + 6) {
                 const ex = CX + envR * Math.cos(seg.mid);
                 const ey = CY - envR * Math.sin(seg.mid);
-                const ew = 10, eh = 7;
+                const ew = 10;
+                const eh = 7;
                 // White envelope body
                 parts.push(
                     `<g filter="url(#tdDropShadow)" pointer-events="none">` +
@@ -553,9 +566,10 @@ const HoverTooltip: React.FC<HoverTooltipProps> = ({ info, tree, sentiment, sent
     const negKws = det?.neg.slice(0, 4) ?? [];
 
     const isRtl = document.documentElement.dir === "rtl";
+    const winW = UIStore.instance.windowWidth;
     const tipStyle: React.CSSProperties = isRtl
-        ? { right: Math.min(window.innerWidth - info.clientX + 14, window.innerWidth - 250), top: Math.max(8, info.clientY - 10) }
-        : { left: Math.min(info.clientX + 14, window.innerWidth - 250), top: Math.max(8, info.clientY - 10) };
+        ? { right: Math.min(winW - info.clientX + 14, winW - 250), top: Math.max(8, info.clientY - 10) }
+        : { left: Math.min(info.clientX + 14, winW - 250), top: Math.max(8, info.clientY - 10) };
 
     return (
         <div
