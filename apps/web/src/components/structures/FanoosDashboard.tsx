@@ -728,6 +728,7 @@ function renderSVG(
 
         if (seg.depth === 0) {
             const pc = "#6366f1";
+            parts.push(`<g data-nodeid="${id}" cursor="context-menu" title="Send to all">`);
             parts.push(
                 `<circle cx="${CX.toFixed(1)}" cy="${CY.toFixed(1)}" r="${(rRoot + 12).toFixed(1)}" fill="${pc}" opacity="0.12" filter="url(#tdGlowMd)"/>`,
             );
@@ -743,6 +744,7 @@ function renderSVG(
                     `<text x="${CX.toFixed(1)}" y="${(CY + rRoot + 11).toFixed(1)}" text-anchor="middle" fill="${tColor}" font-size="9" font-family="system-ui,sans-serif" pointer-events="none">${escHtml(n.name)}</text>`,
                 );
             }
+            parts.push(`</g>`);
             return;
         }
 
