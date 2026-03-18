@@ -1018,9 +1018,16 @@ Please see LICENSE files in the repository root for full details.
 }
 
 /* ── Main chat timeline beige tint ───────────────────────────────── */
+/* Apply the default beige color to .mx_RoomView_body so user-set background
+   images/patterns (applied to .mx_RoomView_body via appearance.ts) remain
+   visible through the transparent message panel. */
+
+.mx_RoomView_body {
+    background-color: #f5f1e8;
+}
 
 .mx_RoomView_messagePanel {
-    background: #f5f1e8;
+    background: transparent;
 }
 
 /* ── Send Window (unified single/multi-channel compose) ──────────── */
@@ -2341,4 +2348,11 @@ Please see LICENSE files in the repository root for full details.
         max-width: 100% !important;
         margin-inline: 0 !important;
     }
+}
+
+/* ── RTL room header: swap name + action buttons to correct sides ─── */
+/* The React component tries direction={isRtl ? "row-reverse" : "row"} on
+   Compound Box, but the CSS override ensures it works reliably. */
+[dir="rtl"] .mx_RoomHeader {
+    flex-direction: row-reverse;
 }
