@@ -815,7 +815,7 @@ class LoggedInView extends React.Component<IProps, IState> {
                                 )}
                                 <SpacePanel />
                                 {!useNewRoomList && <BackdropPanel backgroundImage={this.state.backgroundImage} />}
-                                {!moduleRenderer && (
+                                {!moduleRenderer && this.props.page_type !== PageTypes.DashboardPage && (
                                     <div
                                         className="mx_LeftPanel_wrapper--user"
                                         ref={this._resizeContainer}
@@ -830,7 +830,7 @@ class LoggedInView extends React.Component<IProps, IState> {
                                 )}
                             </div>
                         </div>
-                        {!moduleRenderer && <ResizeHandle passRef={this.resizeHandler} id="lp-resizer" />}
+                        {!moduleRenderer && this.props.page_type !== PageTypes.DashboardPage && <ResizeHandle passRef={this.resizeHandler} id="lp-resizer" />}
                         <div className="mx_RoomView_wrapper">{pageElement}</div>
                     </div>
                 </div>

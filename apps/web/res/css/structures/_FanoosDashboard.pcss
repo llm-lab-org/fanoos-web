@@ -44,6 +44,15 @@ Please see LICENSE files in the repository root for full details.
     text-overflow: ellipsis;
 }
 
+/* ── Override RoomView wrapper containment when showing Dashboard ─── */
+
+/* contain:strict on mx_RoomView_wrapper would make it the containing block
+   for position:fixed children and also clips overflow — override both */
+.mx_RoomView_wrapper:has(.mx_FanoosDashboard) {
+    contain: none;
+    overflow: visible;
+}
+
 /* ── Full-page Dashboard Layout ──────────────────────────────────── */
 
 .mx_FanoosDashboard {

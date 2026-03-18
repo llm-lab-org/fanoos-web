@@ -1510,7 +1510,7 @@ const FanoosDashboard: React.FC = () => {
             )}
 
             {/* ── Chat box (bottom-right, minimizable) ── */}
-            {chatBox && (
+            {chatBox && createPortal(
                 <ChatBox
                     state={chatBox}
                     onChange={setChatBox}
@@ -1521,7 +1521,8 @@ const FanoosDashboard: React.FC = () => {
                     sentiment={sentiment}
                     sentDetail={sentDetail}
                     unread={unread}
-                />
+                />,
+                document.body,
             )}
         </div>
     );
