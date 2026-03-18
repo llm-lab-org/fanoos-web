@@ -1027,7 +1027,7 @@ Please see LICENSE files in the repository root for full details.
 
 .mx_FanoosDashboard_sendWindow {
     position: fixed;
-    min-width: 280px;
+    min-width: 380px;
     min-height: 300px;
     background: #1e293b;
     border: 1px solid rgb(255, 255, 255, 0.12);
@@ -1234,6 +1234,25 @@ Please see LICENSE files in the repository root for full details.
     flex-direction: column;
     min-width: 0;
     min-height: 0;
+}
+
+/* Multi-recipient: no chat history → compose fills the space */
+.mx_FanoosDashboard_sendWindow.noHistory {
+    .mx_FanoosDashboard_swMain {
+        justify-content: flex-end;
+    }
+
+    .mx_FanoosDashboard_cbCompose {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .mx_FanoosDashboard_cbHtmlEditor {
+        flex: 1;
+        max-height: none;
+        min-height: 100px;
+    }
 }
 
 .mx_FanoosDashboard_swChips {

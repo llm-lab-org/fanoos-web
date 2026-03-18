@@ -267,6 +267,100 @@ const NEG_WORDS = new Set([
     "کند",
 ]);
 
+// ─── Emoji sentiment sets ─────────────────────────────────────────────────────
+
+const POS_EMOJIS = new Set([
+    "👍",
+    "❤️",
+    "❤",
+    "😊",
+    "🎉",
+    "✅",
+    "🚀",
+    "💪",
+    "👏",
+    "🥳",
+    "😄",
+    "😃",
+    "🤩",
+    "💯",
+    "✨",
+    "🙏",
+    "😍",
+    "🌟",
+    "🔥",
+    "💚",
+    "💙",
+    "💜",
+    "💕",
+    "💖",
+    "💗",
+    "🙌",
+    "👌",
+    "😀",
+    "😁",
+    "🥰",
+    "😎",
+    "🤗",
+    "☑️",
+    "🟢",
+    "⭐",
+    "🌈",
+    "🎊",
+    "🏆",
+    "😇",
+    "🌺",
+]);
+
+const NEG_EMOJIS = new Set([
+    "👎",
+    "😡",
+    "😢",
+    "😭",
+    "😞",
+    "❌",
+    "🚫",
+    "⚠️",
+    "⚠",
+    "🛑",
+    "😤",
+    "😠",
+    "😔",
+    "💔",
+    "🤦",
+    "😫",
+    "😩",
+    "😟",
+    "🙁",
+    "☹️",
+    "😣",
+    "😖",
+    "😨",
+    "😰",
+    "😱",
+    "🔴",
+    "⛔",
+    "😵",
+    "🤯",
+    "💀",
+    "🤬",
+    "😒",
+    "🥺",
+    "😥",
+    "😓",
+    "⁉️",
+    "‼️",
+    "🆘",
+]);
+
+function graphemes(text: string): string[] {
+    try {
+        return [...new Intl.Segmenter(undefined, { granularity: "grapheme" }).segment(text)].map((s) => s.segment);
+    } catch {
+        return [...text];
+    }
+}
+
 const TOKENIZE_RE = /[\s\u060c\u061b\u061f\u06d4،؟!,.;:'"()[\]{}|/\\@#$%^&*+=<>~`]+/u;
 
 function tokenize(text: string): string[] {
@@ -277,7 +371,11 @@ function tokenize(text: string): string[] {
 }
 
 /** Analyse messages in a single pass — returns score + keyword lists. */
-function analyzeMessages(msgs: { body: string }[]): { score: number | null; detail: SentDetail } {
+function analyzeMessages(
+    msgs: { body: string }[],
+    reactions: string[] = [],
+): { score: number | null; detail: SentDetail } {
+    if (!msgs.length && !reactions.length) return { score: null, detail: { pos: [], neg: [], msgCount: 0 } };
     if (!msgs.length) return { score: null, detail: { pos: [], neg: [], msgCount: 0 } };
     let posCount = 0;
     let negCount = 0;
@@ -292,6 +390,28 @@ function analyzeMessages(msgs: { body: string }[]): { score: number | null; deta
             if (NEG_WORDS.has(t)) {
                 negCount++;
                 negFound.add(t);
+            }
+        }
+        // Emoji scan in message body (half weight vs keywords)
+        for (const g of graphemes(m.body)) {
+            if (POS_EMOJIS.has(g)) posCount += 0.5;
+            else if (NEG_EMOJIS.has(g)) negCount += 0.5;
+        }
+    }
+    // Reaction emojis (full weight each)
+    for (const r of reactions) {
+        if (POS_EMOJIS.has(r)) posCount += 1;
+        else if (NEG_EMOJIS.has(r)) negCount += 1;
+        else {
+            // Try grapheme-by-grapheme for compound emojis
+            for (const g of graphemes(r)) {
+                if (POS_EMOJIS.has(g)) {
+                    posCount += 1;
+                    break;
+                } else if (NEG_EMOJIS.has(g)) {
+                    negCount += 1;
+                    break;
+                }
             }
         }
     }
@@ -1464,7 +1584,7 @@ const SendWindow: React.FC<SendWindowProps> = ({
     const [htmlMode, setHtmlMode] = useState(false);
     const [htmlFlowers, setHtmlFlowers] = useState<string[]>([]);
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const plainEditorRef = useRef<HTMLDivElement>(null);
     const htmlEditorRef = useRef<HTMLDivElement>(null);
     const colorInputRef = useRef<HTMLInputElement>(null);
     const htmlSavedRangeRef = useRef<Range | null>(null);
@@ -1610,7 +1730,8 @@ const SendWindow: React.FC<SendWindowProps> = ({
 
     const send = async (): Promise<void> => {
         const htmlEl = htmlEditorRef.current;
-        const textContent = htmlMode ? (htmlEl?.textContent?.trim() ?? "") : state.msgText.trim();
+        const plainEl = plainEditorRef.current;
+        const textContent = htmlMode ? (htmlEl?.textContent?.trim() ?? "") : (plainEl?.textContent?.trim() ?? "");
         if (!textContent || sending || !state.recipients.length) return;
         setSending(true);
         const results: string[] = [];
@@ -1621,17 +1742,18 @@ const SendWindow: React.FC<SendWindowProps> = ({
                     const htmlBody = prepareHtmlForSend(htmlEl.innerHTML);
                     await client.sendHtmlMessage(r.roomId, plainText, htmlBody);
                 } else {
-                    await client.sendTextMessage(r.roomId, state.msgText.trim());
+                    await client.sendTextMessage(r.roomId, plainEl?.textContent?.trim() ?? "");
                 }
                 results.push(r.name);
             }
             setSent(results);
             if (htmlMode && htmlEl) {
                 htmlEl.innerHTML = "";
-                setHtmlFlowers([]);
-            } else {
-                onChange({ ...state, msgText: "" });
+            } else if (plainEl) {
+                plainEl.innerHTML = "";
             }
+            setHtmlFlowers([]);
+            onChange({ ...state, msgText: "" });
         } catch (e) {
             console.error("Failed to send:", e);
         } finally {
@@ -1649,7 +1771,8 @@ const SendWindow: React.FC<SendWindowProps> = ({
             }
             editor.focus();
             if (imgSrc) {
-                // Use Range API for reliable img insertion (execCommand truncates data URLs)
+                // Restore saved selection (emoji picker stole focus), then use Range API
+                restoreHtmlSelection();
                 const sel = window.getSelection();
                 let range: Range;
                 if (sel && sel.rangeCount > 0 && editor.contains(sel.getRangeAt(0).commonAncestorContainer)) {
@@ -1678,19 +1801,42 @@ const SendWindow: React.FC<SendWindowProps> = ({
                 document.execCommand("insertText", false, emoji);
             }
         } else {
-            const ta = textareaRef.current;
-            if (ta) {
-                const start = ta.selectionStart ?? stateRef.current.msgText.length;
-                const end = ta.selectionEnd ?? stateRef.current.msgText.length;
-                const txt = stateRef.current.msgText;
-                const newText = txt.slice(0, start) + emoji + txt.slice(end);
-                onChange({ ...stateRef.current, msgText: newText });
-                requestAnimationFrame(() => {
-                    ta.selectionStart = ta.selectionEnd = start + emoji.length;
-                    ta.focus();
-                });
+            const editor = plainEditorRef.current;
+            if (!editor) {
+                setShowEmojiPicker(null);
+                return;
+            }
+            const imgSrc = CUSTOM_EMOJI_IMAGES[emoji];
+            editor.focus();
+            if (imgSrc) {
+                const sel = window.getSelection();
+                let range: Range;
+                if (sel && sel.rangeCount > 0 && editor.contains(sel.getRangeAt(0).commonAncestorContainer)) {
+                    range = sel.getRangeAt(0);
+                } else {
+                    range = document.createRange();
+                    range.selectNodeContents(editor);
+                    range.collapse(false);
+                }
+                range.deleteContents();
+                const img = document.createElement("img");
+                img.src = imgSrc;
+                img.alt = emoji;
+                img.style.width = "1.2em";
+                img.style.height = "1.2em";
+                img.style.verticalAlign = "middle";
+                range.insertNode(img);
+                range.setStartAfter(img);
+                range.collapse(true);
+                if (sel) {
+                    sel.removeAllRanges();
+                    sel.addRange(range);
+                }
+                setHtmlFlowers((prev) => [...prev, emoji]);
+                onChange({ ...stateRef.current, msgText: editor.textContent ?? "" });
             } else {
-                onChange({ ...stateRef.current, msgText: stateRef.current.msgText + emoji });
+                document.execCommand("insertText", false, emoji);
+                onChange({ ...stateRef.current, msgText: editor.textContent ?? "" });
             }
         }
         setShowEmojiPicker(null);
@@ -1766,14 +1912,16 @@ const SendWindow: React.FC<SendWindowProps> = ({
         : `📤 ${_t("fanoos_dashboard|send")} (${state.recipients.length})`;
 
     const showSidePanel = !state.minimized && (state.showRecipients || (state.showAnalysis && !!singleRecipient));
+    // Panel is additive: window grows by panel width so chat area keeps full width
+    const effectiveWidth = state.size.w + (showSidePanel ? 220 : 0);
 
     return (
         <div
-            className={`mx_FanoosDashboard_sendWindow${isDayMode ? " day" : ""}${state.minimized ? " minimized" : ""}${showSidePanel ? " withPanel" : ""}${state.showAnalysis && !state.minimized && singleRecipient ? " withAnalysis" : ""}`}
+            className={`mx_FanoosDashboard_sendWindow${isDayMode ? " day" : ""}${state.minimized ? " minimized" : ""}${showSidePanel ? " withPanel" : ""}${!singleRecipient ? " noHistory" : ""}`}
             style={{
                 left: state.pos.x,
                 top: state.pos.y,
-                width: state.size.w,
+                width: effectiveWidth,
                 height: state.minimized ? undefined : state.size.h,
             }}
         >
@@ -2008,28 +2156,31 @@ const SendWindow: React.FC<SendWindowProps> = ({
                                 </div>
                             )}
 
-                            {/* Plain text textarea (normal mode) */}
+                            {/* Plain text editor (normal mode — contentEditable so flowers render inline) */}
                             {!htmlMode && (
-                                <textarea
-                                    ref={textareaRef}
-                                    className="mx_FanoosDashboard_cbInput"
+                                <div
+                                    ref={plainEditorRef}
+                                    className="mx_FanoosDashboard_cbInput mx_FanoosDashboard_cbHtmlEditor"
+                                    contentEditable
                                     dir="auto"
-                                    value={state.msgText}
-                                    onChange={(e) => onChange({ ...state, msgText: e.target.value })}
+                                    suppressContentEditableWarning
+                                    onInput={(e) => {
+                                        const text = (e.currentTarget as HTMLDivElement).textContent ?? "";
+                                        onChange({ ...stateRef.current, msgText: text });
+                                    }}
                                     onKeyDown={(e) => {
                                         if (e.key === "Enter" && !e.shiftKey) {
                                             e.preventDefault();
                                             void send();
                                         }
                                     }}
-                                    placeholder={
+                                    data-placeholder={
                                         state.recipients.length > 1
                                             ? _t("fanoos_dashboard|send_to_channels", {
                                                   count: state.recipients.length,
                                               })
                                             : _t("fanoos_dashboard|send_placeholder")
                                     }
-                                    rows={2}
                                 />
                             )}
 
@@ -2103,6 +2254,7 @@ const SendWindow: React.FC<SendWindowProps> = ({
                                             setShowEmojiPicker(null);
                                             setEmojiPickerAnchor(null);
                                         } else {
+                                            saveHtmlSelection(); // preserve cursor in whichever editor is active
                                             const rect = e.currentTarget.getBoundingClientRect();
                                             setEmojiPickerAnchor({ x: rect.left, y: rect.top });
                                             setShowEmojiPicker("emoji");
@@ -2500,13 +2652,18 @@ const FanoosDashboard: React.FC = () => {
             if (!r) continue;
             m[n.matrixRoomId] = RoomNotificationStateStore.instance.getRoomState(r).count;
             if (n.type !== "space") {
-                const msgs = r
-                    .getLiveTimeline()
-                    .getEvents()
+                const allEvs = r.getLiveTimeline().getEvents();
+                const msgs = allEvs
                     .filter((ev) => ev.getType() === "m.room.message" && ev.getTs() >= cutoff)
                     .slice(-50)
                     .map((ev) => ({ body: String(ev.getContent().body || "") }));
-                const { score, detail } = analyzeMessages(msgs);
+                const reactions = allEvs
+                    .filter((ev) => ev.getType() === EventType.Reaction && ev.getTs() >= cutoff)
+                    .map((ev) =>
+                        String((ev.getContent() as { "m.relates_to"?: { key?: string } })["m.relates_to"]?.key ?? ""),
+                    )
+                    .filter(Boolean);
+                const { score, detail } = analyzeMessages(msgs, reactions);
                 sent[n.matrixRoomId] = score;
                 det[n.matrixRoomId] = detail;
             }
@@ -2613,7 +2770,7 @@ const FanoosDashboard: React.FC = () => {
                             recipients: [{ id: n.id, roomId: n.matrixRoomId!, name: n.name }],
                             msgText: "",
                             pos,
-                            size: { w: 320, h: 480 },
+                            size: { w: 440, h: 520 },
                             minimized: false,
                             showRecipients: true,
                             showAnalysis: false,
