@@ -10,7 +10,7 @@ Please see LICENSE files in the repository root for full details.
 .mx_FanoosDashboardButton {
     display: flex;
     align-items: center;
-    justify-content: center;   /* center icon when collapsed */
+    justify-content: center; /* center icon when collapsed */
     gap: var(--cpd-space-2x);
     width: 100%;
     padding: var(--cpd-space-3x) var(--cpd-space-3x);
@@ -19,7 +19,9 @@ Please see LICENSE files in the repository root for full details.
     color: $secondary-content;
     background: transparent;
     border: none;
-    transition: background 0.15s ease, color 0.15s ease;
+    transition:
+        background 0.15s ease,
+        color 0.15s ease;
     box-sizing: border-box;
 
     &:hover {
@@ -73,7 +75,7 @@ Please see LICENSE files in the repository root for full details.
     gap: 14px;
     padding: 8px 16px;
     background: #111827;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    border-bottom: 1px solid rgb(255, 255, 255, 0.06);
     flex-shrink: 0;
     flex-wrap: wrap;
     color: #e2e8f0;
@@ -99,13 +101,13 @@ Please see LICENSE files in the repository root for full details.
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.07em;
-    color: rgba(148, 163, 184, 0.75);
+    color: rgb(148, 163, 184, 0.75);
     white-space: nowrap;
 }
 
 .mx_FanoosDashboard_select {
-    background: rgba(255, 255, 255, 0.07);
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgb(255, 255, 255, 0.07);
+    border: 1px solid rgb(255, 255, 255, 0.12);
     border-radius: 6px;
     color: #e2e8f0;
     padding: 4px 10px;
@@ -116,7 +118,7 @@ Please see LICENSE files in the repository root for full details.
     height: 28px;
 
     &:focus {
-        border-color: rgba(99, 102, 241, 0.60);
+        border-color: rgb(99, 102, 241, 0.6);
     }
 }
 
@@ -128,7 +130,7 @@ Please see LICENSE files in the repository root for full details.
     gap: 6px;
     padding: 7px 14px;
     background: #0f172a;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid rgb(255, 255, 255, 0.05);
     flex-shrink: 0;
     flex-wrap: wrap;
     color: #e2e8f0;
@@ -144,37 +146,42 @@ Please see LICENSE files in the repository root for full details.
 .mx_FanoosDashboard_divider {
     width: 1px;
     height: 22px;
-    background: rgba(255, 255, 255, 0.09);
+    background: rgb(255, 255, 255, 0.09);
     flex-shrink: 0;
     margin: 0 2px;
 }
 
-.mx_FanoosDashboard_spacer { flex: 1; }
+.mx_FanoosDashboard_spacer {
+    flex: 1;
+}
 
 .mx_FanoosDashboard_lvlBtn {
-    background: rgba(255, 255, 255, 0.07);
-    border: 1px solid rgba(255, 255, 255, 0.11);
-    color: rgba(203, 213, 225, 0.80);
+    background: rgb(255, 255, 255, 0.07);
+    border: 1px solid rgb(255, 255, 255, 0.11);
+    color: rgb(203, 213, 225, 0.8);
     border-radius: 6px;
     padding: 5px 12px;
     font-size: 12px;
     font-weight: 600;
     cursor: pointer;
-    transition: background 0.15s, color 0.15s, border-color 0.15s;
+    transition:
+        background 0.15s,
+        color 0.15s,
+        border-color 0.15s;
     height: 30px;
     display: inline-flex;
     align-items: center;
     white-space: nowrap;
 
     &:hover {
-        background: rgba(99, 102, 241, 0.18);
+        background: rgb(99, 102, 241, 0.18);
         color: #c7d2fe;
-        border-color: rgba(99, 102, 241, 0.40);
+        border-color: rgb(99, 102, 241, 0.4);
     }
 
     &.active {
-        background: rgba(99, 102, 241, 0.28);
-        border-color: rgba(129, 140, 248, 0.55);
+        background: rgb(99, 102, 241, 0.28);
+        border-color: rgb(129, 140, 248, 0.55);
         color: #c7d2fe;
     }
 }
@@ -189,8 +196,8 @@ Please see LICENSE files in the repository root for full details.
 
 .mx_FanoosDashboard_searchInput {
     flex: 1;
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255, 255, 255, 0.10);
+    background: rgb(255, 255, 255, 0.06);
+    border: 1px solid rgb(255, 255, 255, 0.1);
     border-radius: 6px;
     color: #e2e8f0;
     padding: 5px 10px;
@@ -199,19 +206,23 @@ Please see LICENSE files in the repository root for full details.
     height: 30px;
     transition: border-color 0.15s;
 
-    &::placeholder { color: rgba(148, 163, 184, 0.50); }
-    &:focus { border-color: rgba(129, 140, 248, 0.60); }
+    &::placeholder {
+        color: rgb(148, 163, 184, 0.5);
+    }
+    &:focus {
+        border-color: rgb(129, 140, 248, 0.6);
+    }
 }
 
 .mx_FanoosDashboard_searchCount {
     font-size: 11px;
-    color: rgba(148, 163, 184, 0.70);
+    color: rgb(148, 163, 184, 0.7);
     white-space: nowrap;
 }
 
 .mx_FanoosDashboard_navBtn {
-    background: rgba(255, 255, 255, 0.07);
-    border: 1px solid rgba(255, 255, 255, 0.09);
+    background: rgb(255, 255, 255, 0.07);
+    border: 1px solid rgb(255, 255, 255, 0.09);
     border-radius: 5px;
     color: #94a3b8;
     padding: 4px 10px;
@@ -222,12 +233,15 @@ Please see LICENSE files in the repository root for full details.
     display: inline-flex;
     align-items: center;
 
-    &:hover { background: rgba(99, 102, 241, 0.20); color: #c7d2fe; }
+    &:hover {
+        background: rgb(99, 102, 241, 0.2);
+        color: #c7d2fe;
+    }
 }
 
 .mx_FanoosDashboard_zoomBtn {
-    background: rgba(255, 255, 255, 0.07);
-    border: 1px solid rgba(255, 255, 255, 0.09);
+    background: rgb(255, 255, 255, 0.07);
+    border: 1px solid rgb(255, 255, 255, 0.09);
     border-radius: 5px;
     color: #94a3b8;
     padding: 5px 11px;
@@ -239,15 +253,18 @@ Please see LICENSE files in the repository root for full details.
     display: inline-flex;
     align-items: center;
 
-    &:hover { background: rgba(99, 102, 241, 0.20); color: #c7d2fe; }
+    &:hover {
+        background: rgb(99, 102, 241, 0.2);
+        color: #c7d2fe;
+    }
 }
 
 .mx_FanoosDashboard_reloadBtn {
     display: inline-flex;
     align-items: center;
     gap: 5px;
-    background: rgba(255, 255, 255, 0.07);
-    border: 1px solid rgba(255, 255, 255, 0.09);
+    background: rgb(255, 255, 255, 0.07);
+    border: 1px solid rgb(255, 255, 255, 0.09);
     border-radius: 6px;
     color: #94a3b8;
     padding: 5px 12px;
@@ -256,20 +273,25 @@ Please see LICENSE files in the repository root for full details.
     cursor: pointer;
     white-space: nowrap;
     height: 30px;
-    transition: background 0.15s, color 0.15s;
+    transition:
+        background 0.15s,
+        color 0.15s;
 
-    &:hover { background: rgba(99, 102, 241, 0.20); color: #c7d2fe; }
+    &:hover {
+        background: rgb(99, 102, 241, 0.2);
+        color: #c7d2fe;
+    }
 }
 
 .mx_FanoosDashboard_reloadAge {
     font-size: 10px;
     font-weight: 400;
-    opacity: 0.70;
+    opacity: 0.7;
 }
 
 .mx_FanoosDashboard_modeBtn {
-    background: rgba(255, 255, 255, 0.07);
-    border: 1px solid rgba(255, 255, 255, 0.09);
+    background: rgb(255, 255, 255, 0.07);
+    border: 1px solid rgb(255, 255, 255, 0.09);
     border-radius: 6px;
     color: #94a3b8;
     padding: 5px 12px;
@@ -280,14 +302,19 @@ Please see LICENSE files in the repository root for full details.
     height: 30px;
     display: inline-flex;
     align-items: center;
-    transition: background 0.15s, color 0.15s;
+    transition:
+        background 0.15s,
+        color 0.15s;
 
-    &:hover { background: rgba(99, 102, 241, 0.20); color: #c7d2fe; }
+    &:hover {
+        background: rgb(99, 102, 241, 0.2);
+        color: #c7d2fe;
+    }
 }
 
 .mx_FanoosDashboard_fsBtn {
-    background: rgba(255, 255, 255, 0.07);
-    border: 1px solid rgba(255, 255, 255, 0.09);
+    background: rgb(255, 255, 255, 0.07);
+    border: 1px solid rgb(255, 255, 255, 0.09);
     border-radius: 6px;
     color: #94a3b8;
     padding: 5px 11px;
@@ -296,9 +323,14 @@ Please see LICENSE files in the repository root for full details.
     height: 30px;
     display: inline-flex;
     align-items: center;
-    transition: background 0.15s, color 0.15s;
+    transition:
+        background 0.15s,
+        color 0.15s;
 
-    &:hover { background: rgba(99, 102, 241, 0.20); color: #c7d2fe; }
+    &:hover {
+        background: rgb(99, 102, 241, 0.2);
+        color: #c7d2fe;
+    }
 }
 
 /* ── Canvas ──────────────────────────────────────────────────────── */
@@ -322,7 +354,7 @@ Please see LICENSE files in the repository root for full details.
     display: flex;
     align-items: center;
     justify-content: center;
-    color: rgba(148, 163, 184, 0.50);
+    color: rgb(148, 163, 184, 0.5);
     font-size: 14px;
 }
 
@@ -332,8 +364,8 @@ Please see LICENSE files in the repository root for full details.
     position: absolute;
     top: 12px;
     inset-inline-start: 12px;
-    background: rgba(10, 22, 40, 0.82);
-    border: 1px solid rgba(255, 255, 255, 0.10);
+    background: rgb(10, 22, 40, 0.82);
+    border: 1px solid rgb(255, 255, 255, 0.1);
     border-radius: 8px;
     padding: 8px 12px;
     z-index: 5;
@@ -360,13 +392,13 @@ Please see LICENSE files in the repository root for full details.
     flex: 1;
     font-size: 11px;
     font-weight: 500;
-    color: rgba(226, 232, 240, 0.85);
+    color: rgb(226, 232, 240, 0.85);
 }
 
 .mx_FanoosDashboard_legendCount {
     font-size: 11px;
     font-weight: 700;
-    color: rgba(226, 232, 240, 0.55);
+    color: rgb(226, 232, 240, 0.55);
     min-width: 18px;
     text-align: right;
 }
@@ -374,9 +406,9 @@ Please see LICENSE files in the repository root for full details.
 .mx_FanoosDashboard_legendFooter {
     margin-top: 6px;
     padding-top: 5px;
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    border-top: 1px solid rgb(255, 255, 255, 0.08);
     font-size: 10px;
-    color: rgba(148, 163, 184, 0.55);
+    color: rgb(148, 163, 184, 0.55);
     text-align: center;
 }
 
@@ -386,13 +418,13 @@ Please see LICENSE files in the repository root for full details.
     position: fixed;
     z-index: 2147483647;
     pointer-events: none;
-    background: rgba(10, 22, 40, 0.92);
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgb(10, 22, 40, 0.92);
+    border: 1px solid rgb(255, 255, 255, 0.12);
     border-radius: 10px;
     padding: 10px 14px;
     min-width: 180px;
     max-width: 240px;
-    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.55);
+    box-shadow: 0 6px 24px rgb(0, 0, 0, 0.55);
     backdrop-filter: blur(6px);
     font-size: 12px;
     color: #e2e8f0;
@@ -431,7 +463,7 @@ Please see LICENSE files in the repository root for full details.
     flex: 1;
     min-width: 60px;
     height: 4px;
-    background: rgba(255, 255, 255, 0.10);
+    background: rgb(255, 255, 255, 0.1);
     border-radius: 999px;
     overflow: hidden;
 }
@@ -443,7 +475,7 @@ Please see LICENSE files in the repository root for full details.
 
 .mx_FanoosDashboard_htMsgCount {
     font-size: 10px;
-    color: rgba(148, 163, 184, 0.65);
+    color: rgb(148, 163, 184, 0.65);
     margin-bottom: 4px;
 }
 
@@ -466,8 +498,14 @@ Please see LICENSE files in the repository root for full details.
     padding: 1px 5px;
     font-weight: 500;
 
-    &.pos { background: rgba(34, 197, 94, 0.15); color: #4ade80; }
-    &.neg { background: rgba(239, 68, 68, 0.15); color: #f87171; }
+    &.pos {
+        background: rgb(34, 197, 94, 0.15);
+        color: #4ade80;
+    }
+    &.neg {
+        background: rgb(239, 68, 68, 0.15);
+        color: #f87171;
+    }
 }
 
 .mx_FanoosDashboard_htUnread {
@@ -479,7 +517,7 @@ Please see LICENSE files in the repository root for full details.
 
 .mx_FanoosDashboard_htMembers {
     font-size: 11px;
-    color: rgba(148, 163, 184, 0.80);
+    color: rgb(148, 163, 184, 0.8);
     line-height: 1.4;
     word-break: break-word;
 }
@@ -498,11 +536,18 @@ Please see LICENSE files in the repository root for full details.
 
     /* Thin scrollbar */
     scrollbar-width: thin;
-    scrollbar-color: rgba(0,0,0,0.15) transparent;
+    scrollbar-color: rgb(0, 0, 0, 0.15) transparent;
 
-    &::-webkit-scrollbar { width: 4px; }
-    &::-webkit-scrollbar-track { background: transparent; }
-    &::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 2px; }
+    &::-webkit-scrollbar {
+        width: 4px;
+    }
+    &::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    &::-webkit-scrollbar-thumb {
+        background: rgb(0, 0, 0, 0.15);
+        border-radius: 2px;
+    }
 }
 
 .mx_FanoosDashboard_chTop {
@@ -514,25 +559,29 @@ Please see LICENSE files in the repository root for full details.
 
 .mx_FanoosDashboard_chLoading {
     font-size: 11px;
-    color: rgba(148, 163, 184, 0.60);
+    color: rgb(148, 163, 184, 0.6);
     animation: fanoosChPulse 1s ease-in-out infinite alternate;
 }
 
 @keyframes fanoosChPulse {
-    from { opacity: 0.4; }
-    to { opacity: 1; }
+    from {
+        opacity: 0.4;
+    }
+    to {
+        opacity: 1;
+    }
 }
 
 .mx_FanoosDashboard_chStart {
     font-size: 10px;
-    color: rgba(148, 163, 184, 0.35);
+    color: rgb(148, 163, 184, 0.35);
     text-align: center;
 }
 
 .mx_FanoosDashboard_chEmpty {
     padding: 16px;
     font-size: 12px;
-    color: rgba(148, 163, 184, 0.50);
+    color: rgb(148, 163, 184, 0.5);
     text-align: center;
 }
 
@@ -549,7 +598,9 @@ Please see LICENSE files in the repository root for full details.
 [dir="rtl"] .mx_FanoosDashboard_chRow {
     flex-direction: row-reverse;
 
-    &.own { flex-direction: row; }
+    &.own {
+        flex-direction: row;
+    }
 }
 
 .mx_FanoosDashboard_chAvatar {
@@ -602,12 +653,12 @@ Please see LICENSE files in the repository root for full details.
     flex-direction: column;
     gap: 3px;
     word-break: break-word;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.10);
+    box-shadow: 0 1px 2px rgb(0, 0, 0, 0.1);
 
     &.own {
         background: #d9f7be;
         border-radius: 12px 0 12px 12px;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+        box-shadow: 0 1px 2px rgb(0, 0, 0, 0.08);
     }
 }
 
@@ -636,8 +687,8 @@ Please see LICENSE files in the repository root for full details.
 }
 
 .mx_FanoosDashboard_vpBtn {
-    background: rgba(99, 102, 241, 0.28);
-    border: 1px solid rgba(129, 140, 248, 0.40);
+    background: rgb(99, 102, 241, 0.28);
+    border: 1px solid rgb(129, 140, 248, 0.4);
     border-radius: 50%;
     width: 28px;
     height: 28px;
@@ -650,13 +701,15 @@ Please see LICENSE files in the repository root for full details.
     color: #c7d2fe;
     transition: background 0.15s;
 
-    &:hover { background: rgba(99, 102, 241, 0.45); }
+    &:hover {
+        background: rgb(99, 102, 241, 0.45);
+    }
 }
 
 .mx_FanoosDashboard_vpBar {
     flex: 1;
     height: 4px;
-    background: rgba(255, 255, 255, 0.12);
+    background: rgb(255, 255, 255, 0.12);
     border-radius: 999px;
     cursor: pointer;
     position: relative;
@@ -672,16 +725,26 @@ Please see LICENSE files in the repository root for full details.
 
 .mx_FanoosDashboard_vpTime {
     font-size: 9px;
-    color: rgba(148, 163, 184, 0.65);
+    color: rgb(148, 163, 184, 0.65);
     white-space: nowrap;
     flex-shrink: 0;
 }
 
 .mx_FanoosDashboard_voicePlayer.day {
-    .mx_FanoosDashboard_vpBtn { background: rgba(99,102,241,0.14); border-color: #a5b4fc; color: #4338ca; }
-    .mx_FanoosDashboard_vpBar { background: rgba(0,0,0,0.10); }
-    .mx_FanoosDashboard_vpFill { background: #6366f1; }
-    .mx_FanoosDashboard_vpTime { color: #94a3b8; }
+    .mx_FanoosDashboard_vpBtn {
+        background: rgb(99, 102, 241, 0.14);
+        border-color: #a5b4fc;
+        color: #4338ca;
+    }
+    .mx_FanoosDashboard_vpBar {
+        background: rgb(0, 0, 0, 0.1);
+    }
+    .mx_FanoosDashboard_vpFill {
+        background: #6366f1;
+    }
+    .mx_FanoosDashboard_vpTime {
+        color: #94a3b8;
+    }
 }
 
 .mx_FanoosDashboard_chTime {
@@ -691,46 +754,134 @@ Please see LICENSE files in the repository root for full details.
     white-space: nowrap;
 }
 
-/* ── Reaction bar (on hover) ─────────────────────────────────────── */
+/* ── Reactions display (chips below bubble) ─────────────────────── */
+
+.mx_FanoosDashboard_chReactions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+    margin-top: 3px;
+
+    &.own {
+        justify-content: flex-end;
+    }
+}
+
+.mx_FanoosDashboard_chReactionChip {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    background: rgb(255, 255, 255, 0.75);
+    border: 1px solid rgb(0, 0, 0, 0.12);
+    border-radius: 999px;
+    font-size: 13px;
+    padding: 2px 7px 2px 5px;
+    cursor: pointer;
+    transition:
+        background 0.12s,
+        transform 0.1s;
+    line-height: 1;
+
+    &:hover {
+        background: #ffffff;
+        transform: scale(1.06);
+    }
+    &.mine {
+        background: #d9f7be;
+        border-color: rgb(0, 128, 0, 0.25);
+    }
+}
+
+.mx_FanoosDashboard_chReactionCount {
+    font-size: 10px;
+    font-weight: 700;
+    color: #444;
+}
+
+/* ── Quick reaction bar (on hover) ──────────────────────────────── */
 
 .mx_FanoosDashboard_chReactionBar {
     display: flex;
+    align-items: center;
     gap: 2px;
     margin-top: 3px;
-    flex-wrap: wrap;
+    max-width: 260px;
 
-    &.own { justify-content: flex-end; }
+    &.own {
+        justify-content: flex-end;
+        flex-direction: row-reverse;
+    }
+}
+
+.mx_FanoosDashboard_chReactionScroll {
+    display: flex;
+    gap: 2px;
+    overflow-x: auto;
+    flex: 1;
+    scrollbar-width: none;
+    &::-webkit-scrollbar {
+        display: none;
+    }
 }
 
 .mx_FanoosDashboard_chReactionBtn {
-    background: rgba(255,255,255,0.70);
-    border: 1px solid rgba(0,0,0,0.12);
+    background: rgb(255, 255, 255, 0.72);
+    border: 1px solid rgb(0, 0, 0, 0.1);
     border-radius: 999px;
-    font-size: 14px;
+    font-size: 15px;
+    min-width: 28px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0 4px;
+    line-height: 1;
+    flex-shrink: 0;
+    transition:
+        background 0.12s,
+        transform 0.1s;
+
+    &:hover {
+        background: #ffffff;
+        transform: scale(1.18);
+    }
+}
+
+.mx_FanoosDashboard_chReactionMore {
+    background: rgb(99, 102, 241, 0.15);
+    border: 1px solid rgb(99, 102, 241, 0.3);
+    border-radius: 999px;
+    font-size: 13px;
     width: 28px;
     height: 28px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
+    color: #6366f1;
     padding: 0;
-    line-height: 1;
-    transition: background 0.12s, transform 0.1s;
+    flex-shrink: 0;
+    transition: background 0.12s;
 
-    &:hover { background: #ffffff; transform: scale(1.18); }
+    &:hover {
+        background: rgb(99, 102, 241, 0.28);
+    }
 }
 
-/* ── Emoji / Sticker Picker ──────────────────────────────────────── */
+/* ── Emoji / Sticker Picker (inline above textarea) ─────────────── */
 
 .mx_FanoosDashboard_emojiPicker {
     display: flex;
     flex-wrap: wrap;
     gap: 3px;
     padding: 6px 8px;
-    background: rgba(255,255,255,0.06);
-    border: 1px solid rgba(255,255,255,0.10);
+    background: rgb(255, 255, 255, 0.06);
+    border: 1px solid rgb(255, 255, 255, 0.1);
     border-radius: 8px;
     margin-bottom: 4px;
+    max-height: 100px;
+    overflow-y: auto;
 
     &.day {
         background: #f0f4f8;
@@ -750,18 +901,29 @@ Please see LICENSE files in the repository root for full details.
     border-radius: 6px;
     cursor: pointer;
     padding: 0;
-    transition: background 0.1s, transform 0.1s;
+    transition:
+        background 0.1s,
+        transform 0.1s;
 
-    &:hover { background: rgba(255,255,255,0.12); transform: scale(1.15); }
+    &:hover {
+        background: rgb(255, 255, 255, 0.12);
+        transform: scale(1.15);
+    }
 }
 
 .mx_FanoosDashboard_emojiPicker.day .mx_FanoosDashboard_emojiBtn:hover {
-    background: rgba(0,0,0,0.06);
+    background: rgb(0, 0, 0, 0.06);
+}
+
+/* Portal container for the full EmojiPicker */
+.mx_FanoosDashboard_emojiPickerPortal {
+    z-index: 500;
+    filter: drop-shadow(0 4px 24px rgb(0, 0, 0, 0.35));
 }
 
 .mx_FanoosDashboard_cbEmojiBtn {
-    background: rgba(255, 255, 255, 0.07);
-    border: 1px solid rgba(255, 255, 255, 0.09);
+    background: rgb(255, 255, 255, 0.07);
+    border: 1px solid rgb(255, 255, 255, 0.09);
     border-radius: 6px;
     color: #94a3b8;
     font-size: 16px;
@@ -771,11 +933,20 @@ Please see LICENSE files in the repository root for full details.
     display: inline-flex;
     align-items: center;
     align-self: flex-end;
-    transition: background 0.15s, color 0.15s;
+    transition:
+        background 0.15s,
+        color 0.15s;
     flex-shrink: 0;
 
-    &:hover { background: rgba(99, 102, 241, 0.20); color: #c7d2fe; }
-    &.active { background: rgba(99, 102, 241, 0.28); color: #a5b4fc; border-color: rgba(129,140,248,0.50); }
+    &:hover {
+        background: rgb(99, 102, 241, 0.2);
+        color: #c7d2fe;
+    }
+    &.active {
+        background: rgb(99, 102, 241, 0.28);
+        color: #a5b4fc;
+        border-color: rgb(129, 140, 248, 0.5);
+    }
 }
 
 /* ── Main chat timeline beige tint ───────────────────────────────── */
@@ -791,18 +962,24 @@ Please see LICENSE files in the repository root for full details.
     width: 320px;
     height: 480px;
     background: #1e293b;
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    border: 1px solid rgb(255, 255, 255, 0.12);
     border-radius: 12px;
     overflow: hidden;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.60);
+    box-shadow: 0 8px 32px rgb(0, 0, 0, 0.6);
     z-index: 200;
     color: #e2e8f0;
     display: flex;
     flex-direction: column;
 
-    &.minimized { height: auto; }
-    &.withPanel { width: 540px; }
-    &.withAnalysis { width: 600px; }
+    &.minimized {
+        height: auto;
+    }
+    &.withPanel {
+        width: 540px;
+    }
+    &.withAnalysis {
+        width: 600px;
+    }
 }
 
 .mx_FanoosDashboard_cbHdr {
@@ -810,17 +987,19 @@ Please see LICENSE files in the repository root for full details.
     align-items: center;
     gap: 6px;
     padding: 10px 12px;
-    background: rgba(255, 255, 255, 0.04);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+    background: rgb(255, 255, 255, 0.04);
+    border-bottom: 1px solid rgb(255, 255, 255, 0.07);
     cursor: grab;
     user-select: none;
     flex-shrink: 0;
 
-    &:active { cursor: grabbing; }
+    &:active {
+        cursor: grabbing;
+    }
 }
 
 .mx_FanoosDashboard_cbDragHandle {
-    color: rgba(148, 163, 184, 0.40);
+    color: rgb(148, 163, 184, 0.4);
     font-size: 14px;
     line-height: 1;
     flex-shrink: 0;
@@ -847,11 +1026,14 @@ Please see LICENSE files in the repository root for full details.
     flex-shrink: 0;
     line-height: 1;
 
-    &:hover { background: rgba(255, 255, 255, 0.08); color: #e2e8f0; }
+    &:hover {
+        background: rgb(255, 255, 255, 0.08);
+        color: #e2e8f0;
+    }
 }
 
 .mx_FanoosDashboard_cbCtrl.active {
-    background: rgba(99, 102, 241, 0.25);
+    background: rgb(99, 102, 241, 0.25);
     color: #a5b4fc;
 }
 
@@ -871,7 +1053,7 @@ Please see LICENSE files in the repository root for full details.
     display: flex;
     flex-direction: column;
     background: #0f172a;
-    border-inline-end: 1px solid rgba(255, 255, 255, 0.07);
+    border-inline-end: 1px solid rgb(255, 255, 255, 0.07);
 }
 
 .mx_FanoosDashboard_swRpHdr {
@@ -886,8 +1068,8 @@ Please see LICENSE files in the repository root for full details.
 
 .mx_FanoosDashboard_swRpSearch {
     margin: 0 8px 6px;
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255, 255, 255, 0.09);
+    background: rgb(255, 255, 255, 0.06);
+    border: 1px solid rgb(255, 255, 255, 0.09);
     border-radius: 6px;
     color: #e2e8f0;
     padding: 5px 9px;
@@ -895,18 +1077,27 @@ Please see LICENSE files in the repository root for full details.
     outline: none;
     flex-shrink: 0;
 
-    &::placeholder { color: rgba(148, 163, 184, 0.40); }
-    &:focus { border-color: rgba(99, 102, 241, 0.55); }
+    &::placeholder {
+        color: rgb(148, 163, 184, 0.4);
+    }
+    &:focus {
+        border-color: rgb(99, 102, 241, 0.55);
+    }
 }
 
 .mx_FanoosDashboard_swRpList {
     flex: 1;
     overflow-y: auto;
     scrollbar-width: thin;
-    scrollbar-color: rgba(255,255,255,0.10) transparent;
+    scrollbar-color: rgb(255, 255, 255, 0.1) transparent;
 
-    &::-webkit-scrollbar { width: 3px; }
-    &::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 2px; }
+    &::-webkit-scrollbar {
+        width: 3px;
+    }
+    &::-webkit-scrollbar-thumb {
+        background: rgb(255, 255, 255, 0.12);
+        border-radius: 2px;
+    }
 }
 
 .mx_FanoosDashboard_swRpRow {
@@ -919,8 +1110,13 @@ Please see LICENSE files in the repository root for full details.
     color: #94a3b8;
     transition: background 0.1s;
 
-    &:hover { background: rgba(255, 255, 255, 0.04); }
-    &.selected { color: #e2e8f0; background: rgba(99, 102, 241, 0.10); }
+    &:hover {
+        background: rgb(255, 255, 255, 0.04);
+    }
+    &.selected {
+        color: #e2e8f0;
+        background: rgb(99, 102, 241, 0.1);
+    }
 }
 
 .mx_FanoosDashboard_swRpCheck {
@@ -962,7 +1158,7 @@ Please see LICENSE files in the repository root for full details.
     flex-wrap: wrap;
     gap: 4px;
     padding: 6px 10px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    border-bottom: 1px solid rgb(255, 255, 255, 0.06);
     flex-shrink: 0;
     max-height: 80px;
     overflow-y: auto;
@@ -972,8 +1168,8 @@ Please see LICENSE files in the repository root for full details.
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    background: rgba(99, 102, 241, 0.18);
-    border: 1px solid rgba(129, 140, 248, 0.35);
+    background: rgb(99, 102, 241, 0.18);
+    border: 1px solid rgb(129, 140, 248, 0.35);
     border-radius: 999px;
     padding: 2px 8px 2px 10px;
     font-size: 11px;
@@ -984,7 +1180,7 @@ Please see LICENSE files in the repository root for full details.
 .mx_FanoosDashboard_swChipX {
     background: transparent;
     border: none;
-    color: rgba(199, 210, 254, 0.55);
+    color: rgb(199, 210, 254, 0.55);
     font-size: 10px;
     cursor: pointer;
     padding: 0;
@@ -992,16 +1188,18 @@ Please see LICENSE files in the repository root for full details.
     display: flex;
     align-items: center;
 
-    &:hover { color: #f87171; }
+    &:hover {
+        color: #f87171;
+    }
 }
 
 .mx_FanoosDashboard_swSentBanner {
     padding: 6px 12px;
-    background: rgba(34, 197, 94, 0.15);
+    background: rgb(34, 197, 94, 0.15);
     color: #4ade80;
     font-size: 11px;
     font-weight: 600;
-    border-bottom: 1px solid rgba(34, 197, 94, 0.20);
+    border-bottom: 1px solid rgb(34, 197, 94, 0.2);
     flex-shrink: 0;
 }
 
@@ -1010,15 +1208,15 @@ Please see LICENSE files in the repository root for full details.
     display: flex;
     flex-direction: column;
     gap: 6px;
-    border-top: 1px solid rgba(255, 255, 255, 0.07);
+    border-top: 1px solid rgb(255, 255, 255, 0.07);
     background: #1e293b;
     flex-shrink: 0;
 }
 
 .mx_FanoosDashboard_cbInput {
     width: 100%;
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255, 255, 255, 0.10);
+    background: rgb(255, 255, 255, 0.06);
+    border: 1px solid rgb(255, 255, 255, 0.1);
     border-radius: 8px;
     color: #e2e8f0;
     padding: 8px 10px;
@@ -1029,14 +1227,18 @@ Please see LICENSE files in the repository root for full details.
     box-sizing: border-box;
     transition: border-color 0.15s;
 
-    &::placeholder { color: rgba(148, 163, 184, 0.45); }
-    &:focus { border-color: rgba(99, 102, 241, 0.55); }
+    &::placeholder {
+        color: rgb(148, 163, 184, 0.45);
+    }
+    &:focus {
+        border-color: rgb(99, 102, 241, 0.55);
+    }
 }
 
 .mx_FanoosDashboard_cbSend {
     align-self: flex-end;
-    background: rgba(99, 102, 241, 0.28);
-    border: 1px solid rgba(129, 140, 248, 0.45);
+    background: rgb(99, 102, 241, 0.28);
+    border: 1px solid rgb(129, 140, 248, 0.45);
     border-radius: 6px;
     color: #c7d2fe;
     padding: 6px 16px;
@@ -1045,14 +1247,21 @@ Please see LICENSE files in the repository root for full details.
     cursor: pointer;
     transition: background 0.15s;
 
-    &:hover:not(:disabled) { background: rgba(99, 102, 241, 0.45); }
-    &:disabled { opacity: 0.50; cursor: not-allowed; }
-    &.sending { opacity: 0.70; }
+    &:hover:not(:disabled) {
+        background: rgb(99, 102, 241, 0.45);
+    }
+    &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+    &.sending {
+        opacity: 0.7;
+    }
 }
 
 .mx_FanoosDashboard_cbMic {
-    background: rgba(255, 255, 255, 0.07);
-    border: 1px solid rgba(255, 255, 255, 0.09);
+    background: rgb(255, 255, 255, 0.07);
+    border: 1px solid rgb(255, 255, 255, 0.09);
     border-radius: 6px;
     color: #94a3b8;
     font-size: 16px;
@@ -1062,17 +1271,25 @@ Please see LICENSE files in the repository root for full details.
     display: inline-flex;
     align-items: center;
     align-self: flex-end;
-    transition: background 0.15s, color 0.15s;
+    transition:
+        background 0.15s,
+        color 0.15s;
     flex-shrink: 0;
 
-    &:hover { background: rgba(99, 102, 241, 0.20); color: #c7d2fe; }
+    &:hover {
+        background: rgb(99, 102, 241, 0.2);
+        color: #c7d2fe;
+    }
     &.recording {
-        background: rgba(239, 68, 68, 0.28);
-        border-color: rgba(248, 113, 113, 0.55);
+        background: rgb(239, 68, 68, 0.28);
+        border-color: rgb(248, 113, 113, 0.55);
         color: #f87171;
         animation: fanoosChPulse 0.8s ease-in-out infinite alternate;
     }
-    &:disabled { opacity: 0.40; cursor: not-allowed; }
+    &:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+    }
 }
 
 .mx_FanoosDashboard_cbActions {
@@ -1090,13 +1307,18 @@ Please see LICENSE files in the repository root for full details.
     display: flex;
     flex-direction: column;
     background: #0f172a;
-    border-inline-end: 1px solid rgba(255, 255, 255, 0.07);
+    border-inline-end: 1px solid rgb(255, 255, 255, 0.07);
     overflow-y: auto;
     scrollbar-width: thin;
-    scrollbar-color: rgba(255,255,255,0.10) transparent;
+    scrollbar-color: rgb(255, 255, 255, 0.1) transparent;
 
-    &::-webkit-scrollbar { width: 3px; }
-    &::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 2px; }
+    &::-webkit-scrollbar {
+        width: 3px;
+    }
+    &::-webkit-scrollbar-thumb {
+        background: rgb(255, 255, 255, 0.12);
+        border-radius: 2px;
+    }
 }
 
 .mx_FanoosDashboard_apHdr {
@@ -1104,7 +1326,7 @@ Please see LICENSE files in the repository root for full details.
     font-size: 12px;
     font-weight: 700;
     color: #e2e8f0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid rgb(255, 255, 255, 0.05);
     flex-shrink: 0;
     display: flex;
     align-items: center;
@@ -1146,13 +1368,17 @@ Please see LICENSE files in the repository root for full details.
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    &.pos { color: #22c55e; }
-    &.neg { color: #ef4444; }
+    &.pos {
+        color: #22c55e;
+    }
+    &.neg {
+        color: #ef4444;
+    }
 }
 
 .mx_FanoosDashboard_apMembers {
     padding: 8px 12px;
-    border-top: 1px solid rgba(255,255,255,0.05);
+    border-top: 1px solid rgb(255, 255, 255, 0.05);
     margin-top: 4px;
 }
 
@@ -1177,7 +1403,7 @@ Please see LICENSE files in the repository root for full details.
     display: flex;
     align-items: center;
     gap: 3px;
-    background: rgba(255,255,255,0.06);
+    background: rgb(255, 255, 255, 0.06);
     border-radius: 999px;
     padding: 2px 7px 2px 3px;
 }
@@ -1213,11 +1439,16 @@ Please see LICENSE files in the repository root for full details.
 
 .mx_FanoosDashboard_apRow {
     padding: 8px 12px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    border-bottom: 1px solid rgb(255, 255, 255, 0.04);
     transition: background 0.12s;
 
-    &:hover { background: rgba(255, 255, 255, 0.03); }
-    &.current { background: rgba(99, 102, 241, 0.10); border-inline-start: 2px solid #6366f1; }
+    &:hover {
+        background: rgb(255, 255, 255, 0.03);
+    }
+    &.current {
+        background: rgb(99, 102, 241, 0.1);
+        border-inline-start: 2px solid #6366f1;
+    }
 }
 
 .mx_FanoosDashboard_apRowTop {
@@ -1257,7 +1488,7 @@ Please see LICENSE files in the repository root for full details.
 .mx_FanoosDashboard_apTrack {
     flex: 1;
     height: 3px;
-    background: rgba(255, 255, 255, 0.08);
+    background: rgb(255, 255, 255, 0.08);
     border-radius: 999px;
     overflow: hidden;
 }
@@ -1291,13 +1522,19 @@ Please see LICENSE files in the repository root for full details.
     padding: 1px 4px;
     font-weight: 500;
 
-    &.pos { background: rgba(34, 197, 94, 0.14); color: #4ade80; }
-    &.neg { background: rgba(239, 68, 68, 0.14); color: #f87171; }
+    &.pos {
+        background: rgb(34, 197, 94, 0.14);
+        color: #4ade80;
+    }
+    &.neg {
+        background: rgb(239, 68, 68, 0.14);
+        color: #f87171;
+    }
 }
 
 .mx_FanoosDashboard_apMsgCount {
     font-size: 9px;
-    color: rgba(148, 163, 184, 0.45);
+    color: rgb(148, 163, 184, 0.45);
 }
 
 /* Day mode overrides for analysis panel */
@@ -1305,21 +1542,39 @@ Please see LICENSE files in the repository root for full details.
     background: #f0f4f8;
     border-inline-end-color: #e2e8f0;
 
-    .mx_FanoosDashboard_apHdr { color: #94a3b8; border-bottom-color: #e2e8f0; }
+    .mx_FanoosDashboard_apHdr {
+        color: #94a3b8;
+        border-bottom-color: #e2e8f0;
+    }
     .mx_FanoosDashboard_apRow {
         border-bottom-color: #e8edf5;
-        &:hover { background: rgba(0,0,0,0.02); }
-        &.current { background: rgba(99,102,241,0.08); }
+        &:hover {
+            background: rgb(0, 0, 0, 0.02);
+        }
+        &.current {
+            background: rgb(99, 102, 241, 0.08);
+        }
     }
-    .mx_FanoosDashboard_apRoomName { color: #334155; }
-    .mx_FanoosDashboard_apTrack { background: rgba(0,0,0,0.08); }
+    .mx_FanoosDashboard_apRoomName {
+        color: #334155;
+    }
+    .mx_FanoosDashboard_apTrack {
+        background: rgb(0, 0, 0, 0.08);
+    }
     .mx_FanoosDashboard_apKw {
-        &.pos { background: rgba(22,163,74,0.12); color: #15803d; }
-        &.neg { background: rgba(220,38,38,0.10); color: #b91c1c; }
+        &.pos {
+            background: rgb(22, 163, 74, 0.12);
+            color: #15803d;
+        }
+        &.neg {
+            background: rgb(220, 38, 38, 0.1);
+            color: #b91c1c;
+        }
     }
-    .mx_FanoosDashboard_apMsgCount { color: #94a3b8; }
+    .mx_FanoosDashboard_apMsgCount {
+        color: #94a3b8;
+    }
 }
-
 
 /* ── Info Panel ──────────────────────────────────────────────────── */
 
@@ -1330,13 +1585,13 @@ Please see LICENSE files in the repository root for full details.
     bottom: 0;
     width: 290px;
     background: #111827;
-    border-inline-start: 1px solid rgba(255, 255, 255, 0.09);
+    border-inline-start: 1px solid rgb(255, 255, 255, 0.09);
     padding: 0;
     overflow-y: auto;
     z-index: 10;
     color: #e2e8f0;
     font-size: 13px;
-    box-shadow: -4px 0 24px rgba(0, 0, 0, 0.40);
+    box-shadow: -4px 0 24px rgb(0, 0, 0, 0.4);
 }
 
 .mx_FanoosDashboard_ipHdr {
@@ -1344,8 +1599,7 @@ Please see LICENSE files in the repository root for full details.
     align-items: center;
     gap: 8px;
     padding: 14px 14px;
-    background: rgba(255, 255, 255, 0.03);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    border-bottom: 1px solid rgb(255, 255, 255, 0.06);
     border-inline-start: 3px solid #6366f1;
     position: sticky;
     top: 0;
@@ -1353,7 +1607,10 @@ Please see LICENSE files in the repository root for full details.
     background: #111827;
 }
 
-.mx_FanoosDashboard_ipIcon { font-size: 16px; flex-shrink: 0; }
+.mx_FanoosDashboard_ipIcon {
+    font-size: 16px;
+    flex-shrink: 0;
+}
 
 .mx_FanoosDashboard_ipName {
     flex: 1;
@@ -1384,7 +1641,10 @@ Please see LICENSE files in the repository root for full details.
     border-radius: 4px;
     flex-shrink: 0;
 
-    &:hover { color: #e2e8f0; background: rgba(255, 255, 255, 0.08); }
+    &:hover {
+        color: #e2e8f0;
+        background: rgb(255, 255, 255, 0.08);
+    }
 }
 
 .mx_FanoosDashboard_ipUnread {
@@ -1400,9 +1660,12 @@ Please see LICENSE files in the repository root for full details.
     padding: 6px 14px;
     font-size: 12px;
     color: #94a3b8;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    border-bottom: 1px solid rgb(255, 255, 255, 0.04);
 
-    span:last-child { font-weight: 600; color: #e2e8f0; }
+    span:last-child {
+        font-weight: 600;
+        color: #e2e8f0;
+    }
 }
 
 .mx_FanoosDashboard_ipScoreBar {
@@ -1415,7 +1678,7 @@ Please see LICENSE files in the repository root for full details.
 .mx_FanoosDashboard_ipTrack {
     flex: 1;
     height: 6px;
-    background: rgba(255, 255, 255, 0.08);
+    background: rgb(255, 255, 255, 0.08);
     border-radius: 999px;
     overflow: hidden;
 }
@@ -1449,8 +1712,12 @@ Please see LICENSE files in the repository root for full details.
     letter-spacing: 0.04em;
     margin-right: 2px;
 
-    &.pos { color: #22c55e; }
-    &.neg { color: #ef4444; }
+    &.pos {
+        color: #22c55e;
+    }
+    &.neg {
+        color: #ef4444;
+    }
 }
 
 .mx_FanoosDashboard_ipKw {
@@ -1458,8 +1725,14 @@ Please see LICENSE files in the repository root for full details.
     border-radius: 4px;
     padding: 2px 6px;
 
-    &.pos { background: rgba(34, 197, 94, 0.12); color: #4ade80; }
-    &.neg { background: rgba(239, 68, 68, 0.12); color: #f87171; }
+    &.pos {
+        background: rgb(34, 197, 94, 0.12);
+        color: #4ade80;
+    }
+    &.neg {
+        background: rgb(239, 68, 68, 0.12);
+        color: #f87171;
+    }
 }
 
 .mx_FanoosDashboard_ipRoomId {
@@ -1471,7 +1744,7 @@ Please see LICENSE files in the repository root for full details.
 }
 
 .mx_FanoosDashboard_ipMembers {
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    border-top: 1px solid rgb(255, 255, 255, 0.06);
     padding: 10px 14px;
 }
 
@@ -1496,7 +1769,7 @@ Please see LICENSE files in the repository root for full details.
     display: flex;
     align-items: center;
     gap: 4px;
-    background: rgba(255, 255, 255, 0.06);
+    background: rgb(255, 255, 255, 0.06);
     border-radius: 999px;
     padding: 2px 8px 2px 4px;
 }
@@ -1527,8 +1800,8 @@ Please see LICENSE files in the repository root for full details.
     display: block;
     width: calc(100% - 28px);
     margin: 10px 14px 14px;
-    background: rgba(99, 102, 241, 0.20);
-    border: 1px solid rgba(129, 140, 248, 0.35);
+    background: rgb(99, 102, 241, 0.2);
+    border: 1px solid rgb(129, 140, 248, 0.35);
     border-radius: 8px;
     color: #c7d2fe;
     font-size: 13px;
@@ -1537,22 +1810,33 @@ Please see LICENSE files in the repository root for full details.
     cursor: pointer;
     transition: background 0.15s;
 
-    &:hover { background: rgba(99, 102, 241, 0.35); }
+    &:hover {
+        background: rgb(99, 102, 241, 0.35);
+    }
 }
 
 /* ═══════════════════════════════════════════════════════════════════
    DAY MODE OVERRIDES
    ═══════════════════════════════════════════════════════════════════ */
 
-.mx_FanoosDashboard.day { background: #e8eff8; color: #1e293b; }
+.mx_FanoosDashboard.day {
+    background: #e8eff8;
+    color: #1e293b;
+}
 
 .mx_FanoosDashboard_topBar.day {
     background: #e8edf5;
     border-bottom-color: #cbd5e0;
     color: #1e293b;
 
-    .mx_FanoosDashboard_ctrlLabel { color: #64748b; }
-    .mx_FanoosDashboard_select { background: rgba(255, 255, 255, 0.80); border-color: #cbd5e0; color: #1e293b; }
+    .mx_FanoosDashboard_ctrlLabel {
+        color: #64748b;
+    }
+    .mx_FanoosDashboard_select {
+        background: rgb(255, 255, 255, 0.8);
+        border-color: #cbd5e0;
+        color: #1e293b;
+    }
 }
 
 .mx_FanoosDashboard_ctrlBar.day {
@@ -1560,93 +1844,147 @@ Please see LICENSE files in the repository root for full details.
     border-bottom-color: #c5d0de;
     color: #1e293b;
 
-    .mx_FanoosDashboard_ctrlLabel { color: #64748b; }
-    .mx_FanoosDashboard_divider { background: rgba(0, 0, 0, 0.12); }
+    .mx_FanoosDashboard_ctrlLabel {
+        color: #64748b;
+    }
+    .mx_FanoosDashboard_divider {
+        background: rgb(0, 0, 0, 0.12);
+    }
 }
 
 .mx_FanoosDashboard_lvlBtn.day {
-    background: rgba(255, 255, 255, 0.70);
+    background: rgb(255, 255, 255, 0.7);
     border-color: #c5cfe0;
     color: #334155;
 
-    &:hover { background: rgba(99, 102, 241, 0.14); color: #4338ca; border-color: #a5b4fc; }
-    &.active { background: rgba(99, 102, 241, 0.20); border-color: #818cf8; color: #3730a3; }
+    &:hover {
+        background: rgb(99, 102, 241, 0.14);
+        color: #4338ca;
+        border-color: #a5b4fc;
+    }
+    &.active {
+        background: rgb(99, 102, 241, 0.2);
+        border-color: #818cf8;
+        color: #3730a3;
+    }
 }
 
 .mx_FanoosDashboard_searchInput.day {
-    background: rgba(255, 255, 255, 0.88);
+    background: rgb(255, 255, 255, 0.88);
     border-color: #c5cfe0;
     color: #1e293b;
 
-    &::placeholder { color: #94a3b8; }
-    &:focus { border-color: #818cf8; }
+    &::placeholder {
+        color: #94a3b8;
+    }
+    &:focus {
+        border-color: #818cf8;
+    }
 }
 
 .mx_FanoosDashboard_navBtn.day {
-    background: rgba(255, 255, 255, 0.70);
+    background: rgb(255, 255, 255, 0.7);
     border-color: #c5cfe0;
     color: #475569;
 
-    &:hover { background: rgba(99, 102, 241, 0.14); color: #4338ca; }
+    &:hover {
+        background: rgb(99, 102, 241, 0.14);
+        color: #4338ca;
+    }
 }
 
 .mx_FanoosDashboard_zoomBtn.day {
-    background: rgba(255, 255, 255, 0.70);
+    background: rgb(255, 255, 255, 0.7);
     border-color: #c5cfe0;
     color: #475569;
 
-    &:hover { background: rgba(99, 102, 241, 0.14); color: #4338ca; }
+    &:hover {
+        background: rgb(99, 102, 241, 0.14);
+        color: #4338ca;
+    }
 }
 
 .mx_FanoosDashboard_reloadBtn.day {
-    background: rgba(255, 255, 255, 0.70);
+    background: rgb(255, 255, 255, 0.7);
     border-color: #c5cfe0;
     color: #475569;
 
-    &:hover { background: rgba(99, 102, 241, 0.14); color: #4338ca; }
+    &:hover {
+        background: rgb(99, 102, 241, 0.14);
+        color: #4338ca;
+    }
 }
 
 .mx_FanoosDashboard_modeBtn.day {
-    background: rgba(255, 255, 255, 0.70);
+    background: rgb(255, 255, 255, 0.7);
     border-color: #c5cfe0;
     color: #475569;
 
-    &:hover { background: rgba(99, 102, 241, 0.14); color: #4338ca; }
+    &:hover {
+        background: rgb(99, 102, 241, 0.14);
+        color: #4338ca;
+    }
 }
 
 .mx_FanoosDashboard_fsBtn.day {
-    background: rgba(255, 255, 255, 0.70);
+    background: rgb(255, 255, 255, 0.7);
     border-color: #c5cfe0;
     color: #475569;
 
-    &:hover { background: rgba(99, 102, 241, 0.14); color: #4338ca; }
+    &:hover {
+        background: rgb(99, 102, 241, 0.14);
+        color: #4338ca;
+    }
 }
 
-.mx_FanoosDashboard_empty.day { color: #94a3b8; }
+.mx_FanoosDashboard_empty.day {
+    color: #94a3b8;
+}
 
 .mx_FanoosDashboard_legendOverlay.day {
-    background: rgba(255, 255, 255, 0.84);
-    border-color: rgba(0, 0, 0, 0.12);
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+    background: rgb(255, 255, 255, 0.84);
+    border-color: rgb(0, 0, 0, 0.12);
+    box-shadow: 0 2px 12px rgb(0, 0, 0, 0.12);
 
-    .mx_FanoosDashboard_legendLabel { color: #334155; }
-    .mx_FanoosDashboard_legendCount { color: #64748b; }
-    .mx_FanoosDashboard_legendFooter { border-top-color: rgba(0, 0, 0, 0.10); color: #94a3b8; }
+    .mx_FanoosDashboard_legendLabel {
+        color: #334155;
+    }
+    .mx_FanoosDashboard_legendCount {
+        color: #64748b;
+    }
+    .mx_FanoosDashboard_legendFooter {
+        border-top-color: rgb(0, 0, 0, 0.1);
+        color: #94a3b8;
+    }
 }
 
 .mx_FanoosDashboard_hoverTip.day {
-    background: rgba(255, 255, 255, 0.94);
-    border-color: rgba(0, 0, 0, 0.12);
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.18);
+    background: rgb(255, 255, 255, 0.94);
+    border-color: rgb(0, 0, 0, 0.12);
+    box-shadow: 0 4px 20px rgb(0, 0, 0, 0.18);
     color: #1e293b;
 
-    .mx_FanoosDashboard_htMembers { color: #475569; }
-    .mx_FanoosDashboard_htBar { background: rgba(0, 0, 0, 0.08); }
-    .mx_FanoosDashboard_htUnread { color: #d97706; }
-    .mx_FanoosDashboard_htMsgCount { color: #94a3b8; }
+    .mx_FanoosDashboard_htMembers {
+        color: #475569;
+    }
+    .mx_FanoosDashboard_htBar {
+        background: rgb(0, 0, 0, 0.08);
+    }
+    .mx_FanoosDashboard_htUnread {
+        color: #d97706;
+    }
+    .mx_FanoosDashboard_htMsgCount {
+        color: #94a3b8;
+    }
     .mx_FanoosDashboard_htKw {
-        &.pos { background: rgba(22, 163, 74, 0.12); color: #15803d; }
-        &.neg { background: rgba(220, 38, 38, 0.10); color: #b91c1c; }
+        &.pos {
+            background: rgb(22, 163, 74, 0.12);
+            color: #15803d;
+        }
+        &.neg {
+            background: rgb(220, 38, 38, 0.1);
+            color: #b91c1c;
+        }
     }
 }
 
@@ -1655,41 +1993,149 @@ Please see LICENSE files in the repository root for full details.
     background: #f8fafc;
     border-color: #e2e8f0;
     color: #1e293b;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+    box-shadow: 0 8px 32px rgb(0, 0, 0, 0.18);
 
-    .mx_FanoosDashboard_cbHdr { background: rgba(0, 0, 0, 0.02); border-bottom-color: #e2e8f0; }
-    .mx_FanoosDashboard_cbCtrl { color: #94a3b8; &:hover { background: rgba(0,0,0,0.05); color: #1e293b; } }
-    .mx_FanoosDashboard_cbCtrl.active { background: rgba(99,102,241,0.18); color: #4338ca; }
-    .mx_FanoosDashboard_cbInput { background: rgba(255,255,255,0.90); border-color: #cbd5e0; color: #1e293b; &::placeholder { color: #94a3b8; } &:focus { border-color: #818cf8; } }
-    .mx_FanoosDashboard_cbSend { background: rgba(99,102,241,0.14); border-color: #a5b4fc; color: #4338ca; &:hover:not(:disabled) { background: rgba(99,102,241,0.24); } }
-    .mx_FanoosDashboard_cbCompose { background: #f8fafc; border-top-color: #e2e8f0; }
-    .mx_FanoosDashboard_swRecipientsPanel { background: #f0f4f8; border-inline-end-color: #e2e8f0; }
-    .mx_FanoosDashboard_swRpSearch { background: rgba(255,255,255,0.80); border-color: #c5cfe0; color: #1e293b; &::placeholder { color: #94a3b8; } }
-    .mx_FanoosDashboard_swRpRow { color: #64748b; &:hover { background: rgba(0,0,0,0.02); } &.selected { color: #1e293b; background: rgba(99,102,241,0.08); } }
-    .mx_FanoosDashboard_swChip { background: rgba(99,102,241,0.12); border-color: #a5b4fc; color: #4338ca; }
-    .mx_FanoosDashboard_swSentBanner { background: rgba(22,163,74,0.10); color: #15803d; border-bottom-color: rgba(22,163,74,0.15); }
+    .mx_FanoosDashboard_cbHdr {
+        background: rgb(0, 0, 0, 0.02);
+        border-bottom-color: #e2e8f0;
+    }
+    .mx_FanoosDashboard_cbCtrl {
+        color: #94a3b8;
+        &:hover {
+            background: rgb(0, 0, 0, 0.05);
+            color: #1e293b;
+        }
+    }
+    .mx_FanoosDashboard_cbCtrl.active {
+        background: rgb(99, 102, 241, 0.18);
+        color: #4338ca;
+    }
+    .mx_FanoosDashboard_cbInput {
+        background: rgb(255, 255, 255, 0.9);
+        border-color: #cbd5e0;
+        color: #1e293b;
+        &::placeholder {
+            color: #94a3b8;
+        }
+        &:focus {
+            border-color: #818cf8;
+        }
+    }
+    .mx_FanoosDashboard_cbSend {
+        background: rgb(99, 102, 241, 0.14);
+        border-color: #a5b4fc;
+        color: #4338ca;
+        &:hover:not(:disabled) {
+            background: rgb(99, 102, 241, 0.24);
+        }
+    }
+    .mx_FanoosDashboard_cbCompose {
+        background: #f8fafc;
+        border-top-color: #e2e8f0;
+    }
+    .mx_FanoosDashboard_swRecipientsPanel {
+        background: #f0f4f8;
+        border-inline-end-color: #e2e8f0;
+    }
+    .mx_FanoosDashboard_swRpSearch {
+        background: rgb(255, 255, 255, 0.8);
+        border-color: #c5cfe0;
+        color: #1e293b;
+        &::placeholder {
+            color: #94a3b8;
+        }
+    }
+    .mx_FanoosDashboard_swRpRow {
+        color: #64748b;
+        &:hover {
+            background: rgb(0, 0, 0, 0.02);
+        }
+        &.selected {
+            color: #1e293b;
+            background: rgb(99, 102, 241, 0.08);
+        }
+    }
+    .mx_FanoosDashboard_swChip {
+        background: rgb(99, 102, 241, 0.12);
+        border-color: #a5b4fc;
+        color: #4338ca;
+    }
+    .mx_FanoosDashboard_swSentBanner {
+        background: rgb(22, 163, 74, 0.1);
+        color: #15803d;
+        border-bottom-color: rgb(22, 163, 74, 0.15);
+    }
 
     /* Chat keeps warm colors in day mode (same as dark — already light) */
-    .mx_FanoosDashboard_chLoading { color: #94a3b8; }
-    .mx_FanoosDashboard_chStart { color: rgba(100,116,139,0.45); }
+    .mx_FanoosDashboard_chLoading {
+        color: #94a3b8;
+    }
+    .mx_FanoosDashboard_chStart {
+        color: rgb(100, 116, 139, 0.45);
+    }
 }
 
 .mx_FanoosDashboard_infoPanel.day {
     background: #f8fafc;
     border-inline-start-color: #e2e8f0;
-    box-shadow: -4px 0 24px rgba(0, 0, 0, 0.10);
+    box-shadow: -4px 0 24px rgb(0, 0, 0, 0.1);
     color: #1e293b;
 
-    .mx_FanoosDashboard_ipHdr { background: #f8fafc; border-bottom-color: #e2e8f0; }
-    .mx_FanoosDashboard_ipClose { &:hover { color: #1e293b; background: rgba(0,0,0,0.05); } }
-    .mx_FanoosDashboard_ipUnread { color: #d97706; }
-    .mx_FanoosDashboard_ipRow { color: #64748b; border-bottom-color: #f1f5f9; span:last-child { color: #1e293b; } }
-    .mx_FanoosDashboard_ipTrack { background: #e2e8f0; }
-    .mx_FanoosDashboard_ipKw { &.pos { background: rgba(22,163,74,0.12); color: #15803d; } &.neg { background: rgba(220,38,38,0.10); color: #b91c1c; } }
-    .mx_FanoosDashboard_ipMembers { border-top-color: #f1f5f9; }
-    .mx_FanoosDashboard_ipMembersHdr { color: #94a3b8; }
-    .mx_FanoosDashboard_ipMemberChip { background: #f1f5f9; }
-    .mx_FanoosDashboard_ipMemberAv { background: #cbd5e1; color: #475569; }
-    .mx_FanoosDashboard_ipMemberName { color: #334155; }
-    .mx_FanoosDashboard_ipOpenBtn { background: rgba(99,102,241,0.12); border-color: #a5b4fc; color: #4338ca; &:hover { background: rgba(99,102,241,0.22); } }
+    .mx_FanoosDashboard_ipHdr {
+        background: #f8fafc;
+        border-bottom-color: #e2e8f0;
+    }
+    .mx_FanoosDashboard_ipClose {
+        &:hover {
+            color: #1e293b;
+            background: rgb(0, 0, 0, 0.05);
+        }
+    }
+    .mx_FanoosDashboard_ipUnread {
+        color: #d97706;
+    }
+    .mx_FanoosDashboard_ipRow {
+        color: #64748b;
+        border-bottom-color: #f1f5f9;
+        span:last-child {
+            color: #1e293b;
+        }
+    }
+    .mx_FanoosDashboard_ipTrack {
+        background: #e2e8f0;
+    }
+    .mx_FanoosDashboard_ipKw {
+        &.pos {
+            background: rgb(22, 163, 74, 0.12);
+            color: #15803d;
+        }
+        &.neg {
+            background: rgb(220, 38, 38, 0.1);
+            color: #b91c1c;
+        }
+    }
+    .mx_FanoosDashboard_ipMembers {
+        border-top-color: #f1f5f9;
+    }
+    .mx_FanoosDashboard_ipMembersHdr {
+        color: #94a3b8;
+    }
+    .mx_FanoosDashboard_ipMemberChip {
+        background: #f1f5f9;
+    }
+    .mx_FanoosDashboard_ipMemberAv {
+        background: #cbd5e1;
+        color: #475569;
+    }
+    .mx_FanoosDashboard_ipMemberName {
+        color: #334155;
+    }
+    .mx_FanoosDashboard_ipOpenBtn {
+        background: rgb(99, 102, 241, 0.12);
+        border-color: #a5b4fc;
+        color: #4338ca;
+        &:hover {
+            background: rgb(99, 102, 241, 0.22);
+        }
+    }
 }
