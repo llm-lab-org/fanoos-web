@@ -2305,3 +2305,32 @@ Please see LICENSE files in the repository root for full details.
         text-decoration: line-through;
     }
 }
+
+/* ── Main room view: fill full width ─────────────────────────────────────── */
+
+/* Remove the small right margin on the timeline container */
+.mx_RoomView_body .mx_RoomView_timeline {
+    margin-right: 0 !important;
+}
+
+/* Bubble layout: allow wider messages and reduce side margins */
+.mx_EventTile[data-layout="bubble"],
+.mx_GenericEventListSummary[data-layout="bubble"] {
+    --EventTile_bubble-margin-inline-start: 12px;
+    --EventTile_bubble-margin-inline-end: 12px;
+    --maxWidth: 94%;
+}
+
+/* Increase max-width on bubble tiles themselves */
+.mx_EventTileBubble {
+    max-width: min(92%, 900px) !important;
+}
+
+/* Bubble layout: timeline should fill parent (not capped at 1200px unless truly wide) */
+.mx_RoomView_body[data-layout="bubble"] {
+    .mx_RoomView_timeline,
+    .mx_RoomView_statusArea,
+    .mx_MessageComposer {
+        max-width: 100%;
+    }
+}
