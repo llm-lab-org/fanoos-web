@@ -59,6 +59,7 @@ interface ChatBoxState {
     roomName: string;
     minimized: boolean;
     msgText: string;
+    pos: { x: number; y: number };
 }
 
 // ─── Arc constants ─────────────────────────────────────────────────────────────
@@ -778,6 +779,28 @@ interface ChatBoxProps {
 
 const ChatBox: React.FC<ChatBoxProps> = ({ state, onChange, onClose, client, isDayMode }) => {
     const [sending, setSending] = useState(false);
+    const stateRef = useRef(state);
+    useEffect(() => { stateRef.current = state; }, [state]);
+
+    const handleDragStart = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+        if (e.button !== 0) return;
+        e.preventDefault();
+        const ox = e.clientX - stateRef.current.pos.x;
+        const oy = e.clientY - stateRef.current.pos.y;
+        const onMove = (ev: MouseEvent): void => {
+            const winW = UIStore.instance.windowWidth;
+            const winH = UIStore.instance.windowHeight;
+            const x = Math.max(0, Math.min(ev.clientX - ox, winW - 320));
+            const y = Math.max(0, Math.min(ev.clientY - oy, winH - 40));
+            onChange({ ...stateRef.current, pos: { x, y } });
+        };
+        const onUp = (): void => {
+            document.removeEventListener("mousemove", onMove);
+            document.removeEventListener("mouseup", onUp);
+        };
+        document.addEventListener("mousemove", onMove);
+        document.addEventListener("mouseup", onUp);
+    }, [onChange]);
 
     const send = async (): Promise<void> => {
         if (!state.msgText.trim() || sending) return;
@@ -793,18 +816,28 @@ const ChatBox: React.FC<ChatBoxProps> = ({ state, onChange, onClose, client, isD
     };
 
     return (
-        <div className={`mx_FanoosDashboard_chatBox${isDayMode ? " day" : ""}${state.minimized ? " minimized" : ""}`}>
-            {/* Header */}
-            <div className="mx_FanoosDashboard_cbHdr">
+        <div
+            className={`mx_FanoosDashboard_chatBox${isDayMode ? " day" : ""}${state.minimized ? " minimized" : ""}`}
+            style={{ left: state.pos.x, top: state.pos.y }}
+        >
+            {/* Header / Drag handle */}
+            <div className="mx_FanoosDashboard_cbHdr" onMouseDown={handleDragStart}>
+                <span className="mx_FanoosDashboard_cbDragHandle">⠿</span>
                 <span className="mx_FanoosDashboard_cbTitle">💬 {state.roomName}</span>
                 <button
                     className="mx_FanoosDashboard_cbCtrl"
+                    onMouseDown={(e) => e.stopPropagation()}
                     onClick={() => onChange({ ...state, minimized: !state.minimized })}
                     title={state.minimized ? "Expand" : "Minimize"}
                 >
                     {state.minimized ? "▲" : "▼"}
                 </button>
-                <button className="mx_FanoosDashboard_cbCtrl" onClick={onClose} title="Close">✕</button>
+                <button
+                    className="mx_FanoosDashboard_cbCtrl"
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onClick={onClose}
+                    title="Close"
+                >✕</button>
             </div>
 
             {!state.minimized && (
@@ -1145,7 +1178,10 @@ const FanoosDashboard: React.FC = () => {
         if (!nodeId) return;
         const n = tree.find((x) => x.id === nodeId);
         if (!n?.matrixRoomId || n.type === "space" || n.type === "virtual") return;
-        setChatBox({ roomId: n.matrixRoomId, roomName: n.name, minimized: false, msgText: "" });
+        const winW = UIStore.instance.windowWidth;
+        const winH = UIStore.instance.windowHeight;
+        const pos = { x: Math.max(0, winW - 336), y: Math.max(0, winH - 500) };
+        setChatBox({ roomId: n.matrixRoomId, roomName: n.name, minimized: false, msgText: "", pos });
     }, [tree]);
 
     // Prevent right-button mousedown from bubbling (some browsers scroll-to-top on right mousedown)
