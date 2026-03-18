@@ -639,12 +639,21 @@ Please see LICENSE files in the repository root for full details.
     align-items: center;
     gap: 4px;
 
-    /* Own messages (right side): reverse so reaction button is to the LEFT (inner/center side).
-       Opponent messages (left side): keep row so button is to the RIGHT (inner/center side).
-       This also works correctly in RTL because row/row-reverse mirror automatically. */
+    /* LTR: own (right side) → button on LEFT (inner); opponent (left side) → button on RIGHT (inner) */
     &.own {
         flex-direction: row-reverse;
     }
+}
+
+/* RTL: row/row-reverse auto-mirror gives the wrong result, so explicitly swap them.
+   Own messages in RTL are on the left → button on RIGHT (inner).
+   Opponent messages in RTL are on the right → button on LEFT (inner). */
+[dir="rtl"] .mx_FanoosDashboard_chBubbleRow.own {
+    flex-direction: row;
+}
+
+[dir="rtl"] .mx_FanoosDashboard_chBubbleRow:not(.own) {
+    flex-direction: row-reverse;
 }
 
 .mx_FanoosDashboard_chSender {
