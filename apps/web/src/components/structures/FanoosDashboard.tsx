@@ -13,13 +13,14 @@ import React, {
     useRef,
     useState,
 } from "react";
-import { EventType, type Room, RoomEvent } from "matrix-js-sdk/src/matrix";
+import { EventType, RoomEvent, type MatrixEvent } from "matrix-js-sdk/src/matrix";
 
 import { useMatrixClientContext } from "../../contexts/MatrixClientContext";
 import { RoomNotificationStateStore } from "../../stores/notifications/RoomNotificationStateStore";
 import dis from "../../dispatcher/dispatcher";
 import { Action } from "../../dispatcher/actions";
 import { useEventEmitter } from "../../hooks/useEventEmitter";
+import { _t } from "../../languageHandler";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -46,46 +47,89 @@ interface SentDetail {
     msgCount: number;
 }
 
-// ─── Arc constants (exact from team-dash.js) ──────────────────────────────────
-
-const ARC_START = Math.PI * (11 / 12); // ~165°
-const ARC_END = Math.PI * (1 / 12); // ~15°
-
-// ─── Sentiment ────────────────────────────────────────────────────────────────
-
-const POS_RE =
-    /\b(good|great|thanks?|yes|done|ok|okay|perfect|nice|awesome|excellent|success|agree|love|happy|well|wonderful|sure|correct|right|approved|ready|congrats?|complete[d]?|finish(?:ed)?|achievement|well done)\b/gi;
-const NEG_RE =
-    /\b(bad|no\b|not\b|never|fail(?:ed)?|error|issue|problem|bug|wrong|broken|sorry|unfortunately|can'?t|cannot|blocked|stuck|delay(?:ed)?|late|missing|urgent|alert|trouble|critical|warning|oops)\b/gi;
-
-function scoreSentiment(msgs: { body: string }[]): number | null {
-    if (!msgs.length) return null;
-    let pos = 0,
-        neg = 0;
-    for (const m of msgs) {
-        pos += (m.body.match(POS_RE) || []).length;
-        neg += (m.body.match(NEG_RE) || []).length;
-    }
-    const total = pos + neg;
-    if (total === 0) return 0.5;
-    return Math.max(0.05, Math.min(0.95, 0.5 + (pos - neg) / Math.max(total * 1.5, 4)));
+interface HoverInfo {
+    nodeId: string;
+    clientX: number;
+    clientY: number;
 }
 
-function sentimentDetail(msgs: { body: string }[]): SentDetail {
-    const posSet = new Set<string>(),
-        negSet = new Set<string>();
-    for (const m of msgs) {
-        for (const w of m.body.match(POS_RE) || []) posSet.add(w.toLowerCase());
-        for (const w of m.body.match(NEG_RE) || []) negSet.add(w.toLowerCase());
-    }
-    return { pos: [...posSet].slice(0, 4), neg: [...negSet].slice(0, 4), msgCount: msgs.length };
+interface ChatBoxState {
+    roomId: string;
+    roomName: string;
+    minimized: boolean;
+    msgText: string;
 }
 
-function sentimentColor(score: number | null | undefined): string {
-    if (score === null || score === undefined) return "#334155";
+// ─── Arc constants ─────────────────────────────────────────────────────────────
+
+const ARC_START = Math.PI * (11 / 12);
+const ARC_END = Math.PI * (1 / 12);
+
+// ─── Multilingual keyword sets (English + Arabic + Persian) ──────────────────
+
+const POS_WORDS = new Set([
+    // English
+    "good","great","thanks","thank","yes","done","ok","okay","perfect","nice",
+    "awesome","excellent","success","agree","love","happy","well","wonderful",
+    "sure","correct","right","approved","ready","completed","finished","achievement",
+    "congrats","bravo","solved","fixed","merged","shipped","deployed","works","resolved",
+    // Arabic
+    "جيد","ممتاز","شكرا","شكراً","نعم","تمام","موافق","رائع","صحيح","أحسنت",
+    "مبروك","نجح","نجحت","اكتمل","اكتملت","جاهز","حلو","ممتازة","رائعة","تمت",
+    "صح","حسناً","أتممت","أكملت","ممتازة","ناجح","ناجحة","تم","انتهى","انتهت",
+    // Persian
+    "خوب","عالی","ممنون","بله","باشه","باشد","موافقم","آفرین","درست","درسته",
+    "آماده","موفق","موفقیت","تموم","خوبه","عالیه","ممنونم","مرسی","تأیید","تایید",
+    "کامل","کامله","قبوله","اوکی","اوکیه","حل شد","انجام شد","آپلود","درسته","بله",
+]);
+
+const NEG_WORDS = new Set([
+    // English
+    "bad","no","not","never","failed","fail","error","issue","problem","bug",
+    "wrong","broken","sorry","unfortunately","cant","cannot","blocked","stuck",
+    "delayed","late","missing","urgent","alert","trouble","critical","warning","oops",
+    "crash","regression","revert","rollback","outage","down","offline","timeout",
+    // Arabic
+    "سيء","خطأ","خطا","لا","مشكلة","مشكله","خلل","معطل","معطلة","متأخر",
+    "متأخرة","عاجل","تحذير","فشل","فشلت","للأسف","آسف","آسفة","عالق",
+    "مكسور","تأخير","مفقود","مفقودة","خطر","خطير","عطل","توقف","توقفت",
+    // Persian
+    "بد","اشتباه","نه","مشکل","باگ","خراب","خرابه","معطل","دیر","فوری",
+    "هشدار","شکست","متأسفانه","متاسفانه","گیر","بلوک","ارور","خطا",
+    "اضطراری","گم","مفقود","ایراد","کرش","قطع","خاموش","کند",
+]);
+
+const TOKENIZE_RE = /[\s\u060c\u061b\u061f\u06d4،؟!,.;:'"()\[\]{}|/\\@#$%^&*+=<>~`]+/u;
+
+function tokenize(text: string): string[] {
+    return text.toLowerCase().split(TOKENIZE_RE).filter((t) => t.length > 1);
+}
+
+/** Analyse messages in a single pass — returns score + keyword lists. */
+function analyzeMessages(msgs: { body: string }[]): { score: number | null; detail: SentDetail } {
+    if (!msgs.length) return { score: null, detail: { pos: [], neg: [], msgCount: 0 } };
+    let posCount = 0, negCount = 0;
+    const posFound = new Set<string>();
+    const negFound = new Set<string>();
+    for (const m of msgs) {
+        for (const t of tokenize(m.body)) {
+            if (POS_WORDS.has(t)) { posCount++; posFound.add(t); }
+            if (NEG_WORDS.has(t)) { negCount++; negFound.add(t); }
+        }
+    }
+    const total = posCount + negCount;
+    const score = total === 0 ? 0.5 : Math.max(0.05, Math.min(0.95, 0.5 + (posCount - negCount) / Math.max(total * 1.5, 4)));
+    return {
+        score,
+        detail: { pos: [...posFound].slice(0, 4), neg: [...negFound].slice(0, 4), msgCount: msgs.length },
+    };
+}
+
+function sentimentColor(score: number | null | undefined, dayMode = false): string {
+    if (score === null || score === undefined) return dayMode ? "#94a3b8" : "#334155";
     const t = Math.max(0, Math.min(1, score));
     const hue = t * 120;
-    const lit = 62 - Math.sin(t * Math.PI) * 12;
+    const lit = dayMode ? 42 - Math.sin(t * Math.PI) * 8 : 62 - Math.sin(t * Math.PI) * 12;
     return `hsl(${hue.toFixed(1)},100%,${lit.toFixed(1)}%)`;
 }
 
@@ -130,9 +174,7 @@ function buildTree(client: ReturnType<typeof useMatrixClientContext>): TreeNode[
             if (!childRoom || childRoom.getMyMembership() !== "join" || childRoom.isSpaceRoom()) continue;
             if (assignedIds.has(childId)) continue;
             assignedIds.add(childId);
-            const isDm =
-                childRoom.getDMInviter() !== undefined ||
-                (childRoom.getJoinedMemberCount() === 2 && !childRoom.isSpaceRoom());
+            const isDm = childRoom.getDMInviter() !== undefined || (childRoom.getJoinedMemberCount() === 2 && !childRoom.isSpaceRoom());
             nodes.push({
                 id: childId,
                 name: childRoom.name || childId,
@@ -147,8 +189,7 @@ function buildTree(client: ReturnType<typeof useMatrixClientContext>): TreeNode[
     if (ungrouped.length) {
         nodes.push({ id: "__other__", name: "Other", type: "virtual", parentId: "__root__" });
         for (const r of ungrouped) {
-            const isDm =
-                r.getDMInviter() !== undefined || (r.getJoinedMemberCount() === 2 && !r.isSpaceRoom());
+            const isDm = r.getDMInviter() !== undefined || (r.getJoinedMemberCount() === 2 && !r.isSpaceRoom());
             nodes.push({
                 id: r.roomId,
                 name: r.name || r.roomId,
@@ -161,7 +202,7 @@ function buildTree(client: ReturnType<typeof useMatrixClientContext>): TreeNode[
     return nodes;
 }
 
-// ─── Layout algorithm (exact port of buildSegmentLayout from team-dash.js) ────
+// ─── Layout ────────────────────────────────────────────────────────────────────
 
 function buildSegmentLayout(
     tree: TreeNode[],
@@ -177,14 +218,7 @@ function buildSegmentLayout(
     if (!root) return layout;
     const totalArc = ARC_START - ARC_END;
 
-    layout.set(root.id, {
-        a1: ARC_END,
-        a2: ARC_START,
-        r1: 0,
-        r2: R_ROOT,
-        depth: 0,
-        mid: (ARC_START + ARC_END) / 2,
-    });
+    layout.set(root.id, { a1: ARC_END, a2: ARC_START, r1: 0, r2: R_ROOT, depth: 0, mid: (ARC_START + ARC_END) / 2 });
 
     const d1 = tree.filter((n) => n.parentId === root.id);
     if (!d1.length) return layout;
@@ -195,17 +229,9 @@ function buildSegmentLayout(
 
     for (let i = 0; i < d1.length; i++) {
         const groupArc = (weights[i] / totalWeight) * totalArc;
-        const a1 = a,
-            a2 = a + groupArc;
+        const a1 = a, a2 = a + groupArc;
         const r2d1 = level <= 1 ? R2_OUT : R1_OUT;
-        layout.set(d1[i].id, {
-            a1,
-            a2,
-            r1: R1_IN,
-            r2: r2d1,
-            depth: 1,
-            mid: a1 + groupArc / 2,
-        });
+        layout.set(d1[i].id, { a1, a2, r1: R1_IN, r2: r2d1, depth: 1, mid: a1 + groupArc / 2 });
 
         if (level >= 2) {
             const kids = tree.filter((c) => c.parentId === d1[i].id);
@@ -219,18 +245,9 @@ function buildSegmentLayout(
                 const arcPerCol = groupArc / cols;
                 const radPerRow = radH / rows;
                 kids.forEach((kid, j) => {
-                    const col = j % cols;
-                    const row = Math.floor(j / cols);
-                    const ka1 = a1 + col * arcPerCol;
-                    const kr1 = R2_IN + row * radPerRow;
-                    layout.set(kid.id, {
-                        a1: ka1,
-                        a2: ka1 + arcPerCol,
-                        r1: kr1,
-                        r2: kr1 + radPerRow,
-                        depth: 2,
-                        mid: ka1 + arcPerCol / 2,
-                    });
+                    const col = j % cols, row = Math.floor(j / cols);
+                    const ka1 = a1 + col * arcPerCol, kr1 = R2_IN + row * radPerRow;
+                    layout.set(kid.id, { a1: ka1, a2: ka1 + arcPerCol, r1: kr1, r2: kr1 + radPerRow, depth: 2, mid: ka1 + arcPerCol / 2 });
                 });
             }
         }
@@ -239,29 +256,20 @@ function buildSegmentLayout(
     return layout;
 }
 
-// ─── Path generator (exact port of makeSegPath from team-dash.js) ─────────────
-
 function makeSegPath(cx: number, cy: number, seg: Segment, gapPx = 3): string {
     const { a1, a2, r1, r2 } = seg;
     if (r2 - r1 < 4) return "";
     const midR = (r1 + r2) / 2;
     const angGap = Math.min(gapPx / Math.max(midR, 1), 0.1);
-    const ra1 = a1 + angGap,
-        ra2 = a2 - angGap;
-    const ri = r1 + (r1 > 1 ? gapPx : 0),
-        ro = r2 - gapPx;
+    const ra1 = a1 + angGap, ra2 = a2 - angGap;
+    const ri = r1 + (r1 > 1 ? gapPx : 0), ro = r2 - gapPx;
     if (ra2 - ra1 < 0.005 || ro - ri < 2) return "";
     const f = (v: number) => v.toFixed(2);
     const px = (r: number, a: number) => cx + r * Math.cos(a);
     const py = (r: number, a: number) => cy - r * Math.sin(a);
     const large = ra2 - ra1 > Math.PI ? 1 : 0;
     if (ri <= 1) {
-        return [
-            `M ${f(px(ro, ra1))} ${f(py(ro, ra1))}`,
-            `A ${f(ro)} ${f(ro)} 0 ${large} 0 ${f(px(ro, ra2))} ${f(py(ro, ra2))}`,
-            `L ${f(cx)} ${f(cy)}`,
-            "Z",
-        ].join(" ");
+        return [`M ${f(px(ro, ra1))} ${f(py(ro, ra1))}`, `A ${f(ro)} ${f(ro)} 0 ${large} 0 ${f(px(ro, ra2))} ${f(py(ro, ra2))}`, `L ${f(cx)} ${f(cy)}`, "Z"].join(" ");
     }
     return [
         `M ${f(px(ri, ra1))} ${f(py(ri, ra1))}`,
@@ -273,7 +281,7 @@ function makeSegPath(cx: number, cy: number, seg: Segment, gapPx = 3): string {
     ].join(" ");
 }
 
-// ─── SVG renderer (faithful port of tdRender from team-dash.js) ───────────────
+// ─── SVG renderer ─────────────────────────────────────────────────────────────
 
 function renderSVG(
     tree: TreeNode[],
@@ -287,6 +295,7 @@ function renderSVG(
     H: number,
     activeRoomId: string | null,
     selectedIds: Set<string>,
+    isDayMode: boolean,
 ): { svg: string; layout: Map<string, Segment>; dims: { W: number; H: number; CX: number; CY: number }; hits: string[] } {
     const CX = W / 2;
     const CY = H - 4;
@@ -296,10 +305,7 @@ function renderSVG(
 
     let R1_IN: number, R1_OUT: number, R2_IN: number, R2_OUT: number;
     if (level <= 1) {
-        R1_IN = R_ROOT + 8;
-        R1_OUT = R_MAX;
-        R2_IN = R_MAX;
-        R2_OUT = R_MAX;
+        R1_IN = R_ROOT + 8; R1_OUT = R_MAX; R2_IN = R_MAX; R2_OUT = R_MAX;
     } else {
         const area = R_MAX - R_ROOT - 8;
         R1_IN = R_ROOT + 8;
@@ -309,16 +315,17 @@ function renderSVG(
     }
 
     const q = searchQuery.trim().toLowerCase();
-    const hits = q
-        ? tree.filter((n) => n.name.toLowerCase().includes(q)).map((n) => n.id)
-        : [];
-
+    const hits = q ? tree.filter((n) => n.name.toLowerCase().includes(q)).map((n) => n.id) : [];
     const layout = buildSegmentLayout(tree, level, R_ROOT, R1_IN, R1_OUT, R2_IN, R2_OUT);
     const dims = { W, H, CX, CY };
-
     const parts: string[] = [];
 
-    // Defs
+    const segBodyColor = isDayMode ? "#e8f0f8" : "#0e1520";
+    const segBodyOpacity = isDayMode ? 0.88 : 0.93;
+    const guideArcColor = isDayMode ? "rgba(0,0,0,0.07)" : "rgba(255,255,255,0.04)";
+    const guideArcColor2 = isDayMode ? "rgba(0,0,0,0.05)" : "rgba(255,255,255,0.03)";
+    const specularFill = isDayMode ? "rgba(255,255,255,0.50)" : "rgba(255,255,255,0.06)";
+
     parts.push(`<defs>
       <filter id="tdGlowSeg" x="-60%" y="-60%" width="220%" height="220%">
         <feGaussianBlur in="SourceGraphic" stdDeviation="8" result="b"/>
@@ -329,53 +336,38 @@ function renderSVG(
         <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
       </filter>
       <filter id="tdGlowEnv" x="-100%" y="-100%" width="300%" height="300%">
-        <feGaussianBlur in="SourceGraphic" stdDeviation="2.5" result="b"/>
+        <feGaussianBlur in="SourceGraphic" stdDeviation="2" result="b"/>
         <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
       </filter>
-      <radialGradient id="tdBg" cx="50%" cy="100%" r="80%">
-        <stop offset="0%" stop-color="#131c2e"/>
-        <stop offset="100%" stop-color="#0a0f1a"/>
-      </radialGradient>
+      <filter id="tdDropShadow">
+        <feDropShadow dx="0" dy="1" stdDeviation="2" flood-color="rgba(0,0,0,0.35)"/>
+      </filter>
     </defs>`);
 
-    // Background
-    parts.push(`<rect width="${W}" height="${H}" fill="url(#tdBg)"/>`);
+    if (!isDayMode) {
+        parts.push(`<rect width="${W}" height="${H}" fill="#0a1628"/>`);
+    }
 
-    // Guide arcs
     const guideArc = (r: number) => {
-        const x1 = (CX + r * Math.cos(ARC_END)).toFixed(1);
-        const y1 = (CY - r * Math.sin(ARC_END)).toFixed(1);
-        const x2 = (CX + r * Math.cos(ARC_START)).toFixed(1);
-        const y2 = (CY - r * Math.sin(ARC_START)).toFixed(1);
+        const x1 = (CX + r * Math.cos(ARC_END)).toFixed(1), y1 = (CY - r * Math.sin(ARC_END)).toFixed(1);
+        const x2 = (CX + r * Math.cos(ARC_START)).toFixed(1), y2 = (CY - r * Math.sin(ARC_START)).toFixed(1);
         return `M ${x1} ${y1} A ${r.toFixed(1)} ${r.toFixed(1)} 0 0 0 ${x2} ${y2}`;
     };
     if (level >= 2 && R1_OUT < R2_OUT) {
-        parts.push(
-            `<path d="${guideArc(R1_OUT)}" fill="none" stroke="rgba(255,255,255,0.03)" stroke-width="1"/>`,
-        );
+        parts.push(`<path d="${guideArc(R1_OUT)}" fill="none" stroke="${guideArcColor2}" stroke-width="1"/>`);
     }
-    parts.push(`<path d="${guideArc(R_MAX)}" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>`);
+    parts.push(`<path d="${guideArc(R_MAX)}" fill="none" stroke="${guideArcColor}" stroke-width="1"/>`);
 
     // Glow pass
     layout.forEach((seg, id) => {
         if (seg.depth === 0) return;
         const n = tree.find((x) => x.id === id);
-        if (!n) return;
-        const dim = hits.length > 0 && !hits.includes(id);
-        if (dim) return;
-        const score =
-            seg.depth === 1
-                ? avgChildSentiment(id, tree, sentiment)
-                : n.matrixRoomId
-                  ? sentiment[n.matrixRoomId]
-                  : null;
-        const color = n.type === "space" || n.type === "virtual" ? "#6366f1" : sentimentColor(score);
-        const glowSeg = { ...seg, r1: Math.max(0, seg.r1 - 4), r2: seg.r2 + 4 };
-        const glowPath = makeSegPath(CX, CY, glowSeg, 0);
+        if (!n || (hits.length > 0 && !hits.includes(id))) return;
+        const score = seg.depth === 1 ? avgChildSentiment(id, tree, sentiment) : n.matrixRoomId ? sentiment[n.matrixRoomId] : null;
+        const color = n.type === "space" || n.type === "virtual" ? "#6366f1" : sentimentColor(score, isDayMode);
+        const glowPath = makeSegPath(CX, CY, { ...seg, r1: Math.max(0, seg.r1 - 4), r2: seg.r2 + 4 }, 0);
         if (glowPath) {
-            parts.push(
-                `<path d="${glowPath}" fill="${color}" opacity="0.10" filter="url(#tdGlowSeg)" pointer-events="none"/>`,
-            );
+            parts.push(`<path d="${glowPath}" fill="${color}" opacity="${isDayMode ? 0.06 : 0.10}" filter="url(#tdGlowSeg)" pointer-events="none"/>`);
         }
     });
 
@@ -384,53 +376,37 @@ function renderSVG(
         const n = tree.find((x) => x.id === id);
         if (!n) return;
 
-        // Root pivot circle
         if (seg.depth === 0) {
-            const pc = "#818cf8";
-            parts.push(
-                `<circle cx="${CX.toFixed(1)}" cy="${CY.toFixed(1)}" r="${(R_ROOT + 12).toFixed(1)}" fill="${pc}" opacity="0.07" filter="url(#tdGlowMd)"/>`,
-            );
-            parts.push(
-                `<circle cx="${CX.toFixed(1)}" cy="${CY.toFixed(1)}" r="${R_ROOT.toFixed(1)}" fill="${pc}" opacity="0.88"/>`,
-            );
-            parts.push(
-                `<circle cx="${CX.toFixed(1)}" cy="${(CY - R_ROOT * 0.3).toFixed(1)}" r="${(R_ROOT * 0.38).toFixed(1)}" fill="white" opacity="0.20"/>`,
-            );
+            const pc = "#6366f1";
+            parts.push(`<circle cx="${CX.toFixed(1)}" cy="${CY.toFixed(1)}" r="${(R_ROOT + 12).toFixed(1)}" fill="${pc}" opacity="0.12" filter="url(#tdGlowMd)"/>`);
+            parts.push(`<circle cx="${CX.toFixed(1)}" cy="${CY.toFixed(1)}" r="${R_ROOT.toFixed(1)}" fill="${pc}" opacity="0.88"/>`);
+            parts.push(`<circle cx="${CX.toFixed(1)}" cy="${(CY - R_ROOT * 0.3).toFixed(1)}" r="${(R_ROOT * 0.38).toFixed(1)}" fill="white" opacity="0.25"/>`);
             if (showNames) {
-                parts.push(
-                    `<text x="${CX.toFixed(1)}" y="${(CY + R_ROOT + 11).toFixed(1)}" text-anchor="middle" fill="rgba(255,255,255,0.28)" font-size="9" font-family="system-ui,sans-serif" pointer-events="none">${escHtml(n.name)}</text>`,
-                );
+                const tColor = isDayMode ? "rgba(30,41,59,0.55)" : "rgba(255,255,255,0.28)";
+                parts.push(`<text x="${CX.toFixed(1)}" y="${(CY + R_ROOT + 11).toFixed(1)}" text-anchor="middle" fill="${tColor}" font-size="9" font-family="system-ui,sans-serif" pointer-events="none">${escHtml(n.name)}</text>`);
             }
             return;
         }
 
-        const score =
-            seg.depth === 1
-                ? avgChildSentiment(n.id, tree, sentiment)
-                : n.matrixRoomId
-                  ? sentiment[n.matrixRoomId]
-                  : null;
+        const score = seg.depth === 1 ? avgChildSentiment(n.id, tree, sentiment) : n.matrixRoomId ? sentiment[n.matrixRoomId] : null;
         const un = n.matrixRoomId ? unread[n.matrixRoomId] || 0 : 0;
         const dim = hits.length > 0 && !hits.includes(id);
         const isHit = hits.includes(id);
         const isFocused = searchIdx >= 0 && hits[searchIdx] === id;
         const isActive = !!n.matrixRoomId && n.matrixRoomId === activeRoomId;
         const isVirtual = n.type === "space" || n.type === "virtual";
-        const color = sentimentColor(score);
+        const color = sentimentColor(score, isDayMode);
         const gapPx = seg.depth === 1 ? 4 : 2.5;
         const path = makeSegPath(CX, CY, seg, gapPx);
         if (!path) return;
 
         const safeId = id.replace(/[^a-zA-Z0-9]/g, "_");
-
         parts.push("<g>");
-        parts.push(`<path d="${path}" fill="#0e1520" opacity="${dim ? 0.45 : 0.93}"/>`);
+        parts.push(`<path d="${path}" fill="${segBodyColor}" opacity="${dim ? 0.40 : segBodyOpacity}"/>`);
 
-        const lightOp = dim ? 0.04 : isVirtual ? 0.3 : 0.28;
+        const lightOp = dim ? 0.04 : isVirtual ? (isDayMode ? 0.22 : 0.30) : (isDayMode ? 0.20 : 0.28);
         if ((isActive || un > 0) && !dim) {
-            parts.push(
-                `<path d="${path}" fill="${color}" opacity="${lightOp + 0.18}" filter="url(#tdGlowMd)"/>`,
-            );
+            parts.push(`<path d="${path}" fill="${color}" opacity="${lightOp + 0.18}" filter="url(#tdGlowMd)"/>`);
         } else {
             parts.push(`<path d="${path}" fill="${color}" opacity="${lightOp}"/>`);
         }
@@ -439,28 +415,23 @@ function renderSVG(
             const sR2 = seg.r2 - gapPx;
             const sR1 = sR2 - Math.max(3, (seg.r2 - seg.r1) * 0.08);
             const specPath = makeSegPath(CX, CY, { a1: seg.a1, a2: seg.a2, r1: sR1, r2: sR2, depth: seg.depth, mid: seg.mid }, gapPx + 0.5);
-            if (specPath)
-                parts.push(`<path d="${specPath}" fill="rgba(255,255,255,0.06)" pointer-events="none"/>`);
+            if (specPath) parts.push(`<path d="${specPath}" fill="${specularFill}" pointer-events="none"/>`);
         }
 
         if (isActive) {
-            parts.push(`<path d="${path}" fill="none" stroke="#c7d2fe" stroke-width="1.8" opacity="0.92"/>`);
+            parts.push(`<path d="${path}" fill="none" stroke="#6366f1" stroke-width="1.8" opacity="0.92"/>`);
         } else if (isFocused) {
-            parts.push(`<path d="${path}" fill="white" opacity="0.14"/>`);
-            parts.push(`<path d="${path}" fill="none" stroke="white" stroke-width="2.2" opacity="0.95"/>`);
+            parts.push(`<path d="${path}" fill="${isDayMode ? "rgba(99,102,241,0.12)" : "white"}" opacity="0.14"/>`);
+            parts.push(`<path d="${path}" fill="none" stroke="${isDayMode ? "#6366f1" : "white"}" stroke-width="2.2" opacity="0.95"/>`);
         } else if (isHit) {
-            parts.push(
-                `<path d="${path}" fill="none" stroke="white" stroke-width="1.3" stroke-dasharray="4 3" opacity="0.65"/>`,
-            );
+            parts.push(`<path d="${path}" fill="none" stroke="${isDayMode ? "#6366f1" : "white"}" stroke-width="1.3" stroke-dasharray="4 3" opacity="0.65"/>`);
         } else {
-            parts.push(
-                `<path d="${path}" fill="none" stroke="${color}" stroke-width="${seg.depth === 1 ? 0.9 : 0.6}" opacity="${dim ? 0.08 : 0.32}"/>`,
-            );
+            parts.push(`<path d="${path}" fill="none" stroke="${color}" stroke-width="${seg.depth === 1 ? 0.9 : 0.6}" opacity="${dim ? 0.08 : isDayMode ? 0.45 : 0.32}"/>`);
         }
 
         if (selectedIds.has(id)) {
             parts.push(`<path d="${path}" fill="rgba(99,102,241,0.18)" opacity="0.9"/>`);
-            parts.push(`<path d="${path}" fill="none" stroke="#818cf8" stroke-width="2" opacity="0.9"/>`);
+            parts.push(`<path d="${path}" fill="none" stroke="#6366f1" stroke-width="2" opacity="0.9"/>`);
         }
 
         if (showNames) {
@@ -475,44 +446,39 @@ function renderSVG(
                 const maxChars = Math.max(2, Math.floor(arcLen / (fontSize * 0.63)));
                 const label = n.name.length > maxChars ? n.name.slice(0, Math.max(1, maxChars - 1)) + "…" : n.name;
                 const tColor = dim
-                    ? "rgba(255,255,255,0.12)"
-                    : isHit
-                      ? "white"
-                      : isVirtual
-                        ? "rgba(199,210,254,0.88)"
-                        : "rgba(226,232,240,0.80)";
-                parts.push(
-                    `<text x="${tx.toFixed(1)}" y="${ty.toFixed(1)}" text-anchor="middle" dominant-baseline="middle" transform="rotate(${rotDeg.toFixed(1)},${tx.toFixed(1)},${ty.toFixed(1)})" fill="${tColor}" font-size="${fontSize}" font-weight="${isVirtual ? 700 : 500}" font-family="system-ui,sans-serif" pointer-events="none">${escHtml(label)}</text>`,
-                );
+                    ? (isDayMode ? "rgba(0,0,0,0.18)" : "rgba(255,255,255,0.12)")
+                    : isHit ? (isDayMode ? "#1e3a8a" : "white")
+                    : isVirtual ? (isDayMode ? "rgba(49,46,129,0.92)" : "rgba(199,210,254,0.88)")
+                    : (isDayMode ? "rgba(15,23,42,0.82)" : "rgba(226,232,240,0.80)");
+                parts.push(`<text x="${tx.toFixed(1)}" y="${ty.toFixed(1)}" text-anchor="middle" dominant-baseline="middle" transform="rotate(${rotDeg.toFixed(1)},${tx.toFixed(1)},${ty.toFixed(1)})" fill="${tColor}" font-size="${fontSize}" font-weight="${isVirtual ? 700 : 500}" font-family="system-ui,sans-serif" pointer-events="none">${escHtml(label)}</text>`);
             }
         }
 
+        // ── Unread envelope at outer cell border ──────────────────────────────
         if (un > 0 && !dim) {
-            const envR = seg.r2 - gapPx - 16;
+            // Place envelope CENTER at the outer edge of the segment
+            const envR = seg.r2 - gapPx;
             if (envR > seg.r1 + gapPx + 6) {
                 const ex = CX + envR * Math.cos(seg.mid);
                 const ey = CY - envR * Math.sin(seg.mid);
-                const ew = 9,
-                    eh = 6.5;
+                const ew = 10, eh = 7;
+                // White envelope body
                 parts.push(
-                    `<g filter="url(#tdGlowEnv)" pointer-events="none"><rect x="${(ex - ew).toFixed(1)}" y="${(ey - eh).toFixed(1)}" width="${(ew * 2).toFixed(1)}" height="${(eh * 2).toFixed(1)}" rx="2" fill="#f59e0b" opacity="0.95"/><path d="M${(ex - ew).toFixed(1)},${(ey - eh).toFixed(1)} L${ex.toFixed(1)},${(ey + 1).toFixed(1)} L${(ex + ew).toFixed(1)},${(ey - eh).toFixed(1)}" fill="none" stroke="#0d1117" stroke-width="1.3" stroke-linejoin="round"/></g>`,
+                    `<g filter="url(#tdDropShadow)" pointer-events="none">` +
+                    `<rect x="${(ex - ew).toFixed(1)}" y="${(ey - eh).toFixed(1)}" width="${(ew * 2).toFixed(1)}" height="${(eh * 2).toFixed(1)}" rx="2.5" fill="white" stroke="rgba(0,0,0,0.15)" stroke-width="0.5"/>` +
+                    `<path d="M${(ex - ew).toFixed(1)},${(ey - eh).toFixed(1)} L${ex.toFixed(1)},${(ey + 2).toFixed(1)} L${(ex + ew).toFixed(1)},${(ey - eh).toFixed(1)}" fill="none" stroke="rgba(0,0,0,0.18)" stroke-width="1" stroke-linejoin="round"/>` +
+                    `</g>`,
                 );
                 const badge = un > 99 ? "99+" : String(un);
                 const br = un > 9 ? 8 : 7;
-                parts.push(
-                    `<circle cx="${(ex + ew).toFixed(1)}" cy="${(ey - eh).toFixed(1)}" r="${br}" fill="#ef4444" stroke="#0d1117" stroke-width="0.8" pointer-events="none"/>`,
-                );
-                parts.push(
-                    `<text x="${(ex + ew).toFixed(1)}" y="${(ey - eh).toFixed(1)}" text-anchor="middle" dominant-baseline="middle" font-size="7" font-weight="800" fill="white" pointer-events="none">${badge}</text>`,
-                );
+                // Red badge at top-right of envelope
+                parts.push(`<circle cx="${(ex + ew).toFixed(1)}" cy="${(ey - eh).toFixed(1)}" r="${br}" fill="#ef4444" stroke="white" stroke-width="1" pointer-events="none"/>`);
+                parts.push(`<text x="${(ex + ew).toFixed(1)}" y="${(ey - eh).toFixed(1)}" text-anchor="middle" dominant-baseline="middle" font-size="7" font-weight="800" fill="white" pointer-events="none">${badge}</text>`);
             }
         }
 
         // Transparent hit area
-        parts.push(
-            `<path d="${path}" id="tdnode-${safeId}" data-nodeid="${id}" fill="transparent" style="cursor:pointer"/>`,
-        );
-
+        parts.push(`<path d="${path}" id="tdnode-${safeId}" data-nodeid="${id}" fill="transparent" style="cursor:pointer"/>`);
         parts.push("</g>");
     });
 
@@ -524,6 +490,381 @@ function escHtml(s: string): string {
     return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
+// ─── Interval + age helpers ───────────────────────────────────────────────────
+
+function intervalMs(v: string): number {
+    if (v === "24h") return 86_400_000;
+    if (v === "7d") return 604_800_000;
+    if (v === "30d") return 2_592_000_000;
+    return Infinity;
+}
+
+function reloadAgeLabel(d: Date): string {
+    const secs = Math.floor((Date.now() - d.getTime()) / 1000);
+    if (secs < 10) return _t("fanoos_dashboard|just_now");
+    if (secs < 60) return _t("fanoos_dashboard|time_secs", { s: secs });
+    const mins = Math.floor(secs / 60);
+    if (mins < 60) return _t("fanoos_dashboard|time_mins", { m: mins });
+    return _t("fanoos_dashboard|time_hours", { h: Math.floor(mins / 60) });
+}
+
+// ─── Hover Tooltip ────────────────────────────────────────────────────────────
+
+interface HoverTooltipProps {
+    info: HoverInfo;
+    tree: TreeNode[];
+    sentiment: Record<string, number | null>;
+    sentDetail: Record<string, SentDetail>;
+    unread: Record<string, number>;
+    client: ReturnType<typeof useMatrixClientContext>;
+    isDayMode: boolean;
+}
+
+const HoverTooltip: React.FC<HoverTooltipProps> = ({ info, tree, sentiment, sentDetail, unread, client, isDayMode }) => {
+    const n = tree.find((x) => x.id === info.nodeId);
+    if (!n) return null;
+
+    const score = n.type === "space" || n.type === "virtual"
+        ? avgChildSentiment(n.id, tree, sentiment)
+        : n.matrixRoomId ? sentiment[n.matrixRoomId] : null;
+    const pct = score !== null ? Math.round(score * 100) : null;
+    const band = sentimentBand(score);
+    const color = sentimentColor(score, isDayMode);
+    const un = n.matrixRoomId ? unread[n.matrixRoomId] || 0 : 0;
+    const det = n.matrixRoomId ? sentDetail[n.matrixRoomId] : null;
+
+    const room = n.matrixRoomId ? client.getRoom(n.matrixRoomId) : null;
+    const allMembers = room ? room.getJoinedMembers() : [];
+    const memberNames = allMembers.slice(0, 5).map((m) => m.name || m.userId);
+    const extra = Math.max(0, allMembers.length - 5);
+
+    const membersLine = extra > 0
+        ? _t("fanoos_dashboard|members_and_more", { names: memberNames.join(", "), more: extra })
+        : memberNames.join(", ");
+
+    const bandLabel: Record<string, string> = {
+        positive: _t("fanoos_dashboard|positive"),
+        neutral: _t("fanoos_dashboard|neutral"),
+        negative: _t("fanoos_dashboard|negative"),
+        "no-data": _t("fanoos_dashboard|no_data"),
+    };
+
+    const posKws = det?.pos.slice(0, 4) ?? [];
+    const negKws = det?.neg.slice(0, 4) ?? [];
+
+    const isRtl = document.documentElement.dir === "rtl";
+    const tipStyle: React.CSSProperties = isRtl
+        ? { right: Math.min(window.innerWidth - info.clientX + 14, window.innerWidth - 250), top: Math.max(8, info.clientY - 10) }
+        : { left: Math.min(info.clientX + 14, window.innerWidth - 250), top: Math.max(8, info.clientY - 10) };
+
+    return (
+        <div
+            className={`mx_FanoosDashboard_hoverTip${isDayMode ? " day" : ""}`}
+            style={tipStyle}
+        >
+            <div className="mx_FanoosDashboard_htTitle">
+                {n.type === "dm" ? "👤" : n.type === "space" ? "⬡" : "💬"} {n.name}
+            </div>
+            {pct !== null && (
+                <div className="mx_FanoosDashboard_htScore" style={{ color }}>
+                    <span className="mx_FanoosDashboard_htBand">{bandLabel[band]}</span>
+                    <span className="mx_FanoosDashboard_htPct">{pct}%</span>
+                    <div className="mx_FanoosDashboard_htBar">
+                        <div className="mx_FanoosDashboard_htBarFill" style={{ width: `${pct}%`, background: color }} />
+                    </div>
+                </div>
+            )}
+            {det && det.msgCount > 0 && (
+                <div className="mx_FanoosDashboard_htMsgCount">
+                    {det.msgCount} {_t("fanoos_dashboard|messages_analysed")}
+                </div>
+            )}
+            {(posKws.length > 0 || negKws.length > 0) && (
+                <div className="mx_FanoosDashboard_htKeywords">
+                    {posKws.length > 0 && (
+                        <div className="mx_FanoosDashboard_htKwRow">
+                            {posKws.map((w) => (
+                                <span key={w} className="mx_FanoosDashboard_htKw pos">{w}</span>
+                            ))}
+                        </div>
+                    )}
+                    {negKws.length > 0 && (
+                        <div className="mx_FanoosDashboard_htKwRow">
+                            {negKws.map((w) => (
+                                <span key={w} className="mx_FanoosDashboard_htKw neg">{w}</span>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
+            {un > 0 && (
+                <div className="mx_FanoosDashboard_htUnread">
+                    {_t("fanoos_dashboard|unread_badge", { count: un })}
+                </div>
+            )}
+            {allMembers.length > 0 && (
+                <div className="mx_FanoosDashboard_htMembers">{membersLine}</div>
+            )}
+        </div>
+    );
+};
+
+// ─── Chat History ─────────────────────────────────────────────────────────────
+
+const HISTORY_PAGE = 30;
+
+interface ChatHistoryProps {
+    roomId: string;
+    client: ReturnType<typeof useMatrixClientContext>;
+    isDayMode: boolean;
+}
+
+const ChatHistory: React.FC<ChatHistoryProps> = ({ roomId, client, isDayMode }) => {
+    const room = client.getRoom(roomId);
+    const [events, setEvents] = useState<MatrixEvent[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [canLoadMore, setCanLoadMore] = useState(true);
+    const scrollRef = useRef<HTMLDivElement>(null);
+    const bottomRef = useRef<HTMLDivElement>(null);
+    const topSentinelRef = useRef<HTMLDivElement>(null);
+    const didInitRef = useRef(false);
+    // Use a ref for loading so IntersectionObserver doesn't recreate on every tick
+    const loadingRef = useRef(false);
+    const canLoadMoreRef = useRef(true);
+
+    const readEvents = useCallback((): MatrixEvent[] => {
+        if (!room) return [];
+        return room
+            .getLiveTimeline()
+            .getEvents()
+            .filter((ev) => ev.getType() === "m.room.message" && ev.getContent()?.body);
+    }, [room]);
+
+    const refresh = useCallback((): void => {
+        setEvents([...readEvents()]);
+    }, [readEvents]);
+
+    // Initial load + subscribe to new events
+    useEffect(() => {
+        refresh();
+    }, [refresh]);
+
+    useEventEmitter(room ?? undefined, RoomEvent.Timeline, refresh);
+
+    // Scroll to bottom on first render only
+    useEffect(() => {
+        if (!didInitRef.current && events.length > 0) {
+            didInitRef.current = true;
+            bottomRef.current?.scrollIntoView({ behavior: "instant" });
+        }
+    }, [events]);
+
+    const loadMore = useCallback(async (): Promise<void> => {
+        if (!room || loadingRef.current || !canLoadMoreRef.current) return;
+        loadingRef.current = true;
+        setLoading(true);
+        const el = scrollRef.current;
+        const prevHeight = el?.scrollHeight ?? 0;
+        try {
+            const timeline = room.getLiveTimeline();
+            const hasMore = await client.paginateEventTimeline(timeline, { backwards: true, limit: HISTORY_PAGE });
+            canLoadMoreRef.current = hasMore;
+            setCanLoadMore(hasMore);
+            // Re-read events after pagination
+            const next = room
+                .getLiveTimeline()
+                .getEvents()
+                .filter((ev) => ev.getType() === "m.room.message" && ev.getContent()?.body);
+            setEvents([...next]);
+            // Preserve scroll position after prepend
+            if (el) {
+                requestAnimationFrame(() => {
+                    el.scrollTop += el.scrollHeight - prevHeight;
+                });
+            }
+        } catch (e) {
+            console.error("Failed to paginate:", e);
+        } finally {
+            loadingRef.current = false;
+            setLoading(false);
+        }
+    }, [room, client]);
+
+    // IntersectionObserver — stable, uses refs so it never recreates on loading changes
+    useEffect(() => {
+        const sentinel = topSentinelRef.current;
+        if (!sentinel) return;
+        const obs = new IntersectionObserver(
+            (entries) => { if (entries[0].isIntersecting) void loadMore(); },
+            { root: scrollRef.current, threshold: 0.1 },
+        );
+        obs.observe(sentinel);
+        return () => obs.disconnect();
+    }, [loadMore]);
+
+    const myId = client.getUserId();
+
+    if (!room) return <div className="mx_FanoosDashboard_chEmpty">Room not found</div>;
+
+    return (
+        <div ref={scrollRef} className={`mx_FanoosDashboard_chatHistory${isDayMode ? " day" : ""}`}>
+            {/* Top sentinel — loading indicator */}
+            <div ref={topSentinelRef} className="mx_FanoosDashboard_chTop">
+                {loading && <div className="mx_FanoosDashboard_chLoading">⏳ Loading…</div>}
+                {!loading && !canLoadMore && events.length > 0 && (
+                    <div className="mx_FanoosDashboard_chStart">── beginning ──</div>
+                )}
+            </div>
+
+            {events.map((ev) => {
+                const isOwn = ev.getSender() === myId;
+                const senderName = ev.sender?.name || ev.getSender() || "";
+                const body = ev.getContent().body as string;
+                const ts = new Date(ev.getTs());
+                const timeStr = ts.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+                const msgType = ev.getContent().msgtype;
+                const isMedia = msgType === "m.image" || msgType === "m.file" || msgType === "m.video" || msgType === "m.audio";
+
+                return (
+                    <div key={ev.getId()} className={`mx_FanoosDashboard_chRow${isOwn ? " own" : ""}`}>
+                        {!isOwn && (
+                            <div className="mx_FanoosDashboard_chAvatar">
+                                {senderName.slice(0, 2).toUpperCase()}
+                            </div>
+                        )}
+                        <div className="mx_FanoosDashboard_chContent">
+                            {!isOwn && <div className="mx_FanoosDashboard_chSender">{senderName}</div>}
+                            <div className={`mx_FanoosDashboard_chBubble${isOwn ? " own" : ""}`}>
+                                {isMedia ? (
+                                    <span className="mx_FanoosDashboard_chMedia">📎 {body}</span>
+                                ) : (
+                                    <span className="mx_FanoosDashboard_chBody">{body}</span>
+                                )}
+                                <span className="mx_FanoosDashboard_chTime">{timeStr}</span>
+                            </div>
+                        </div>
+                    </div>
+                );
+            })}
+
+            <div ref={bottomRef} />
+        </div>
+    );
+};
+
+// ─── Chat Box ─────────────────────────────────────────────────────────────────
+
+interface ChatBoxProps {
+    state: ChatBoxState;
+    onChange: (s: ChatBoxState) => void;
+    onClose: () => void;
+    client: ReturnType<typeof useMatrixClientContext>;
+    isDayMode: boolean;
+}
+
+const ChatBox: React.FC<ChatBoxProps> = ({ state, onChange, onClose, client, isDayMode }) => {
+    const [sending, setSending] = useState(false);
+
+    const send = async (): Promise<void> => {
+        if (!state.msgText.trim() || sending) return;
+        setSending(true);
+        try {
+            await client.sendTextMessage(state.roomId, state.msgText.trim());
+            onChange({ ...state, msgText: "" });
+        } catch (e) {
+            console.error("Failed to send message:", e);
+        } finally {
+            setSending(false);
+        }
+    };
+
+    return (
+        <div className={`mx_FanoosDashboard_chatBox${isDayMode ? " day" : ""}${state.minimized ? " minimized" : ""}`}>
+            {/* Header */}
+            <div className="mx_FanoosDashboard_cbHdr">
+                <span className="mx_FanoosDashboard_cbTitle">💬 {state.roomName}</span>
+                <button
+                    className="mx_FanoosDashboard_cbCtrl"
+                    onClick={() => onChange({ ...state, minimized: !state.minimized })}
+                    title={state.minimized ? "Expand" : "Minimize"}
+                >
+                    {state.minimized ? "▲" : "▼"}
+                </button>
+                <button className="mx_FanoosDashboard_cbCtrl" onClick={onClose} title="Close">✕</button>
+            </div>
+
+            {!state.minimized && (
+                <>
+                    {/* Full chat history with lazy loading */}
+                    <ChatHistory roomId={state.roomId} client={client} isDayMode={isDayMode} />
+
+                    {/* Compose area */}
+                    <div className="mx_FanoosDashboard_cbCompose">
+                        <textarea
+                            className="mx_FanoosDashboard_cbInput"
+                            value={state.msgText}
+                            onChange={(e) => onChange({ ...state, msgText: e.target.value })}
+                            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void send(); } }}
+                            placeholder={_t("fanoos_dashboard|send_placeholder")}
+                            rows={2}
+                        />
+                        <button
+                            className={`mx_FanoosDashboard_cbSend${sending ? " sending" : ""}`}
+                            onClick={() => void send()}
+                            disabled={sending}
+                        >
+                            {_t("fanoos_dashboard|send")}
+                        </button>
+                    </div>
+                </>
+            )}
+        </div>
+    );
+};
+
+// ─── Legend Overlay ───────────────────────────────────────────────────────────
+
+interface LegendOverlayProps {
+    tree: TreeNode[];
+    sentiment: Record<string, number | null>;
+    level: number;
+    isDayMode: boolean;
+}
+
+const LegendOverlay: React.FC<LegendOverlayProps> = ({ tree, sentiment, level, isDayMode }) => {
+    const rooms = tree.filter((n) => n.matrixRoomId && n.type !== "space");
+    const counts = { positive: 0, neutral: 0, negative: 0, noData: 0 };
+    for (const r of rooms) {
+        const band = sentimentBand(sentiment[r.matrixRoomId!]);
+        if (band === "positive") counts.positive++;
+        else if (band === "neutral") counts.neutral++;
+        else if (band === "negative") counts.negative++;
+        else counts.noData++;
+    }
+
+    const items = [
+        { label: _t("fanoos_dashboard|positive"), color: sentimentColor(0.8, isDayMode), count: counts.positive },
+        { label: _t("fanoos_dashboard|neutral"), color: sentimentColor(0.5, isDayMode), count: counts.neutral },
+        { label: _t("fanoos_dashboard|negative"), color: sentimentColor(0.15, isDayMode), count: counts.negative },
+        { label: _t("fanoos_dashboard|no_data"), color: isDayMode ? "#94a3b8" : "#475569", count: counts.noData },
+    ];
+
+    return (
+        <div className={`mx_FanoosDashboard_legendOverlay${isDayMode ? " day" : ""}`}>
+            {items.map((it) => (
+                <div key={it.label} className="mx_FanoosDashboard_legendRow">
+                    <span className="mx_FanoosDashboard_legendDot" style={{ background: it.color }} />
+                    <span className="mx_FanoosDashboard_legendLabel">{it.label}</span>
+                    <span className="mx_FanoosDashboard_legendCount">{it.count}</span>
+                </div>
+            ))}
+            <div className="mx_FanoosDashboard_legendFooter">
+                {_t("fanoos_dashboard|rooms_depth", { count: rooms.length, depth: level })}
+            </div>
+        </div>
+    );
+};
+
 // ─── Info Panel ───────────────────────────────────────────────────────────────
 
 interface InfoPanelProps {
@@ -534,20 +875,17 @@ interface InfoPanelProps {
     unread: Record<string, number>;
     onClose: () => void;
     client: ReturnType<typeof useMatrixClientContext>;
+    isDayMode: boolean;
 }
 
-const InfoPanel: React.FC<InfoPanelProps> = ({ nodeId, tree, sentiment, sentDetail, unread, onClose, client }) => {
+const InfoPanel: React.FC<InfoPanelProps> = ({ nodeId, tree, sentiment, sentDetail, unread, onClose, client, isDayMode }) => {
     const n = tree.find((x) => x.id === nodeId);
     if (!n) return null;
 
-    const isD1 = tree.find((p) => p.id === n.parentId)?.id === "__root__" || !n.parentId;
-    const score =
-        n.type === "space" || n.type === "virtual"
-            ? avgChildSentiment(n.id, tree, sentiment)
-            : n.matrixRoomId
-              ? sentiment[n.matrixRoomId]
-              : null;
-    const color = sentimentColor(score);
+    const score = n.type === "space" || n.type === "virtual"
+        ? avgChildSentiment(n.id, tree, sentiment)
+        : n.matrixRoomId ? sentiment[n.matrixRoomId] : null;
+    const color = sentimentColor(score, isDayMode);
     const band = sentimentBand(score);
     const un = n.matrixRoomId ? unread[n.matrixRoomId] || 0 : 0;
     const d = n.matrixRoomId ? sentDetail[n.matrixRoomId] || { pos: [], neg: [], msgCount: 0 } : { pos: [], neg: [], msgCount: 0 };
@@ -556,99 +894,83 @@ const InfoPanel: React.FC<InfoPanelProps> = ({ nodeId, tree, sentiment, sentDeta
         positive: "#22c55e",
         neutral: "#eab308",
         negative: "#ef4444",
-        "no-data": "#475569",
+        "no-data": isDayMode ? "#94a3b8" : "#475569",
     };
     const childRooms = tree.filter((c) => c.parentId === n.id && c.matrixRoomId);
     const childUnread = childRooms.reduce((s, c) => s + (unread[c.matrixRoomId!] || 0), 0);
-
     const room = n.matrixRoomId ? client.getRoom(n.matrixRoomId) : null;
     const members = room ? room.getJoinedMembers().slice(0, 20) : [];
 
-    const openRoom = () => {
+    const openRoom = (): void => {
         if (n.matrixRoomId) dis.dispatch({ action: Action.ViewRoom, room_id: n.matrixRoomId });
     };
 
+    const bandLabel: Record<string, string> = {
+        positive: _t("fanoos_dashboard|positive"),
+        neutral: _t("fanoos_dashboard|neutral"),
+        negative: _t("fanoos_dashboard|negative"),
+        "no-data": _t("fanoos_dashboard|no_data"),
+    };
+
     return (
-        <div className="mx_FanoosDashboard_infoPanel">
+        <div className={`mx_FanoosDashboard_infoPanel${isDayMode ? " day" : ""}`}>
             <div className="mx_FanoosDashboard_ipHdr" style={{ borderLeftColor: color }}>
-                <span className="mx_FanoosDashboard_ipIcon">
-                    {n.type === "dm" ? "👤" : n.type === "space" ? "⬡" : "💬"}
-                </span>
+                <span className="mx_FanoosDashboard_ipIcon">{n.type === "dm" ? "👤" : n.type === "space" ? "⬡" : "💬"}</span>
                 <div className="mx_FanoosDashboard_ipName">{n.name}</div>
-                <span
-                    className="mx_FanoosDashboard_ipBand"
-                    style={{ background: `${bandColors[band]}22`, color: bandColors[band] }}
-                >
-                    {band}
+                <span className="mx_FanoosDashboard_ipBand" style={{ background: `${bandColors[band]}22`, color: bandColors[band] }}>
+                    {bandLabel[band]}
                 </span>
-                <button className="mx_FanoosDashboard_ipClose" onClick={onClose}>
-                    ✕
-                </button>
+                <button className="mx_FanoosDashboard_ipClose" onClick={onClose}>✕</button>
             </div>
 
-            {un > 0 && (
-                <div className="mx_FanoosDashboard_ipUnread">📬 {un} unread</div>
-            )}
+            {un > 0 && <div className="mx_FanoosDashboard_ipUnread">{_t("fanoos_dashboard|unread_badge", { count: un })}</div>}
 
             {childRooms.length > 0 && (
                 <div className="mx_FanoosDashboard_ipRow">
-                    <span>Channels</span>
-                    <span>
-                        {childRooms.length}
-                        {childUnread > 0 ? ` · ${childUnread} unread` : ""}
-                    </span>
+                    <span>{_t("fanoos_dashboard|channels")}</span>
+                    <span>{childRooms.length}{childUnread > 0 ? ` · ${childUnread} unread` : ""}</span>
+                </div>
+            )}
+
+            {d.msgCount > 0 && (
+                <div className="mx_FanoosDashboard_ipRow">
+                    <span>{_t("fanoos_dashboard|messages_analysed")}</span>
+                    <span>{d.msgCount}</span>
                 </div>
             )}
 
             {scorePct !== null && (
                 <div className="mx_FanoosDashboard_ipScoreBar">
                     <div className="mx_FanoosDashboard_ipTrack">
-                        <div
-                            className="mx_FanoosDashboard_ipFill"
-                            style={{ width: `${scorePct}%`, background: color }}
-                        />
+                        <div className="mx_FanoosDashboard_ipFill" style={{ width: `${scorePct}%`, background: color }} />
                     </div>
-                    <span className="mx_FanoosDashboard_ipPct" style={{ color }}>
-                        {scorePct}%
-                    </span>
+                    <span className="mx_FanoosDashboard_ipPct" style={{ color }}>{scorePct}%</span>
                 </div>
             )}
 
             {d.pos.length > 0 && (
                 <div className="mx_FanoosDashboard_ipSignals">
-                    <span className="mx_FanoosDashboard_ipSigLabel pos">Positive</span>
-                    {d.pos.map((k) => (
-                        <span key={k} className="mx_FanoosDashboard_ipKw pos">
-                            {k}
-                        </span>
-                    ))}
+                    <span className="mx_FanoosDashboard_ipSigLabel pos">{_t("fanoos_dashboard|positive")}</span>
+                    {d.pos.map((k) => <span key={k} className="mx_FanoosDashboard_ipKw pos">{k}</span>)}
                 </div>
             )}
 
             {d.neg.length > 0 && (
                 <div className="mx_FanoosDashboard_ipSignals">
-                    <span className="mx_FanoosDashboard_ipSigLabel neg">Issues</span>
-                    {d.neg.map((k) => (
-                        <span key={k} className="mx_FanoosDashboard_ipKw neg">
-                            {k}
-                        </span>
-                    ))}
+                    <span className="mx_FanoosDashboard_ipSigLabel neg">{_t("fanoos_dashboard|issues")}</span>
+                    {d.neg.map((k) => <span key={k} className="mx_FanoosDashboard_ipKw neg">{k}</span>)}
                 </div>
             )}
 
-            {n.matrixRoomId && (
-                <div className="mx_FanoosDashboard_ipRoomId">{n.matrixRoomId}</div>
-            )}
+            {n.matrixRoomId && <div className="mx_FanoosDashboard_ipRoomId">{n.matrixRoomId}</div>}
 
             {members.length > 0 && (
                 <div className="mx_FanoosDashboard_ipMembers">
-                    <div className="mx_FanoosDashboard_ipMembersHdr">Members</div>
+                    <div className="mx_FanoosDashboard_ipMembersHdr">{_t("fanoos_dashboard|members")}</div>
                     <div className="mx_FanoosDashboard_ipMembersList">
                         {members.map((m) => (
                             <span key={m.userId} className="mx_FanoosDashboard_ipMemberChip">
-                                <span className="mx_FanoosDashboard_ipMemberAv">
-                                    {(m.name || "?").slice(0, 2).toUpperCase()}
-                                </span>
+                                <span className="mx_FanoosDashboard_ipMemberAv">{(m.name || "?").slice(0, 2).toUpperCase()}</span>
                                 <span className="mx_FanoosDashboard_ipMemberName">{m.name || m.userId}</span>
                             </span>
                         ))}
@@ -658,7 +980,7 @@ const InfoPanel: React.FC<InfoPanelProps> = ({ nodeId, tree, sentiment, sentDeta
 
             {n.matrixRoomId && (
                 <button className="mx_FanoosDashboard_ipOpenBtn" onClick={openRoom}>
-                    Open Room →
+                    {_t("fanoos_dashboard|open_room")}
                 </button>
             )}
         </div>
@@ -686,47 +1008,66 @@ const FanoosDashboard: React.FC = () => {
     const [selectedIds] = useState(new Set<string>());
     const [dims, setDims] = useState({ w: 800, h: 500 });
     const [transformStyle, setTransformStyle] = useState("");
+    const [isDayMode, setIsDayMode] = useState(true);
+    const [intervalVal, setIntervalVal] = useState("24h");
+    const [lastReloaded, setLastReloaded] = useState(new Date());
+    const [reloadAgeStr, setReloadAgeStr] = useState(_t("fanoos_dashboard|just_now"));
+    const [hoverInfo, setHoverInfo] = useState<HoverInfo | null>(null);
+    const [chatBox, setChatBox] = useState<ChatBoxState | null>(null);
+
     const layoutRef = useRef<Map<string, Segment>>(new Map());
     const dimsRef = useRef({ W: 800, H: 500, CX: 400, CY: 496 });
 
-    // Build tree
+    // Reload age ticker
+    useEffect(() => {
+        const tick = (): void => setReloadAgeStr(reloadAgeLabel(lastReloaded));
+        tick();
+        const id = window.setInterval(tick, 30_000);
+        return () => window.clearInterval(id);
+    }, [lastReloaded]);
+
+    // Build tree (room structure — only changes on membership events, not messages)
     const rebuildTree = useCallback(() => {
         setTree(buildTree(client));
+        setLastReloaded(new Date());
     }, [client]);
     useEffect(rebuildTree, [rebuildTree]);
-    useEventEmitter(client, RoomEvent.Timeline, rebuildTree);
 
-    // Build unread
-    useEffect(() => {
+    // Refresh unread + sentiment (single pass per room, no tree rebuild)
+    const refreshStats = useCallback(() => {
+        const cutoff = Date.now() - intervalMs(intervalVal);
         const m: Record<string, number> = {};
-        for (const n of tree) {
-            if (n.matrixRoomId) {
-                const r = client.getRoom(n.matrixRoomId);
-                if (r) m[n.matrixRoomId] = RoomNotificationStateStore.instance.getRoomState(r).count;
-            }
-        }
-        setUnread(m);
-    }, [tree, client]);
-
-    // Build sentiment
-    useEffect(() => {
         const sent: Record<string, number | null> = {};
         const det: Record<string, SentDetail> = {};
         for (const n of tree) {
-            if (!n.matrixRoomId || n.type === "space") continue;
+            if (!n.matrixRoomId) continue;
             const r = client.getRoom(n.matrixRoomId);
             if (!r) continue;
-            const evs = r.getLiveTimeline().getEvents();
-            const msgs = evs
-                .filter((ev) => ev.getType() === "m.room.message")
-                .slice(-50)
-                .map((ev) => ({ body: String(ev.getContent().body || "") }));
-            sent[n.matrixRoomId] = scoreSentiment(msgs);
-            det[n.matrixRoomId] = sentimentDetail(msgs);
+            m[n.matrixRoomId] = RoomNotificationStateStore.instance.getRoomState(r).count;
+            if (n.type !== "space") {
+                const msgs = r.getLiveTimeline().getEvents()
+                    .filter((ev) => ev.getType() === "m.room.message" && ev.getTs() >= cutoff)
+                    .slice(-50)
+                    .map((ev) => ({ body: String(ev.getContent().body || "") }));
+                const { score, detail } = analyzeMessages(msgs);
+                sent[n.matrixRoomId] = score;
+                det[n.matrixRoomId] = detail;
+            }
         }
+        setUnread(m);
         setSentiment(sent);
         setSentDetail(det);
-    }, [tree, client]);
+    }, [tree, client, intervalVal]);
+
+    useEffect(refreshStats, [refreshStats]);
+
+    // Debounce timeline events → stats refresh (prevents re-running on every incoming message)
+    const statsTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const debouncedRefreshStats = useCallback(() => {
+        if (statsTimerRef.current) clearTimeout(statsTimerRef.current);
+        statsTimerRef.current = setTimeout(refreshStats, 800);
+    }, [refreshStats]);
+    useEventEmitter(client, RoomEvent.Timeline, debouncedRefreshStats);
 
     // Observe container size
     useEffect(() => {
@@ -744,20 +1085,8 @@ const FanoosDashboard: React.FC = () => {
     // Render SVG
     const rendered = useMemo(() => {
         if (!tree.length || dims.w < 100) return null;
-        return renderSVG(
-            tree,
-            unread,
-            sentiment,
-            search,
-            searchIdx,
-            level,
-            showNames,
-            dims.w,
-            dims.h,
-            activeRoomId,
-            selectedIds,
-        );
-    }, [tree, unread, sentiment, search, searchIdx, level, showNames, dims, activeRoomId, selectedIds]);
+        return renderSVG(tree, unread, sentiment, search, searchIdx, level, showNames, dims.w, dims.h, activeRoomId, selectedIds, isDayMode);
+    }, [tree, unread, sentiment, search, searchIdx, level, showNames, dims, activeRoomId, selectedIds, isDayMode]);
 
     useEffect(() => {
         if (!rendered || !svgWrapRef.current) return;
@@ -767,38 +1096,51 @@ const FanoosDashboard: React.FC = () => {
         setSearchHits(rendered.hits);
     }, [rendered]);
 
-    // Click handler
-    const handleClick = useCallback(
-        (e: React.MouseEvent<HTMLDivElement>) => {
-            const target = e.target as Element;
-            const nodeId = target.closest("[data-nodeid]")?.getAttribute("data-nodeid");
-            if (!nodeId) return;
-            setInfoPanelNode((prev) => (prev === nodeId ? null : nodeId));
-            const n = tree.find((x) => x.id === nodeId);
-            if (n?.matrixRoomId && n.type !== "space" && n.type !== "virtual") {
-                setActiveRoomId(n.matrixRoomId);
-                dis.dispatch({ action: Action.ViewRoom, room_id: n.matrixRoomId });
-            }
-        },
-        [tree],
-    );
+    // Click → toggle info panel + navigate to room
+    const handleClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+        const nodeId = (e.target as Element).closest("[data-nodeid]")?.getAttribute("data-nodeid");
+        if (!nodeId) return;
+        setInfoPanelNode((prev) => (prev === nodeId ? null : nodeId));
+        const n = tree.find((x) => x.id === nodeId);
+        if (n?.matrixRoomId && n.type !== "space" && n.type !== "virtual") {
+            setActiveRoomId(n.matrixRoomId);
+            dis.dispatch({ action: Action.ViewRoom, room_id: n.matrixRoomId });
+        }
+    }, [tree]);
+
+    // Hover → show tooltip (throttled: update only when node or coords change by ≥4px)
+    const lastHoverRef = useRef<HoverInfo | null>(null);
+    const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+        const nodeId = (e.target as Element).closest("[data-nodeid]")?.getAttribute("data-nodeid") ?? null;
+        const prev = lastHoverRef.current;
+        if (!nodeId) {
+            if (prev) { lastHoverRef.current = null; setHoverInfo(null); }
+            return;
+        }
+        if (prev && prev.nodeId === nodeId && Math.abs(e.clientX - prev.clientX) < 4 && Math.abs(e.clientY - prev.clientY) < 4) return;
+        const next = { nodeId, clientX: e.clientX, clientY: e.clientY };
+        lastHoverRef.current = next;
+        setHoverInfo(next);
+    }, []);
+
+    // Right-click → open chat box
+    const handleContextMenu = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        e.stopPropagation(); // Prevent event from reaching scrollable ancestors (avoids page jump)
+        const nodeId = (e.target as Element).closest("[data-nodeid]")?.getAttribute("data-nodeid");
+        if (!nodeId) return;
+        const n = tree.find((x) => x.id === nodeId);
+        if (!n?.matrixRoomId || n.type === "space" || n.type === "virtual") return;
+        setChatBox({ roomId: n.matrixRoomId, roomName: n.name, minimized: false, msgText: "" });
+    }, [tree]);
+
+    // Prevent right-button mousedown from bubbling (some browsers scroll-to-top on right mousedown)
+    const handleMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+        if (e.button === 2) { e.preventDefault(); e.stopPropagation(); }
+    }, []);
 
     // Search navigation
-    const searchNext = useCallback(() => {
-        if (!searchHits.length) return;
-        const idx = (searchIdx + 1) % searchHits.length;
-        setSearchIdx(idx);
-        focusOnNode(searchHits[idx]);
-    }, [searchHits, searchIdx]);
-
-    const searchPrev = useCallback(() => {
-        if (!searchHits.length) return;
-        const idx = (searchIdx - 1 + searchHits.length) % searchHits.length;
-        setSearchIdx(idx);
-        focusOnNode(searchHits[idx]);
-    }, [searchHits, searchIdx]);
-
-    const focusOnNode = (nodeId: string) => {
+    const focusOnNode = useCallback((nodeId: string) => {
         const seg = layoutRef.current.get(nodeId);
         const { W, H, CX, CY } = dimsRef.current;
         if (!seg || !W) return;
@@ -806,133 +1148,180 @@ const FanoosDashboard: React.FC = () => {
         const fx = CX + midR * Math.cos(seg.mid);
         const fy = CY - midR * Math.sin(seg.mid);
         const ZOOM = 2.4;
-        const tx = W / 2 - fx * ZOOM;
-        const ty = H / 2 - fy * ZOOM;
-        setTransformStyle(`translate(${tx.toFixed(1)}px,${ty.toFixed(1)}px) scale(${ZOOM})`);
-    };
+        setTransformStyle(`translate(${(W / 2 - fx * ZOOM).toFixed(1)}px,${(H / 2 - fy * ZOOM).toFixed(1)}px) scale(${ZOOM})`);
+    }, []);
 
-    const resetZoom = () => {
-        setTransformStyle("");
-        setSearchIdx(-1);
-    };
+    const searchNext = useCallback(() => {
+        if (!searchHits.length) return;
+        const idx = (searchIdx + 1) % searchHits.length;
+        setSearchIdx(idx);
+        focusOnNode(searchHits[idx]);
+    }, [searchHits, searchIdx, focusOnNode]);
 
-    const zoomIn = () => {
-        // Parse current scale and bump
+    const searchPrev = useCallback(() => {
+        if (!searchHits.length) return;
+        const idx = (searchIdx - 1 + searchHits.length) % searchHits.length;
+        setSearchIdx(idx);
+        focusOnNode(searchHits[idx]);
+    }, [searchHits, searchIdx, focusOnNode]);
+
+    const resetZoom = useCallback(() => { setTransformStyle(""); setSearchIdx(-1); }, []);
+
+    const zoomIn = useCallback(() => {
         const m = transformStyle.match(/scale\(([^)]+)\)/);
         const s = m ? parseFloat(m[1]) : 1;
-        const ns = Math.min(s * 1.3, 6);
-        setTransformStyle((prev) => prev.replace(/scale\([^)]+\)/, `scale(${ns.toFixed(2)})`).replace(/^$/, `scale(${ns.toFixed(2)})`));
-    };
+        const base = transformStyle.replace(/\s*scale\([^)]+\)/, "").trim();
+        setTransformStyle(`${base} scale(${Math.min(s * 1.3, 6).toFixed(2)})`.trim());
+    }, [transformStyle]);
 
-    const zoomOut = () => {
+    const zoomOut = useCallback(() => {
         const m = transformStyle.match(/scale\(([^)]+)\)/);
         const s = m ? parseFloat(m[1]) : 1;
         const ns = Math.max(s / 1.3, 0.3);
         if (ns <= 0.35) { resetZoom(); return; }
-        setTransformStyle((prev) => prev.replace(/scale\([^)]+\)/, `scale(${ns.toFixed(2)})`).replace(/^$/, `scale(${ns.toFixed(2)})`));
-    };
+        const base = transformStyle.replace(/\s*scale\([^)]+\)/, "").trim();
+        setTransformStyle(`${base} scale(${ns.toFixed(2)})`.trim());
+    }, [transformStyle, resetZoom]);
 
-    const searchCount =
-        !search.trim() ? "" : !searchHits.length ? "0" : `${searchIdx >= 0 ? searchIdx + 1 : "–"}/${searchHits.length}`;
+    const handleFullscreen = useCallback(() => {
+        const el = containerRef.current;
+        if (!el) return;
+        if (!document.fullscreenElement) { el.requestFullscreen().catch(() => {}); }
+        else { document.exitFullscreen().catch(() => {}); }
+    }, []);
+
+    const searchCount = !search.trim() ? "" : !searchHits.length ? "0" : `${searchIdx >= 0 ? searchIdx + 1 : "–"}/${searchHits.length}`;
+    const canvasStyle = isDayMode
+        ? { background: "linear-gradient(180deg, #b8d4f0 0%, #dce9f8 40%, #e8eff8 100%)" }
+        : { background: "#0a1628" };
 
     return (
-        <div className="mx_FanoosDashboard">
-            {/* Control bar */}
-            <div className="mx_FanoosDashboard_controls">
+        <div className={`mx_FanoosDashboard${isDayMode ? " day" : " night"}`}>
+
+            {/* ── Row 1: Title + Model + Interval ── */}
+            <div className={`mx_FanoosDashboard_topBar${isDayMode ? " day" : ""}`}>
+                <span className="mx_FanoosDashboard_title">🔭 {_t("fanoos_dashboard|title")}</span>
+
+                <label className="mx_FanoosDashboard_ctrlGroup">
+                    <span className="mx_FanoosDashboard_ctrlLabel">{_t("fanoos_dashboard|model")}</span>
+                    <select className="mx_FanoosDashboard_select" value="keyword" onChange={() => {}}>
+                        <option value="keyword">{_t("fanoos_dashboard|keyword_model")}</option>
+                    </select>
+                </label>
+
+                <label className="mx_FanoosDashboard_ctrlGroup">
+                    <span className="mx_FanoosDashboard_ctrlLabel">{_t("fanoos_dashboard|interval")}</span>
+                    <select className="mx_FanoosDashboard_select" value={intervalVal} onChange={(e) => setIntervalVal(e.target.value)}>
+                        <option value="24h">{_t("fanoos_dashboard|interval_24h")}</option>
+                        <option value="7d">{_t("fanoos_dashboard|interval_7d")}</option>
+                        <option value="30d">{_t("fanoos_dashboard|interval_30d")}</option>
+                        <option value="all">{_t("fanoos_dashboard|interval_all")}</option>
+                    </select>
+                </label>
+            </div>
+
+            {/* ── Row 2: Depth + Names + Search + Zoom + Reload + Mode + Fullscreen ── */}
+            <div className={`mx_FanoosDashboard_ctrlBar${isDayMode ? " day" : ""}`}>
+                {/* Depth group */}
+                <div className="mx_FanoosDashboard_btnGroup">
+                    <span className="mx_FanoosDashboard_ctrlLabel">{_t("fanoos_dashboard|depth")}</span>
+                    <button className={`mx_FanoosDashboard_lvlBtn${level === 1 ? " active" : ""}${isDayMode ? " day" : ""}`} onClick={() => setLevel(1)}>1</button>
+                    <button className={`mx_FanoosDashboard_lvlBtn${level === 2 ? " active" : ""}${isDayMode ? " day" : ""}`} onClick={() => setLevel(2)}>2</button>
+                </div>
+
+                <div className="mx_FanoosDashboard_divider" />
+
+                {/* Names toggle */}
                 <button
-                    className={`mx_FanoosDashboard_lvlBtn${level === 1 ? " active" : ""}`}
-                    onClick={() => setLevel(1)}
-                >
-                    L1
-                </button>
-                <button
-                    className={`mx_FanoosDashboard_lvlBtn${level === 2 ? " active" : ""}`}
-                    onClick={() => setLevel(2)}
-                >
-                    L2
-                </button>
-                <button
-                    className={`mx_FanoosDashboard_lvlBtn${showNames ? " active" : ""}`}
+                    className={`mx_FanoosDashboard_lvlBtn${showNames ? " active" : ""}${isDayMode ? " day" : ""}`}
                     onClick={() => setShowNames((v) => !v)}
-                    title="Toggle names"
+                    title={_t("fanoos_dashboard|names")}
                 >
-                    Aa
+                    {_t("fanoos_dashboard|names")}
                 </button>
+
+                <div className="mx_FanoosDashboard_divider" />
+
+                {/* Search */}
                 <div className="mx_FanoosDashboard_searchWrap">
                     <input
-                        className="mx_FanoosDashboard_searchInput"
+                        className={`mx_FanoosDashboard_searchInput${isDayMode ? " day" : ""}`}
                         type="search"
-                        placeholder="Search rooms…"
+                        placeholder={_t("fanoos_dashboard|search_placeholder")}
                         value={search}
-                        onChange={(e) => {
-                            setSearch(e.target.value);
-                            setSearchIdx(-1);
-                            if (!e.target.value.trim()) resetZoom();
-                        }}
-                        onKeyDown={(e) => {
-                            if (e.key === "Enter") searchNext();
-                        }}
+                        onChange={(e) => { setSearch(e.target.value); setSearchIdx(-1); if (!e.target.value.trim()) resetZoom(); }}
+                        onKeyDown={(e) => { if (e.key === "Enter") searchNext(); }}
                     />
                     {searchCount && <span className="mx_FanoosDashboard_searchCount">{searchCount}</span>}
                     {searchHits.length > 0 && (
                         <>
-                            <button className="mx_FanoosDashboard_navBtn" onClick={searchPrev} title="Previous">
-                                ‹
-                            </button>
-                            <button className="mx_FanoosDashboard_navBtn" onClick={searchNext} title="Next">
-                                ›
-                            </button>
+                            <button className={`mx_FanoosDashboard_navBtn${isDayMode ? " day" : ""}`} onClick={searchPrev} title="Previous">‹</button>
+                            <button className={`mx_FanoosDashboard_navBtn${isDayMode ? " day" : ""}`} onClick={searchNext} title="Next">›</button>
                         </>
                     )}
                 </div>
-                <button className="mx_FanoosDashboard_zoomBtn" onClick={zoomIn} title="Zoom in">
-                    +
+
+                <div className="mx_FanoosDashboard_divider" />
+
+                {/* Zoom group */}
+                <div className="mx_FanoosDashboard_btnGroup">
+                    <button className={`mx_FanoosDashboard_zoomBtn${isDayMode ? " day" : ""}`} onClick={zoomIn} title="Zoom in">+</button>
+                    <button className={`mx_FanoosDashboard_zoomBtn${isDayMode ? " day" : ""}`} onClick={resetZoom} title="Reset zoom">⊙</button>
+                    <button className={`mx_FanoosDashboard_zoomBtn${isDayMode ? " day" : ""}`} onClick={zoomOut} title="Zoom out">−</button>
+                </div>
+
+                <div className="mx_FanoosDashboard_divider" />
+
+                {/* Reload */}
+                <button className={`mx_FanoosDashboard_reloadBtn${isDayMode ? " day" : ""}`} onClick={rebuildTree} title={_t("fanoos_dashboard|reload")}>
+                    ↺ <span className="mx_FanoosDashboard_reloadAge">{reloadAgeStr}</span>
                 </button>
-                <button className="mx_FanoosDashboard_zoomBtn" onClick={zoomOut} title="Zoom out">
-                    −
+
+                <div className="mx_FanoosDashboard_spacer" />
+
+                {/* Mode + Fullscreen */}
+                <button className={`mx_FanoosDashboard_modeBtn${isDayMode ? " day" : ""}`} onClick={() => setIsDayMode((v) => !v)}>
+                    {isDayMode ? _t("fanoos_dashboard|night") : _t("fanoos_dashboard|day")}
                 </button>
-                <button className="mx_FanoosDashboard_zoomBtn" onClick={resetZoom} title="Reset zoom">
-                    ⊙
-                </button>
-                <button className="mx_FanoosDashboard_zoomBtn" onClick={rebuildTree} title="Reload">
-                    ↺
+                <button className={`mx_FanoosDashboard_fsBtn${isDayMode ? " day" : ""}`} onClick={handleFullscreen} title={_t("fanoos_dashboard|fullscreen")}>
+                    {_t("fanoos_dashboard|fullscreen")}
                 </button>
             </div>
 
-            {/* Legend */}
-            <div className="mx_FanoosDashboard_legend">
-                <span className="mx_FanoosDashboard_legendItem" style={{ color: sentimentColor(0.8) }}>
-                    ● Positive
-                </span>
-                <span className="mx_FanoosDashboard_legendItem" style={{ color: sentimentColor(0.5) }}>
-                    ● Neutral
-                </span>
-                <span className="mx_FanoosDashboard_legendItem" style={{ color: sentimentColor(0.15) }}>
-                    ● Issues
-                </span>
-                <span className="mx_FanoosDashboard_legendItem" style={{ color: "#334155" }}>
-                    ● No data
-                </span>
-            </div>
-
-            {/* SVG canvas */}
-            <div className="mx_FanoosDashboard_canvasWrap" ref={containerRef}>
+            {/* ── Canvas ── */}
+            <div className="mx_FanoosDashboard_canvasWrap" ref={containerRef} style={canvasStyle}>
+                {tree.length > 0 && (
+                    <LegendOverlay tree={tree} sentiment={sentiment} level={level} isDayMode={isDayMode} />
+                )}
                 <div
                     ref={svgWrapRef}
                     className="mx_FanoosDashboard_svgWrap"
-                    style={{
-                        transform: transformStyle,
-                        transition: "transform 0.42s cubic-bezier(0.25,0.46,0.45,0.94)",
-                        transformOrigin: "0 0",
-                    }}
+                    style={{ transform: transformStyle, transition: "transform 0.42s cubic-bezier(0.25,0.46,0.45,0.94)", transformOrigin: "0 0" }}
                     onClick={handleClick}
+                    onMouseMove={handleMouseMove}
+                    onMouseLeave={() => { lastHoverRef.current = null; setHoverInfo(null); }}
+                    onMouseDown={handleMouseDown}
+                    onContextMenu={handleContextMenu}
                 />
                 {!tree.length && (
-                    <div className="mx_FanoosDashboard_empty">No rooms yet</div>
+                    <div className={`mx_FanoosDashboard_empty${isDayMode ? " day" : ""}`}>{_t("fanoos_dashboard|no_rooms")}</div>
                 )}
             </div>
 
-            {/* Info panel */}
+            {/* ── Hover tooltip (fixed, follows mouse) ── */}
+            {hoverInfo && (
+                <HoverTooltip
+                    info={hoverInfo}
+                    tree={tree}
+                    sentiment={sentiment}
+                    sentDetail={sentDetail}
+                    unread={unread}
+                    client={client}
+                    isDayMode={isDayMode}
+                />
+            )}
+
+            {/* ── Info panel (slide-in) ── */}
             {infoPanelNode && (
                 <InfoPanel
                     nodeId={infoPanelNode}
@@ -942,6 +1331,18 @@ const FanoosDashboard: React.FC = () => {
                     unread={unread}
                     onClose={() => setInfoPanelNode(null)}
                     client={client}
+                    isDayMode={isDayMode}
+                />
+            )}
+
+            {/* ── Chat box (bottom-right, minimizable) ── */}
+            {chatBox && (
+                <ChatBox
+                    state={chatBox}
+                    onChange={setChatBox}
+                    onClose={() => setChatBox(null)}
+                    client={client}
+                    isDayMode={isDayMode}
                 />
             )}
         </div>

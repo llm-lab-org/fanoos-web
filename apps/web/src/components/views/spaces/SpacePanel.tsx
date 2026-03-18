@@ -405,16 +405,16 @@ const FanoosDashboardButton: React.FC<{ isPanelCollapsed: boolean }> = ({ isPane
 
     let button = (
         <IconButton
-            aria-label="Room Dashboard"
+            aria-label={_t("fanoos_dashboard|aria_label")}
             className={classNames("mx_FanoosDashboardButton", { expanded: !isPanelCollapsed })}
             onClick={onClick}
-            title={isPanelCollapsed ? "Room Dashboard" : undefined}
+            title={isPanelCollapsed ? _t("fanoos_dashboard|aria_label") : undefined}
         >
             <>
                 <DashboardGridIcon />
                 {!isPanelCollapsed && (
                     <Text className="mx_FanoosDashboardButton_label" as="span" size="md">
-                        Dashboard
+                        {_t("fanoos_dashboard|button")}
                     </Text>
                 )}
             </>
@@ -423,7 +423,7 @@ const FanoosDashboardButton: React.FC<{ isPanelCollapsed: boolean }> = ({ isPane
 
     if (isPanelCollapsed) {
         button = (
-            <Tooltip label="Room Dashboard" placement="right">
+            <Tooltip label={_t("fanoos_dashboard|aria_label")} placement="right">
                 {button}
             </Tooltip>
         );

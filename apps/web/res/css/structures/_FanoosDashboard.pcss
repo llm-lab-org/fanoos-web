@@ -10,9 +10,10 @@ Please see LICENSE files in the repository root for full details.
 .mx_FanoosDashboardButton {
     display: flex;
     align-items: center;
+    justify-content: center;   /* center icon when collapsed */
     gap: var(--cpd-space-2x);
     width: 100%;
-    padding: var(--cpd-space-2x) var(--cpd-space-3x);
+    padding: var(--cpd-space-3x) var(--cpd-space-3x);
     border-radius: 8px;
     cursor: pointer;
     color: $secondary-content;
@@ -32,8 +33,8 @@ Please see LICENSE files in the repository root for full details.
 
     svg {
         flex-shrink: 0;
-        width: 20px;
-        height: 20px;
+        width: 22px;
+        height: 22px;
     }
 }
 
@@ -50,43 +51,121 @@ Please see LICENSE files in the repository root for full details.
     flex-direction: column;
     height: 100%;
     overflow: hidden;
-    background: #0d1117;
+    background: #0a1628;
     position: relative;
     color: #e2e8f0;
 }
 
-/* ── Control bar ─────────────────────────────────────────────────── */
+/* ── Top bar ──────────────────────────────────────────────────────── */
 
-.mx_FanoosDashboard_controls {
+.mx_FanoosDashboard_topBar {
     display: flex;
     align-items: center;
-    gap: 6px;
-    padding: 8px 12px;
+    gap: 14px;
+    padding: 8px 16px;
     background: #111827;
     border-bottom: 1px solid rgba(255, 255, 255, 0.06);
     flex-shrink: 0;
     flex-wrap: wrap;
+    color: #e2e8f0;
+    min-height: 42px;
 }
 
-.mx_FanoosDashboard_lvlBtn {
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255, 255, 255, 0.10);
-    color: rgba(226, 232, 240, 0.70);
+.mx_FanoosDashboard_title {
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    margin-right: 6px;
+    white-space: nowrap;
+}
+
+.mx_FanoosDashboard_ctrlGroup {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.mx_FanoosDashboard_ctrlLabel {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: rgba(148, 163, 184, 0.75);
+    white-space: nowrap;
+}
+
+.mx_FanoosDashboard_select {
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 6px;
+    color: #e2e8f0;
     padding: 4px 10px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    outline: none;
+    height: 28px;
+
+    &:focus {
+        border-color: rgba(99, 102, 241, 0.60);
+    }
+}
+
+/* ── Ctrl bar ─────────────────────────────────────────────────────── */
+
+.mx_FanoosDashboard_ctrlBar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    background: #0f172a;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    flex-shrink: 0;
+    flex-wrap: wrap;
+    color: #e2e8f0;
+    min-height: 44px;
+}
+
+.mx_FanoosDashboard_btnGroup {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.mx_FanoosDashboard_divider {
+    width: 1px;
+    height: 22px;
+    background: rgba(255, 255, 255, 0.09);
+    flex-shrink: 0;
+    margin: 0 2px;
+}
+
+.mx_FanoosDashboard_spacer { flex: 1; }
+
+.mx_FanoosDashboard_lvlBtn {
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.11);
+    color: rgba(203, 213, 225, 0.80);
+    border-radius: 6px;
+    padding: 5px 12px;
     font-size: 12px;
     font-weight: 600;
     cursor: pointer;
-    transition: background 0.15s, color 0.15s;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+    height: 30px;
+    display: inline-flex;
+    align-items: center;
+    white-space: nowrap;
 
     &:hover {
         background: rgba(99, 102, 241, 0.18);
         color: #c7d2fe;
+        border-color: rgba(99, 102, 241, 0.40);
     }
 
     &.active {
-        background: rgba(99, 102, 241, 0.30);
-        border-color: rgba(129, 140, 248, 0.50);
+        background: rgba(99, 102, 241, 0.28);
+        border-color: rgba(129, 140, 248, 0.55);
         color: #c7d2fe;
     }
 }
@@ -96,8 +175,7 @@ Please see LICENSE files in the repository root for full details.
     align-items: center;
     gap: 4px;
     flex: 1;
-    min-width: 160px;
-    position: relative;
+    min-width: 150px;
 }
 
 .mx_FanoosDashboard_searchInput {
@@ -106,18 +184,14 @@ Please see LICENSE files in the repository root for full details.
     border: 1px solid rgba(255, 255, 255, 0.10);
     border-radius: 6px;
     color: #e2e8f0;
-    padding: 4px 10px;
+    padding: 5px 10px;
     font-size: 13px;
     outline: none;
+    height: 30px;
     transition: border-color 0.15s;
 
-    &::placeholder {
-        color: rgba(148, 163, 184, 0.50);
-    }
-
-    &:focus {
-        border-color: rgba(129, 140, 248, 0.60);
-    }
+    &::placeholder { color: rgba(148, 163, 184, 0.50); }
+    &:focus { border-color: rgba(129, 140, 248, 0.60); }
 }
 
 .mx_FanoosDashboard_searchCount {
@@ -127,53 +201,95 @@ Please see LICENSE files in the repository root for full details.
 }
 
 .mx_FanoosDashboard_navBtn {
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.09);
     border-radius: 5px;
     color: #94a3b8;
-    padding: 2px 8px;
-    font-size: 14px;
+    padding: 4px 10px;
+    font-size: 16px;
     cursor: pointer;
     line-height: 1;
+    height: 30px;
+    display: inline-flex;
+    align-items: center;
 
-    &:hover {
-        background: rgba(99, 102, 241, 0.20);
-        color: #c7d2fe;
-    }
+    &:hover { background: rgba(99, 102, 241, 0.20); color: #c7d2fe; }
 }
 
 .mx_FanoosDashboard_zoomBtn {
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.09);
     border-radius: 5px;
     color: #94a3b8;
-    padding: 3px 9px;
-    font-size: 13px;
+    padding: 5px 11px;
+    font-size: 14px;
     cursor: pointer;
+    font-weight: 700;
+    line-height: 1;
+    height: 30px;
+    display: inline-flex;
+    align-items: center;
+
+    &:hover { background: rgba(99, 102, 241, 0.20); color: #c7d2fe; }
+}
+
+.mx_FanoosDashboard_reloadBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 6px;
+    color: #94a3b8;
+    padding: 5px 12px;
+    font-size: 12px;
     font-weight: 600;
-    line-height: 1.2;
+    cursor: pointer;
+    white-space: nowrap;
+    height: 30px;
+    transition: background 0.15s, color 0.15s;
 
-    &:hover {
-        background: rgba(99, 102, 241, 0.20);
-        color: #c7d2fe;
-    }
+    &:hover { background: rgba(99, 102, 241, 0.20); color: #c7d2fe; }
 }
 
-/* ── Legend ──────────────────────────────────────────────────────── */
-
-.mx_FanoosDashboard_legend {
-    display: flex;
-    gap: 16px;
-    padding: 5px 14px;
-    background: rgba(0, 0, 0, 0.20);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-    flex-shrink: 0;
+.mx_FanoosDashboard_reloadAge {
+    font-size: 10px;
+    font-weight: 400;
+    opacity: 0.70;
 }
 
-.mx_FanoosDashboard_legendItem {
-    font-size: 11px;
-    font-weight: 500;
-    opacity: 0.85;
+.mx_FanoosDashboard_modeBtn {
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 6px;
+    color: #94a3b8;
+    padding: 5px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    height: 30px;
+    display: inline-flex;
+    align-items: center;
+    transition: background 0.15s, color 0.15s;
+
+    &:hover { background: rgba(99, 102, 241, 0.20); color: #c7d2fe; }
+}
+
+.mx_FanoosDashboard_fsBtn {
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 6px;
+    color: #94a3b8;
+    padding: 5px 11px;
+    font-size: 15px;
+    cursor: pointer;
+    height: 30px;
+    display: inline-flex;
+    align-items: center;
+    transition: background 0.15s, color 0.15s;
+
+    &:hover { background: rgba(99, 102, 241, 0.20); color: #c7d2fe; }
 }
 
 /* ── Canvas ──────────────────────────────────────────────────────── */
@@ -182,6 +298,7 @@ Please see LICENSE files in the repository root for full details.
     flex: 1;
     overflow: hidden;
     position: relative;
+    transition: background 0.4s ease;
 }
 
 .mx_FanoosDashboard_svgWrap {
@@ -200,38 +317,431 @@ Please see LICENSE files in the repository root for full details.
     font-size: 14px;
 }
 
+/* ── Legend Overlay ──────────────────────────────────────────────── */
+
+.mx_FanoosDashboard_legendOverlay {
+    position: absolute;
+    top: 12px;
+    inset-inline-start: 12px;
+    background: rgba(10, 22, 40, 0.82);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    border-radius: 8px;
+    padding: 8px 12px;
+    z-index: 5;
+    min-width: 130px;
+    backdrop-filter: blur(4px);
+    pointer-events: none;
+}
+
+.mx_FanoosDashboard_legendRow {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 2px 0;
+}
+
+.mx_FanoosDashboard_legendDot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.mx_FanoosDashboard_legendLabel {
+    flex: 1;
+    font-size: 11px;
+    font-weight: 500;
+    color: rgba(226, 232, 240, 0.85);
+}
+
+.mx_FanoosDashboard_legendCount {
+    font-size: 11px;
+    font-weight: 700;
+    color: rgba(226, 232, 240, 0.55);
+    min-width: 18px;
+    text-align: right;
+}
+
+.mx_FanoosDashboard_legendFooter {
+    margin-top: 6px;
+    padding-top: 5px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    font-size: 10px;
+    color: rgba(148, 163, 184, 0.55);
+    text-align: center;
+}
+
+/* ── Hover Tooltip ────────────────────────────────────────────────── */
+
+.mx_FanoosDashboard_hoverTip {
+    position: fixed;
+    z-index: 9999;
+    pointer-events: none;
+    background: rgba(10, 22, 40, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 10px;
+    padding: 10px 14px;
+    min-width: 180px;
+    max-width: 240px;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(6px);
+    font-size: 12px;
+    color: #e2e8f0;
+}
+
+.mx_FanoosDashboard_htTitle {
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 6px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.mx_FanoosDashboard_htScore {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 5px;
+    flex-wrap: wrap;
+}
+
+.mx_FanoosDashboard_htBand {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.mx_FanoosDashboard_htPct {
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.mx_FanoosDashboard_htBar {
+    flex: 1;
+    min-width: 60px;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.10);
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.mx_FanoosDashboard_htBarFill {
+    height: 100%;
+    border-radius: 999px;
+}
+
+.mx_FanoosDashboard_htMsgCount {
+    font-size: 10px;
+    color: rgba(148, 163, 184, 0.65);
+    margin-bottom: 4px;
+}
+
+.mx_FanoosDashboard_htKeywords {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    margin-bottom: 5px;
+}
+
+.mx_FanoosDashboard_htKwRow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+}
+
+.mx_FanoosDashboard_htKw {
+    font-size: 10px;
+    border-radius: 4px;
+    padding: 1px 5px;
+    font-weight: 500;
+
+    &.pos { background: rgba(34, 197, 94, 0.15); color: #4ade80; }
+    &.neg { background: rgba(239, 68, 68, 0.15); color: #f87171; }
+}
+
+.mx_FanoosDashboard_htUnread {
+    font-size: 11px;
+    color: #f59e0b;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.mx_FanoosDashboard_htMembers {
+    font-size: 11px;
+    color: rgba(148, 163, 184, 0.80);
+    line-height: 1.4;
+    word-break: break-word;
+}
+
+/* ── Chat History ─────────────────────────────────────────────────── */
+
+.mx_FanoosDashboard_chatHistory {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    background: #0f172a;
+    min-height: 0;
+
+    /* Thin scrollbar */
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.15) transparent;
+
+    &::-webkit-scrollbar { width: 4px; }
+    &::-webkit-scrollbar-track { background: transparent; }
+    &::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
+}
+
+.mx_FanoosDashboard_chTop {
+    display: flex;
+    justify-content: center;
+    padding: 4px 0 6px;
+    min-height: 20px;
+}
+
+.mx_FanoosDashboard_chLoading {
+    font-size: 11px;
+    color: rgba(148, 163, 184, 0.60);
+    animation: fanoosChPulse 1s ease-in-out infinite alternate;
+}
+
+@keyframes fanoosChPulse {
+    from { opacity: 0.4; }
+    to { opacity: 1; }
+}
+
+.mx_FanoosDashboard_chStart {
+    font-size: 10px;
+    color: rgba(148, 163, 184, 0.35);
+    text-align: center;
+}
+
+.mx_FanoosDashboard_chEmpty {
+    padding: 16px;
+    font-size: 12px;
+    color: rgba(148, 163, 184, 0.50);
+    text-align: center;
+}
+
+.mx_FanoosDashboard_chRow {
+    display: flex;
+    gap: 7px;
+    align-items: flex-end;
+
+    &.own {
+        flex-direction: row-reverse;
+    }
+}
+
+.mx_FanoosDashboard_chAvatar {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #334155;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 8px;
+    font-weight: 700;
+    color: #94a3b8;
+    flex-shrink: 0;
+    margin-bottom: 2px;
+}
+
+.mx_FanoosDashboard_chContent {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    max-width: 82%;
+}
+
+.mx_FanoosDashboard_chRow.own .mx_FanoosDashboard_chContent {
+    align-items: flex-end;
+}
+
+.mx_FanoosDashboard_chSender {
+    font-size: 10px;
+    font-weight: 600;
+    color: #6366f1;
+    padding: 0 6px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 160px;
+}
+
+.mx_FanoosDashboard_chBubble {
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px 12px 12px 3px;
+    padding: 7px 10px 5px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    word-break: break-word;
+
+    &.own {
+        background: rgba(99, 102, 241, 0.22);
+        border-color: rgba(129, 140, 248, 0.30);
+        border-radius: 12px 12px 3px 12px;
+    }
+}
+
+.mx_FanoosDashboard_chBody {
+    font-size: 12px;
+    color: #e2e8f0;
+    line-height: 1.45;
+    white-space: pre-wrap;
+}
+
+.mx_FanoosDashboard_chMedia {
+    font-size: 11px;
+    color: #94a3b8;
+    font-style: italic;
+}
+
+.mx_FanoosDashboard_chTime {
+    font-size: 9px;
+    color: rgba(148, 163, 184, 0.45);
+    align-self: flex-end;
+    white-space: nowrap;
+}
+
+/* ── Chat Box ─────────────────────────────────────────────────────── */
+
+.mx_FanoosDashboard_chatBox {
+    position: absolute;
+    bottom: 16px;
+    inset-inline-end: 16px;
+    width: 320px;
+    height: 480px;
+    background: #1e293b;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.60);
+    z-index: 20;
+    color: #e2e8f0;
+    display: flex;
+    flex-direction: column;
+
+.mx_FanoosDashboard_cbHdr {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 12px;
+    background: rgba(255, 255, 255, 0.04);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+    cursor: default;
+}
+
+.mx_FanoosDashboard_cbTitle {
+    flex: 1;
+    font-size: 12px;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.mx_FanoosDashboard_cbCtrl {
+    background: transparent;
+    border: none;
+    color: #64748b;
+    font-size: 13px;
+    cursor: pointer;
+    padding: 2px 5px;
+    border-radius: 4px;
+    flex-shrink: 0;
+    line-height: 1;
+
+    &:hover { background: rgba(255, 255, 255, 0.08); color: #e2e8f0; }
+}
+
+.mx_FanoosDashboard_cbCompose {
+    padding: 8px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    border-top: 1px solid rgba(255, 255, 255, 0.07);
+    background: #1e293b;
+    flex-shrink: 0;
+}
+
+.mx_FanoosDashboard_cbInput {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    border-radius: 8px;
+    color: #e2e8f0;
+    padding: 8px 10px;
+    font-size: 13px;
+    font-family: inherit;
+    resize: none;
+    outline: none;
+    box-sizing: border-box;
+    transition: border-color 0.15s;
+
+    &::placeholder { color: rgba(148, 163, 184, 0.45); }
+    &:focus { border-color: rgba(99, 102, 241, 0.55); }
+}
+
+.mx_FanoosDashboard_cbSend {
+    align-self: flex-end;
+    background: rgba(99, 102, 241, 0.28);
+    border: 1px solid rgba(129, 140, 248, 0.45);
+    border-radius: 6px;
+    color: #c7d2fe;
+    padding: 6px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+
+    &:hover:not(:disabled) { background: rgba(99, 102, 241, 0.45); }
+    &:disabled { opacity: 0.50; cursor: not-allowed; }
+    &.sending { opacity: 0.70; }
+}
+
+} /* close .mx_FanoosDashboard_chatBox */
+
 /* ── Info Panel ──────────────────────────────────────────────────── */
 
 .mx_FanoosDashboard_infoPanel {
     position: absolute;
-    top: 72px;
-    right: 14px;
+    top: 0;
+    inset-inline-end: 0;
+    bottom: 0;
     width: 290px;
     background: #111827;
-    border: 1px solid rgba(255, 255, 255, 0.09);
-    border-radius: 12px;
+    border-inline-start: 1px solid rgba(255, 255, 255, 0.09);
     padding: 0;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.60);
-    overflow: hidden;
+    overflow-y: auto;
     z-index: 10;
     color: #e2e8f0;
     font-size: 13px;
+    box-shadow: -4px 0 24px rgba(0, 0, 0, 0.40);
 }
 
 .mx_FanoosDashboard_ipHdr {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 12px 14px;
+    padding: 14px 14px;
     background: rgba(255, 255, 255, 0.03);
     border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-    border-left: 3px solid #6366f1;
+    border-inline-start: 3px solid #6366f1;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: #111827;
 }
 
-.mx_FanoosDashboard_ipIcon {
-    font-size: 16px;
-    flex-shrink: 0;
-}
+.mx_FanoosDashboard_ipIcon { font-size: 16px; flex-shrink: 0; }
 
 .mx_FanoosDashboard_ipName {
     flex: 1;
@@ -262,10 +772,7 @@ Please see LICENSE files in the repository root for full details.
     border-radius: 4px;
     flex-shrink: 0;
 
-    &:hover {
-        color: #e2e8f0;
-        background: rgba(255, 255, 255, 0.08);
-    }
+    &:hover { color: #e2e8f0; background: rgba(255, 255, 255, 0.08); }
 }
 
 .mx_FanoosDashboard_ipUnread {
@@ -283,10 +790,7 @@ Please see LICENSE files in the repository root for full details.
     color: #94a3b8;
     border-bottom: 1px solid rgba(255, 255, 255, 0.04);
 
-    span:last-child {
-        font-weight: 600;
-        color: #e2e8f0;
-    }
+    span:last-child { font-weight: 600; color: #e2e8f0; }
 }
 
 .mx_FanoosDashboard_ipScoreBar {
@@ -342,15 +846,8 @@ Please see LICENSE files in the repository root for full details.
     border-radius: 4px;
     padding: 2px 6px;
 
-    &.pos {
-        background: rgba(34, 197, 94, 0.12);
-        color: #4ade80;
-    }
-
-    &.neg {
-        background: rgba(239, 68, 68, 0.12);
-        color: #f87171;
-    }
+    &.pos { background: rgba(34, 197, 94, 0.12); color: #4ade80; }
+    &.neg { background: rgba(239, 68, 68, 0.12); color: #f87171; }
 }
 
 .mx_FanoosDashboard_ipRoomId {
@@ -363,7 +860,7 @@ Please see LICENSE files in the repository root for full details.
 
 .mx_FanoosDashboard_ipMembers {
     border-top: 1px solid rgba(255, 255, 255, 0.06);
-    padding: 8px 14px;
+    padding: 10px 14px;
 }
 
 .mx_FanoosDashboard_ipMembersHdr {
@@ -379,7 +876,7 @@ Please see LICENSE files in the repository root for full details.
     display: flex;
     flex-wrap: wrap;
     gap: 4px;
-    max-height: 100px;
+    max-height: 120px;
     overflow-y: auto;
 }
 
@@ -417,18 +914,177 @@ Please see LICENSE files in the repository root for full details.
 .mx_FanoosDashboard_ipOpenBtn {
     display: block;
     width: calc(100% - 28px);
-    margin: 10px 14px 12px;
+    margin: 10px 14px 14px;
     background: rgba(99, 102, 241, 0.20);
     border: 1px solid rgba(129, 140, 248, 0.35);
     border-radius: 8px;
     color: #c7d2fe;
     font-size: 13px;
     font-weight: 600;
-    padding: 7px;
+    padding: 8px;
     cursor: pointer;
     transition: background 0.15s;
 
-    &:hover {
-        background: rgba(99, 102, 241, 0.35);
+    &:hover { background: rgba(99, 102, 241, 0.35); }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   DAY MODE OVERRIDES
+   ═══════════════════════════════════════════════════════════════════ */
+
+.mx_FanoosDashboard.day { background: #e8eff8; color: #1e293b; }
+
+.mx_FanoosDashboard_topBar.day {
+    background: #e8edf5;
+    border-bottom-color: #cbd5e0;
+    color: #1e293b;
+
+    .mx_FanoosDashboard_ctrlLabel { color: #64748b; }
+    .mx_FanoosDashboard_select { background: rgba(255, 255, 255, 0.80); border-color: #cbd5e0; color: #1e293b; }
+}
+
+.mx_FanoosDashboard_ctrlBar.day {
+    background: #dde4ee;
+    border-bottom-color: #c5d0de;
+    color: #1e293b;
+
+    .mx_FanoosDashboard_ctrlLabel { color: #64748b; }
+    .mx_FanoosDashboard_divider { background: rgba(0, 0, 0, 0.12); }
+}
+
+.mx_FanoosDashboard_lvlBtn.day {
+    background: rgba(255, 255, 255, 0.70);
+    border-color: #c5cfe0;
+    color: #334155;
+
+    &:hover { background: rgba(99, 102, 241, 0.14); color: #4338ca; border-color: #a5b4fc; }
+    &.active { background: rgba(99, 102, 241, 0.20); border-color: #818cf8; color: #3730a3; }
+}
+
+.mx_FanoosDashboard_searchInput.day {
+    background: rgba(255, 255, 255, 0.88);
+    border-color: #c5cfe0;
+    color: #1e293b;
+
+    &::placeholder { color: #94a3b8; }
+    &:focus { border-color: #818cf8; }
+}
+
+.mx_FanoosDashboard_navBtn.day {
+    background: rgba(255, 255, 255, 0.70);
+    border-color: #c5cfe0;
+    color: #475569;
+
+    &:hover { background: rgba(99, 102, 241, 0.14); color: #4338ca; }
+}
+
+.mx_FanoosDashboard_zoomBtn.day {
+    background: rgba(255, 255, 255, 0.70);
+    border-color: #c5cfe0;
+    color: #475569;
+
+    &:hover { background: rgba(99, 102, 241, 0.14); color: #4338ca; }
+}
+
+.mx_FanoosDashboard_reloadBtn.day {
+    background: rgba(255, 255, 255, 0.70);
+    border-color: #c5cfe0;
+    color: #475569;
+
+    &:hover { background: rgba(99, 102, 241, 0.14); color: #4338ca; }
+}
+
+.mx_FanoosDashboard_modeBtn.day {
+    background: rgba(255, 255, 255, 0.70);
+    border-color: #c5cfe0;
+    color: #475569;
+
+    &:hover { background: rgba(99, 102, 241, 0.14); color: #4338ca; }
+}
+
+.mx_FanoosDashboard_fsBtn.day {
+    background: rgba(255, 255, 255, 0.70);
+    border-color: #c5cfe0;
+    color: #475569;
+
+    &:hover { background: rgba(99, 102, 241, 0.14); color: #4338ca; }
+}
+
+.mx_FanoosDashboard_empty.day { color: #94a3b8; }
+
+.mx_FanoosDashboard_legendOverlay.day {
+    background: rgba(255, 255, 255, 0.84);
+    border-color: rgba(0, 0, 0, 0.12);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+
+    .mx_FanoosDashboard_legendLabel { color: #334155; }
+    .mx_FanoosDashboard_legendCount { color: #64748b; }
+    .mx_FanoosDashboard_legendFooter { border-top-color: rgba(0, 0, 0, 0.10); color: #94a3b8; }
+}
+
+.mx_FanoosDashboard_hoverTip.day {
+    background: rgba(255, 255, 255, 0.94);
+    border-color: rgba(0, 0, 0, 0.12);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.18);
+    color: #1e293b;
+
+    .mx_FanoosDashboard_htMembers { color: #475569; }
+    .mx_FanoosDashboard_htBar { background: rgba(0, 0, 0, 0.08); }
+    .mx_FanoosDashboard_htUnread { color: #d97706; }
+    .mx_FanoosDashboard_htMsgCount { color: #94a3b8; }
+    .mx_FanoosDashboard_htKw {
+        &.pos { background: rgba(22, 163, 74, 0.12); color: #15803d; }
+        &.neg { background: rgba(220, 38, 38, 0.10); color: #b91c1c; }
     }
+}
+
+/* Minimized chat box collapses to header only */
+.mx_FanoosDashboard_chatBox.minimized {
+    height: auto;
+}
+
+.mx_FanoosDashboard_chatBox.day {
+    background: #f8fafc;
+    border-color: #e2e8f0;
+    color: #1e293b;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+
+    .mx_FanoosDashboard_cbHdr { background: rgba(0, 0, 0, 0.02); border-bottom-color: #e2e8f0; }
+    .mx_FanoosDashboard_cbCtrl { color: #94a3b8; &:hover { background: rgba(0,0,0,0.05); color: #1e293b; } }
+    .mx_FanoosDashboard_cbInput { background: rgba(255,255,255,0.90); border-color: #cbd5e0; color: #1e293b; &::placeholder { color: #94a3b8; } &:focus { border-color: #818cf8; } }
+    .mx_FanoosDashboard_cbSend { background: rgba(99,102,241,0.14); border-color: #a5b4fc; color: #4338ca; &:hover:not(:disabled) { background: rgba(99,102,241,0.24); } }
+    .mx_FanoosDashboard_cbCompose { background: #f8fafc; border-top-color: #e2e8f0; }
+
+    .mx_FanoosDashboard_chatHistory {
+        background: #f0f4f8;
+        scrollbar-color: rgba(0,0,0,0.15) transparent;
+        &::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); }
+    }
+    .mx_FanoosDashboard_chLoading { color: #94a3b8; }
+    .mx_FanoosDashboard_chStart { color: rgba(100,116,139,0.45); }
+    .mx_FanoosDashboard_chSender { color: #4338ca; }
+    .mx_FanoosDashboard_chBubble { background: rgba(255,255,255,0.75); border-color: rgba(0,0,0,0.08); &.own { background: rgba(99,102,241,0.18); border-color: rgba(99,102,241,0.28); } }
+    .mx_FanoosDashboard_chBody { color: #1e293b; }
+    .mx_FanoosDashboard_chTime { color: rgba(100,116,139,0.55); }
+    .mx_FanoosDashboard_chAvatar { background: #cbd5e1; color: #475569; }
+}
+
+.mx_FanoosDashboard_infoPanel.day {
+    background: #f8fafc;
+    border-inline-start-color: #e2e8f0;
+    box-shadow: -4px 0 24px rgba(0, 0, 0, 0.10);
+    color: #1e293b;
+
+    .mx_FanoosDashboard_ipHdr { background: #f8fafc; border-bottom-color: #e2e8f0; }
+    .mx_FanoosDashboard_ipClose { &:hover { color: #1e293b; background: rgba(0,0,0,0.05); } }
+    .mx_FanoosDashboard_ipUnread { color: #d97706; }
+    .mx_FanoosDashboard_ipRow { color: #64748b; border-bottom-color: #f1f5f9; span:last-child { color: #1e293b; } }
+    .mx_FanoosDashboard_ipTrack { background: #e2e8f0; }
+    .mx_FanoosDashboard_ipKw { &.pos { background: rgba(22,163,74,0.12); color: #15803d; } &.neg { background: rgba(220,38,38,0.10); color: #b91c1c; } }
+    .mx_FanoosDashboard_ipMembers { border-top-color: #f1f5f9; }
+    .mx_FanoosDashboard_ipMembersHdr { color: #94a3b8; }
+    .mx_FanoosDashboard_ipMemberChip { background: #f1f5f9; }
+    .mx_FanoosDashboard_ipMemberAv { background: #cbd5e1; color: #475569; }
+    .mx_FanoosDashboard_ipMemberName { color: #334155; }
+    .mx_FanoosDashboard_ipOpenBtn { background: rgba(99,102,241,0.12); border-color: #a5b4fc; color: #4338ca; &:hover { background: rgba(99,102,241,0.22); } }
 }
