@@ -487,6 +487,8 @@ const SpacePanel: React.FC = () => {
                         ref={ref}
                         aria-label={_t("common|spaces")}
                     >
+                        <FanoosDashboardButton isPanelCollapsed={isPanelCollapsed} />
+
                         <UserMenu isPanelCollapsed={isPanelCollapsed}>
                             <AccessibleButton
                                 className={classNames("mx_SpacePanel_toggleCollapse", {
@@ -519,8 +521,6 @@ const SpacePanel: React.FC = () => {
                         </Droppable>
 
                         <ThreadsActivityCentre displayButtonLabel={!isPanelCollapsed} />
-
-                        <FanoosDashboardButton isPanelCollapsed={isPanelCollapsed} />
 
                         <QuickSettingsButton isPanelCollapsed={isPanelCollapsed} />
                     </nav>
