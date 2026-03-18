@@ -2673,6 +2673,27 @@ const FanoosDashboard: React.FC = () => {
             if (!nodeId) return;
             const n = tree.find((x) => x.id === nodeId);
 
+            // Ctrl+click on root circle → send to all channels
+            if (e.ctrlKey && n?.type === "account") {
+                e.preventDefault();
+                const pos = computeSendWindowPos(e.clientX, e.clientY);
+                const recipients = tree
+                    .filter((c) => c.type !== "space" && c.type !== "virtual" && c.type !== "account" && c.matrixRoomId)
+                    .map((c) => ({ id: c.id, roomId: c.matrixRoomId!, name: c.name }));
+                if (recipients.length > 0) {
+                    setSendWindow({
+                        recipients,
+                        msgText: "",
+                        pos,
+                        size: { w: 440, h: 520 },
+                        minimized: false,
+                        showRecipients: true,
+                        showAnalysis: false,
+                    });
+                }
+                return;
+            }
+
             if (e.shiftKey && n?.matrixRoomId && n.type !== "space" && n.type !== "virtual") {
                 setSendWindow((prev) => {
                     if (!prev) {
@@ -2742,6 +2763,24 @@ const FanoosDashboard: React.FC = () => {
             const n = tree.find((x) => x.id === nodeId);
             if (!n) return;
             const pos = computeSendWindowPos(e.clientX, e.clientY);
+            if (n.type === "account") {
+                // Root circle → send to ALL channels
+                const recipients = tree
+                    .filter((c) => c.type !== "space" && c.type !== "virtual" && c.type !== "account" && c.matrixRoomId)
+                    .map((c) => ({ id: c.id, roomId: c.matrixRoomId!, name: c.name }));
+                if (recipients.length > 0) {
+                    setSendWindow({
+                        recipients,
+                        msgText: "",
+                        pos,
+                        size: { w: 440, h: 520 },
+                        minimized: false,
+                        showRecipients: true,
+                        showAnalysis: false,
+                    });
+                }
+                return;
+            }
             if (n.type === "space" || n.type === "virtual") {
                 const recipients = tree
                     .filter((c) => c.parentId === n.id && c.matrixRoomId)
