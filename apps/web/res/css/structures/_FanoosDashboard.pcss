@@ -2376,3 +2376,382 @@ Please see LICENSE files in the repository root for full details.
 [dir="rtl"] .mx_RoomHeader {
     flex-direction: row-reverse;
 }
+
+/* ── Dashboard tab bar ── */
+.mx_FanoosDashboard_tabBar {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    padding: 0 16px;
+    background: rgb(255, 255, 255, 0.06);
+    border-bottom: 1px solid rgb(255, 255, 255, 0.1);
+    flex-shrink: 0;
+    &.day {
+        background: rgb(0, 0, 0, 0.04);
+        border-bottom-color: rgb(0, 0, 0, 0.08);
+    }
+}
+.mx_FanoosDashboard_tabList {
+    display: flex;
+    gap: 4px;
+}
+.mx_FanoosDashboard_tab {
+    position: relative;
+    background: transparent;
+    border: none;
+    padding: 10px 22px;
+    font-size: 13px;
+    font-weight: 500;
+    color: rgb(255, 255, 255, 0.55);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: color 0.2s;
+    border-bottom: 2px solid transparent;
+    &.day {
+        color: rgb(30, 41, 59, 0.5);
+    }
+    &:hover {
+        color: rgb(255, 255, 255, 0.9);
+    }
+    &.day:hover {
+        color: rgb(30, 41, 59, 0.9);
+    }
+    &.active {
+        color: #6366f1;
+        border-bottom-color: #6366f1;
+    }
+    &.day.active {
+        color: #4f46e5;
+        border-bottom-color: #4f46e5;
+    }
+}
+.mx_FanoosDashboard_tabIcon {
+    font-size: 14px;
+}
+
+/* ── Admin Panel ── */
+.mx_FanoosDashboard_adminPanel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 0;
+    &.day {
+        background: #f8fafc;
+    }
+    background: rgb(15, 25, 50, 0.7);
+}
+.mx_FanoosDashboard_adminSubTabs {
+    display: flex;
+    gap: 4px;
+    padding: 8px 16px 0;
+    border-bottom: 1px solid rgb(255, 255, 255, 0.08);
+    flex-shrink: 0;
+    &.day {
+        border-bottom-color: rgb(0, 0, 0, 0.06);
+    }
+}
+.mx_FanoosDashboard_adminSubTab {
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    padding: 7px 16px;
+    font-size: 12px;
+    font-weight: 500;
+    color: rgb(255, 255, 255, 0.5);
+    cursor: pointer;
+    transition: color 0.15s;
+    &.day {
+        color: rgb(30, 41, 59, 0.5);
+    }
+    &:hover {
+        color: #fff;
+    }
+    &.day:hover {
+        color: #1e293b;
+    }
+    &.active {
+        color: #6366f1;
+        border-bottom-color: #6366f1;
+    }
+    &.day.active {
+        color: #4f46e5;
+        border-bottom-color: #4f46e5;
+    }
+}
+.mx_FanoosDashboard_adminSearchRow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    flex-shrink: 0;
+    border-bottom: 1px solid rgb(255, 255, 255, 0.06);
+    &.day {
+        border-bottom-color: rgb(0, 0, 0, 0.06);
+    }
+}
+.mx_FanoosDashboard_adminSearch {
+    flex: 1;
+    background: rgb(255, 255, 255, 0.08);
+    border: 1px solid rgb(255, 255, 255, 0.12);
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 13px;
+    color: #fff;
+    outline: none;
+    &.day {
+        background: #fff;
+        border-color: #cbd5e1;
+        color: #1e293b;
+    }
+    &:focus {
+        border-color: #6366f1;
+    }
+}
+.mx_FanoosDashboard_adminReload {
+    background: rgb(255, 255, 255, 0.08);
+    border: none;
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 14px;
+    color: #fff;
+    cursor: pointer;
+    &.day {
+        background: #e2e8f0;
+        color: #1e293b;
+    }
+    &:hover {
+        background: rgb(99, 102, 241, 0.2);
+    }
+}
+.mx_FanoosDashboard_adminLoading,
+.mx_FanoosDashboard_adminError,
+.mx_FanoosDashboard_adminEmpty {
+    padding: 24px;
+    text-align: center;
+    font-size: 13px;
+    color: rgb(255, 255, 255, 0.5);
+    &.day {
+        color: rgb(30, 41, 59, 0.5);
+    }
+}
+.mx_FanoosDashboard_adminError {
+    color: #f87171;
+}
+.mx_FanoosDashboard_adminList {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 0;
+}
+.mx_FanoosDashboard_adminListHeader {
+    display: grid;
+    grid-template-columns: 1fr 100px 180px;
+    padding: 6px 16px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: rgb(255, 255, 255, 0.35);
+    border-bottom: 1px solid rgb(255, 255, 255, 0.06);
+    &.day {
+        color: rgb(30, 41, 59, 0.4);
+        border-bottom-color: rgb(0, 0, 0, 0.06);
+    }
+}
+.mx_FanoosDashboard_adminRow {
+    display: grid;
+    grid-template-columns: 1fr 100px 180px;
+    align-items: center;
+    padding: 8px 16px;
+    border-bottom: 1px solid rgb(255, 255, 255, 0.04);
+    transition: background 0.12s;
+    &.day {
+        border-bottom-color: rgb(0, 0, 0, 0.04);
+    }
+    &:hover {
+        background: rgb(99, 102, 241, 0.06);
+    }
+    &.deactivated {
+        opacity: 0.45;
+    }
+    &.admin {
+        background: rgb(99, 102, 241, 0.04);
+    }
+}
+.mx_FanoosDashboard_adminUserInfo {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+.mx_FanoosDashboard_adminUserName {
+    font-size: 13px;
+    font-weight: 500;
+    color: #fff;
+    &.day {
+        color: #1e293b;
+    }
+}
+.mx_FanoosDashboard_adminUserId {
+    font-size: 10px;
+    color: rgb(255, 255, 255, 0.4);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    &.day {
+        color: rgb(30, 41, 59, 0.45);
+    }
+}
+.mx_FanoosDashboard_adminBadge {
+    font-size: 9px;
+    background: #6366f1;
+    color: #fff;
+    border-radius: 3px;
+    padding: 1px 5px;
+    width: fit-content;
+}
+.mx_FanoosDashboard_adminStatus {
+    font-size: 11px;
+    color: rgb(255, 255, 255, 0.5);
+    &.day {
+        color: rgb(30, 41, 59, 0.5);
+    }
+}
+.mx_FanoosDashboard_adminActions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.mx_FanoosDashboard_adminEditForm {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+.mx_FanoosDashboard_adminEditInput {
+    background: rgb(255, 255, 255, 0.08);
+    border: 1px solid rgb(255, 255, 255, 0.15);
+    border-radius: 5px;
+    padding: 3px 7px;
+    font-size: 11px;
+    color: #fff;
+    width: 110px;
+    outline: none;
+    &.day {
+        background: #f1f5f9;
+        border-color: #cbd5e1;
+        color: #1e293b;
+    }
+}
+.mx_FanoosDashboard_adminBtnEdit,
+.mx_FanoosDashboard_adminBtnSave,
+.mx_FanoosDashboard_adminBtnCancel,
+.mx_FanoosDashboard_adminBtnBan,
+.mx_FanoosDashboard_adminBtnDelete,
+.mx_FanoosDashboard_adminBtnToggleAdmin {
+    background: transparent;
+    border: none;
+    border-radius: 5px;
+    padding: 3px 7px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 0.12s;
+    &:hover {
+        background: rgb(255, 255, 255, 0.1);
+    }
+    &.day:hover {
+        background: rgb(0, 0, 0, 0.06);
+    }
+}
+.mx_FanoosDashboard_adminBtnSave {
+    color: #34d399;
+}
+.mx_FanoosDashboard_adminBtnDanger {
+    background: #ef4444;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    padding: 5px 12px;
+    font-size: 12px;
+    cursor: pointer;
+    &:hover {
+        background: #dc2626;
+    }
+}
+.mx_FanoosDashboard_adminConfirmOverlay {
+    position: absolute;
+    inset: 0;
+    background: rgb(0, 0, 0, 0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+}
+.mx_FanoosDashboard_adminConfirmBox {
+    background: #1e293b;
+    border-radius: 12px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-width: 260px;
+    text-align: center;
+    color: #fff;
+    font-size: 14px;
+    &.day {
+        background: #fff;
+        color: #1e293b;
+    }
+}
+
+/* Spaces & Rooms view */
+.mx_FanoosDashboard_adminSpaceBlock {
+    padding: 4px 0;
+    border-bottom: 1px solid rgb(255, 255, 255, 0.05);
+    &.day {
+        border-bottom-color: rgb(0, 0, 0, 0.04);
+    }
+}
+.mx_FanoosDashboard_adminSpaceRow,
+.mx_FanoosDashboard_adminRoomRow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 16px;
+    &:hover {
+        background: rgb(99, 102, 241, 0.06);
+    }
+}
+.mx_FanoosDashboard_adminRoomRow {
+    padding-left: 40px;
+}
+.mx_FanoosDashboard_adminExpand {
+    background: transparent;
+    border: none;
+    color: rgb(255, 255, 255, 0.5);
+    cursor: pointer;
+    font-size: 10px;
+    width: 16px;
+    &.day {
+        color: rgb(30, 41, 59, 0.4);
+    }
+}
+.mx_FanoosDashboard_adminSpaceName {
+    font-size: 13px;
+    font-weight: 600;
+    color: #e2e8f0;
+    flex: 1;
+    &.day {
+        color: #1e293b;
+    }
+}
+.mx_FanoosDashboard_adminRoomName {
+    font-size: 12px;
+    color: rgb(255, 255, 255, 0.7);
+    flex: 1;
+    &.day {
+        color: rgb(30, 41, 59, 0.75);
+    }
+}

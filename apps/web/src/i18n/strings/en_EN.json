@@ -4234,6 +4234,8 @@
         "html_ul": "Bullet list",
         "html_ol": "Numbered list",
         "html_indent": "Indent",
-        "html_outdent": "Outdent"
+        "html_outdent": "Outdent",
+        "tab_teams": "Teams Dashboard",
+        "tab_admin": "User Management"
     }
 }

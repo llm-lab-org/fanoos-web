@@ -2445,6 +2445,427 @@ const InfoPanel: React.FC<InfoPanelProps> = ({
     );
 };
 
+// ─── Admin Panel ──────────────────────────────────────────────────────────────
+
+interface SynapseUser {
+    name: string;
+    displayname?: string;
+    deactivated: boolean;
+    admin: boolean;
+    creation_ts: number;
+}
+
+interface RoomInfo {
+    room_id: string;
+    name?: string;
+    canonical_alias?: string;
+    joined_members: number;
+    room_type?: string;
+}
+
+function AdminPanel({
+    client,
+    tree,
+    isDayMode,
+}: {
+    client: ReturnType<typeof useMatrixClientContext>;
+    tree: TreeNode[];
+    isDayMode: boolean;
+}): React.ReactElement {
+    const [view, setView] = useState<"users" | "spaces">("users");
+    const [search, setSearch] = useState("");
+    const [users, setUsers] = useState<SynapseUser[]>([]);
+    const [rooms, setRooms] = useState<RoomInfo[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [editingUser, setEditingUser] = useState<string | null>(null);
+    const [editDisplayName, setEditDisplayName] = useState("");
+    const [newPassword, setNewPassword] = useState("");
+    const [expandedSpaces, setExpandedSpaces] = useState<Set<string>>(new Set());
+    const [editingRoom, setEditingRoom] = useState<string | null>(null);
+    const [editRoomName, setEditRoomName] = useState("");
+    const [confirmAction, setConfirmAction] = useState<{ userId: string; action: "ban" | "delete" } | null>(null);
+
+    const token = client.getAccessToken() ?? "";
+    const baseUrl = client.getHomeserverUrl();
+
+    const adminFetch = useCallback(
+        (path: string, opts?: RequestInit) =>
+            fetch(`${baseUrl}${path}`, {
+                ...opts,
+                headers: {
+                    "Authorization": `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                    ...(opts?.headers ?? {}),
+                },
+            }),
+        [baseUrl, token],
+    );
+
+    const loadUsers = useCallback(async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            const res = await adminFetch("/_synapse/admin/v2/users?from=0&limit=500&guests=false");
+            if (!res.ok) throw new Error(`${res.status}`);
+            const data = (await res.json()) as { users: SynapseUser[] };
+            setUsers(data.users);
+        } catch (e) {
+            setError(String(e));
+        } finally {
+            setLoading(false);
+        }
+    }, [adminFetch]);
+
+    const loadRooms = useCallback(async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            const res = await adminFetch("/_synapse/admin/v1/rooms?limit=500");
+            if (!res.ok) throw new Error(`${res.status}`);
+            const data = (await res.json()) as { rooms: RoomInfo[] };
+            setRooms(data.rooms);
+        } catch (e) {
+            setError(String(e));
+        } finally {
+            setLoading(false);
+        }
+    }, [adminFetch]);
+
+    useEffect(() => {
+        if (view === "users") void loadUsers();
+        else void loadRooms();
+    }, [view, loadUsers, loadRooms]);
+
+    const deactivateUser = async (userId: string, erase = false): Promise<void> => {
+        await adminFetch(`/_synapse/admin/v1/deactivate/${encodeURIComponent(userId)}`, {
+            method: "POST",
+            body: JSON.stringify({ erase }),
+        });
+        void loadUsers();
+    };
+
+    const resetPassword = async (userId: string, password: string): Promise<void> => {
+        await adminFetch(`/_synapse/admin/v1/reset_password/${encodeURIComponent(userId)}`, {
+            method: "POST",
+            body: JSON.stringify({ new_password: password, logout_devices: false }),
+        });
+        setEditingUser(null);
+        setNewPassword("");
+    };
+
+    const saveDisplayName = async (userId: string, displayname: string): Promise<void> => {
+        await adminFetch(`/_synapse/admin/v2/users/${encodeURIComponent(userId)}`, {
+            method: "PUT",
+            body: JSON.stringify({ displayname }),
+        });
+        setEditingUser(null);
+        void loadUsers();
+    };
+
+    const toggleAdmin = async (userId: string, makeAdmin: boolean): Promise<void> => {
+        await adminFetch(`/_synapse/admin/v2/users/${encodeURIComponent(userId)}`, {
+            method: "PUT",
+            body: JSON.stringify({ admin: makeAdmin }),
+        });
+        void loadUsers();
+    };
+
+    const renameRoom = async (roomId: string, name: string): Promise<void> => {
+        await fetch(`${baseUrl}/_matrix/client/v3/rooms/${encodeURIComponent(roomId)}/state/m.room.name`, {
+            method: "PUT",
+            headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ name }),
+        });
+        setEditingRoom(null);
+        void loadRooms();
+    };
+
+    const cls = (c: string): string => `mx_FanoosDashboard_admin${c}${isDayMode ? " day" : ""}`;
+
+    const filteredUsers = users.filter((u) => {
+        const q = search.toLowerCase();
+        return !q || u.name.toLowerCase().includes(q) || (u.displayname ?? "").toLowerCase().includes(q);
+    });
+
+    // Build spaces → rooms hierarchy from tree
+    const spaces = tree.filter((n) => n.type === "space");
+    const roomMembersMap = new Map<string, number>(rooms.map((r) => [r.room_id, r.joined_members]));
+
+    return (
+        <div className={cls("Panel")}>
+            {/* Sub-tab bar */}
+            <div className={cls("SubTabs")}>
+                <button
+                    className={`${cls("SubTab")}${view === "users" ? " active" : ""}`}
+                    onClick={() => setView("users")}
+                >
+                    👤 Users
+                </button>
+                <button
+                    className={`${cls("SubTab")}${view === "spaces" ? " active" : ""}`}
+                    onClick={() => setView("spaces")}
+                >
+                    🏢 Spaces & Rooms
+                </button>
+            </div>
+
+            {/* Search */}
+            <div className={cls("SearchRow")}>
+                <input
+                    className={cls("Search")}
+                    type="search"
+                    placeholder={view === "users" ? "Search users…" : "Search spaces / rooms…"}
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                />
+                <button className={cls("Reload")} onClick={() => void (view === "users" ? loadUsers() : loadRooms())}>
+                    ↺
+                </button>
+            </div>
+
+            {loading && <div className={cls("Loading")}>⏳ Loading…</div>}
+            {error && <div className={cls("Error")}>⚠ {error}</div>}
+
+            {/* Confirm dialog */}
+            {confirmAction && (
+                <div className={cls("ConfirmOverlay")}>
+                    <div className={cls("ConfirmBox")}>
+                        <p>
+                            {confirmAction.action === "ban"
+                                ? `Ban ${confirmAction.userId}?`
+                                : `Delete & erase ${confirmAction.userId}?`}
+                        </p>
+                        <button
+                            className={cls("BtnDanger")}
+                            onClick={async () => {
+                                await deactivateUser(confirmAction.userId, confirmAction.action === "delete");
+                                setConfirmAction(null);
+                            }}
+                        >
+                            Confirm
+                        </button>
+                        <button className={cls("BtnCancel")} onClick={() => setConfirmAction(null)}>
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Users view */}
+            {!loading && view === "users" && (
+                <div className={cls("List")}>
+                    <div className={cls("ListHeader")}>
+                        <span>User</span>
+                        <span>Status</span>
+                        <span>Actions</span>
+                    </div>
+                    {filteredUsers.map((u) => (
+                        <div
+                            key={u.name}
+                            className={`${cls("Row")}${u.deactivated ? " deactivated" : ""}${u.admin ? " admin" : ""}`}
+                        >
+                            <div className={cls("UserInfo")}>
+                                <span className={cls("UserName")}>
+                                    {u.displayname || u.name.split(":")[0].slice(1)}
+                                </span>
+                                <span className={cls("UserId")}>{u.name}</span>
+                                {u.admin && <span className={cls("Badge")}>admin</span>}
+                            </div>
+                            <span className={cls("Status")}>{u.deactivated ? "⛔ banned" : "✓ active"}</span>
+                            <div className={cls("Actions")}>
+                                {editingUser === u.name ? (
+                                    <div className={cls("EditForm")}>
+                                        <input
+                                            className={cls("EditInput")}
+                                            placeholder="New display name"
+                                            value={editDisplayName}
+                                            onChange={(e) => setEditDisplayName(e.target.value)}
+                                        />
+                                        <input
+                                            className={cls("EditInput")}
+                                            placeholder="New password (optional)"
+                                            type="password"
+                                            value={newPassword}
+                                            onChange={(e) => setNewPassword(e.target.value)}
+                                        />
+                                        <button
+                                            className={cls("BtnSave")}
+                                            onClick={async () => {
+                                                if (editDisplayName) await saveDisplayName(u.name, editDisplayName);
+                                                if (newPassword) await resetPassword(u.name, newPassword);
+                                                if (!editDisplayName && !newPassword) setEditingUser(null);
+                                            }}
+                                        >
+                                            Save
+                                        </button>
+                                        <button className={cls("BtnCancel")} onClick={() => setEditingUser(null)}>
+                                            ✕
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <button
+                                            className={cls("BtnEdit")}
+                                            title="Edit"
+                                            onClick={() => {
+                                                setEditingUser(u.name);
+                                                setEditDisplayName(u.displayname ?? "");
+                                                setNewPassword("");
+                                            }}
+                                        >
+                                            ✏️
+                                        </button>
+                                        <button
+                                            className={cls("BtnToggleAdmin")}
+                                            title={u.admin ? "Remove admin" : "Make admin"}
+                                            onClick={() => void toggleAdmin(u.name, !u.admin)}
+                                        >
+                                            {u.admin ? "👑" : "⬜"}
+                                        </button>
+                                        {!u.deactivated && (
+                                            <button
+                                                className={cls("BtnBan")}
+                                                title="Ban"
+                                                onClick={() => setConfirmAction({ userId: u.name, action: "ban" })}
+                                            >
+                                                🚫
+                                            </button>
+                                        )}
+                                        <button
+                                            className={cls("BtnDelete")}
+                                            title="Delete & erase"
+                                            onClick={() => setConfirmAction({ userId: u.name, action: "delete" })}
+                                        >
+                                            🗑
+                                        </button>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    ))}
+                    {!filteredUsers.length && !loading && <div className={cls("Empty")}>No users found.</div>}
+                </div>
+            )}
+
+            {/* Spaces & Rooms view */}
+            {!loading && view === "spaces" && (
+                <div className={cls("List")}>
+                    {spaces
+                        .filter((s) => !search || s.name.toLowerCase().includes(search.toLowerCase()))
+                        .map((space) => {
+                            const spaceRooms = tree.filter((n) => n.parentId === space.id && n.type !== "space");
+                            const isExpanded = expandedSpaces.has(space.id);
+                            return (
+                                <div key={space.id} className={cls("SpaceBlock")}>
+                                    <div className={cls("SpaceRow")}>
+                                        <button
+                                            className={cls("Expand")}
+                                            onClick={() =>
+                                                setExpandedSpaces((prev) => {
+                                                    const s = new Set(prev);
+                                                    if (s.has(space.id)) {
+                                                        s.delete(space.id);
+                                                    } else {
+                                                        s.add(space.id);
+                                                    }
+                                                    return s;
+                                                })
+                                            }
+                                        >
+                                            {isExpanded ? "▼" : "▶"}
+                                        </button>
+                                        <span className={cls("SpaceName")}>🏢 {space.name}</span>
+                                        {editingRoom === space.id ? (
+                                            <>
+                                                <input
+                                                    className={cls("EditInput")}
+                                                    value={editRoomName}
+                                                    onChange={(e) => setEditRoomName(e.target.value)}
+                                                />
+                                                <button
+                                                    className={cls("BtnSave")}
+                                                    onClick={() =>
+                                                        space.matrixRoomId &&
+                                                        void renameRoom(space.matrixRoomId, editRoomName)
+                                                    }
+                                                >
+                                                    ✓
+                                                </button>
+                                                <button
+                                                    className={cls("BtnCancel")}
+                                                    onClick={() => setEditingRoom(null)}
+                                                >
+                                                    ✕
+                                                </button>
+                                            </>
+                                        ) : (
+                                            <button
+                                                className={cls("BtnEdit")}
+                                                onClick={() => {
+                                                    setEditingRoom(space.id);
+                                                    setEditRoomName(space.name);
+                                                }}
+                                            >
+                                                ✏️
+                                            </button>
+                                        )}
+                                    </div>
+                                    {isExpanded &&
+                                        spaceRooms.map((room) => (
+                                            <div key={room.id} className={cls("RoomRow")}>
+                                                <span className={cls("RoomName")}>
+                                                    💬 {room.name}
+                                                    {room.matrixRoomId && roomMembersMap.has(room.matrixRoomId)
+                                                        ? ` (${roomMembersMap.get(room.matrixRoomId)} members)`
+                                                        : ""}
+                                                </span>
+                                                {editingRoom === room.id ? (
+                                                    <>
+                                                        <input
+                                                            className={cls("EditInput")}
+                                                            value={editRoomName}
+                                                            onChange={(e) => setEditRoomName(e.target.value)}
+                                                        />
+                                                        <button
+                                                            className={cls("BtnSave")}
+                                                            onClick={() =>
+                                                                room.matrixRoomId &&
+                                                                void renameRoom(room.matrixRoomId, editRoomName)
+                                                            }
+                                                        >
+                                                            ✓
+                                                        </button>
+                                                        <button
+                                                            className={cls("BtnCancel")}
+                                                            onClick={() => setEditingRoom(null)}
+                                                        >
+                                                            ✕
+                                                        </button>
+                                                    </>
+                                                ) : (
+                                                    <button
+                                                        className={cls("BtnEdit")}
+                                                        onClick={() => {
+                                                            setEditingRoom(room.id);
+                                                            setEditRoomName(room.name);
+                                                        }}
+                                                    >
+                                                        ✏️
+                                                    </button>
+                                                )}
+                                            </div>
+                                        ))}
+                                </div>
+                            );
+                        })}
+                    {!spaces.length && <div className={cls("Empty")}>No spaces found.</div>}
+                </div>
+            )}
+        </div>
+    );
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 const DASH_SETTINGS_KEY = "fanoosDashboardSettings";
@@ -2454,6 +2875,7 @@ const FanoosDashboard: React.FC = () => {
     const client = useMatrixClientContext();
     const svgWrapRef = useRef<HTMLDivElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
+    const dashboardRef = useRef<HTMLDivElement>(null);
 
     const [tree, setTree] = useState<TreeNode[]>([]);
     const [unread, setUnread] = useState<Record<string, number>>(() => {
@@ -2529,6 +2951,20 @@ const FanoosDashboard: React.FC = () => {
     const [reloadAgeStr, setReloadAgeStr] = useState(_t("fanoos_dashboard|just_now"));
     const [hoverInfo, setHoverInfo] = useState<HoverInfo | null>(null);
     const [sendWindow, setSendWindow] = useState<SendWindowState | null>(null);
+    const [isAdmin, setIsAdmin] = useState(false);
+    const [activeTab, setActiveTab] = useState<"teams" | "admin">("teams");
+
+    useEffect(() => {
+        const token = client.getAccessToken();
+        const baseUrl = client.getHomeserverUrl();
+        fetch(`${baseUrl}/_synapse/admin/v2/users?limit=1`, {
+            headers: { Authorization: `Bearer ${token}` },
+        })
+            .then((r) => {
+                if (r.ok) setIsAdmin(true);
+            })
+            .catch(() => {});
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Persist settings on change
     useEffect(() => {
@@ -2884,7 +3320,7 @@ const FanoosDashboard: React.FC = () => {
     }, [transformStyle, resetZoom]);
 
     const handleFullscreen = useCallback(() => {
-        const el = containerRef.current;
+        const el = dashboardRef.current;
         if (!el) return;
         if (!document.fullscreenElement) {
             el.requestFullscreen().catch(() => {});
@@ -2903,7 +3339,7 @@ const FanoosDashboard: React.FC = () => {
         : { background: "#0a1628" };
 
     return (
-        <div className={`mx_FanoosDashboard${isDayMode ? " day" : " night"}`}>
+        <div className={`mx_FanoosDashboard${isDayMode ? " day" : " night"}`} ref={dashboardRef}>
             {/* ── Row 1: Title + Model + Interval ── */}
             <div className={`mx_FanoosDashboard_topBar${isDayMode ? " day" : ""}`}>
                 <span className="mx_FanoosDashboard_title">{_t("fanoos_dashboard|title")}</span>
@@ -2930,186 +3366,221 @@ const FanoosDashboard: React.FC = () => {
                 </label>
             </div>
 
-            {/* ── Row 2: Depth + Names + Search + Zoom + Reload + Mode + Fullscreen ── */}
-            <div className={`mx_FanoosDashboard_ctrlBar${isDayMode ? " day" : ""}`}>
-                {/* Depth group */}
-                <div className="mx_FanoosDashboard_btnGroup">
-                    <span className="mx_FanoosDashboard_ctrlLabel">{_t("fanoos_dashboard|depth")}</span>
+            {/* ── Dashboard Tabs ── */}
+            <div className={`mx_FanoosDashboard_tabBar${isDayMode ? " day" : ""}`}>
+                <div className="mx_FanoosDashboard_tabList">
                     <button
-                        className={`mx_FanoosDashboard_lvlBtn${level === 1 ? " active" : ""}${isDayMode ? " day" : ""}`}
-                        onClick={() => setLevel(1)}
+                        className={`mx_FanoosDashboard_tab${activeTab === "teams" ? " active" : ""}${isDayMode ? " day" : ""}`}
+                        onClick={() => setActiveTab("teams")}
                     >
-                        1
+                        <span className="mx_FanoosDashboard_tabIcon">🌐</span>
+                        {_t("fanoos_dashboard|tab_teams")}
                     </button>
-                    <button
-                        className={`mx_FanoosDashboard_lvlBtn${level === 2 ? " active" : ""}${isDayMode ? " day" : ""}`}
-                        onClick={() => setLevel(2)}
-                    >
-                        2
-                    </button>
-                </div>
-
-                <div className="mx_FanoosDashboard_divider" />
-
-                {/* Names toggle */}
-                <button
-                    className={`mx_FanoosDashboard_lvlBtn${showNames ? " active" : ""}${isDayMode ? " day" : ""}`}
-                    onClick={() => setShowNames((v) => !v)}
-                    title={_t("fanoos_dashboard|names")}
-                >
-                    {_t("fanoos_dashboard|names")}
-                </button>
-
-                <div className="mx_FanoosDashboard_divider" />
-
-                {/* Search */}
-                <div className="mx_FanoosDashboard_searchWrap">
-                    <input
-                        className={`mx_FanoosDashboard_searchInput${isDayMode ? " day" : ""}`}
-                        type="search"
-                        placeholder={_t("fanoos_dashboard|search_placeholder")}
-                        value={search}
-                        onChange={(e) => {
-                            setSearch(e.target.value);
-                            setSearchIdx(-1);
-                            if (!e.target.value.trim()) resetZoom();
-                        }}
-                        onKeyDown={(e) => {
-                            if (e.key === "Enter") searchNext();
-                        }}
-                    />
-                    {searchCount && <span className="mx_FanoosDashboard_searchCount">{searchCount}</span>}
-                    {searchHits.length > 0 && (
-                        <>
-                            <button
-                                className={`mx_FanoosDashboard_navBtn${isDayMode ? " day" : ""}`}
-                                onClick={searchPrev}
-                                title="Previous"
-                            >
-                                ‹
-                            </button>
-                            <button
-                                className={`mx_FanoosDashboard_navBtn${isDayMode ? " day" : ""}`}
-                                onClick={searchNext}
-                                title="Next"
-                            >
-                                ›
-                            </button>
-                        </>
+                    {isAdmin && (
+                        <button
+                            className={`mx_FanoosDashboard_tab${activeTab === "admin" ? " active" : ""}${isDayMode ? " day" : ""}`}
+                            onClick={() => setActiveTab("admin")}
+                        >
+                            <span className="mx_FanoosDashboard_tabIcon">⚙️</span>
+                            {_t("fanoos_dashboard|tab_admin")}
+                        </button>
                     )}
                 </div>
-
-                <div className="mx_FanoosDashboard_divider" />
-
-                {/* Zoom group */}
-                <div className="mx_FanoosDashboard_btnGroup">
-                    <button
-                        className={`mx_FanoosDashboard_zoomBtn${isDayMode ? " day" : ""}`}
-                        onClick={zoomIn}
-                        title="Zoom in"
-                    >
-                        +
-                    </button>
-                    <button
-                        className={`mx_FanoosDashboard_zoomBtn${isDayMode ? " day" : ""}`}
-                        onClick={resetZoom}
-                        title="Reset zoom"
-                    >
-                        ⊙
-                    </button>
-                    <button
-                        className={`mx_FanoosDashboard_zoomBtn${isDayMode ? " day" : ""}`}
-                        onClick={zoomOut}
-                        title="Zoom out"
-                    >
-                        −
-                    </button>
-                </div>
-
-                <div className="mx_FanoosDashboard_divider" />
-
-                {/* Reload */}
-                <button
-                    className={`mx_FanoosDashboard_reloadBtn${isDayMode ? " day" : ""}`}
-                    onClick={rebuildTree}
-                    title={_t("fanoos_dashboard|reload")}
-                >
-                    ↺ <span className="mx_FanoosDashboard_reloadAge">{reloadAgeStr}</span>
-                </button>
-
-                <div className="mx_FanoosDashboard_spacer" />
-
-                {/* Mode + Fullscreen */}
-                <button
-                    className={`mx_FanoosDashboard_modeBtn${isDayMode ? " day" : ""}`}
-                    onClick={() => setIsDayMode((v) => !v)}
-                >
-                    {isDayMode ? _t("fanoos_dashboard|night") : _t("fanoos_dashboard|day")}
-                </button>
-                <button
-                    className={`mx_FanoosDashboard_fsBtn${isDayMode ? " day" : ""}`}
-                    onClick={handleFullscreen}
-                    title={_t("fanoos_dashboard|fullscreen")}
-                >
-                    {_t("fanoos_dashboard|fullscreen")}
-                </button>
-            </div>
-
-            {/* ── Canvas ── */}
-            <div className="mx_FanoosDashboard_canvasWrap" ref={containerRef} style={canvasStyle}>
-                {tree.length > 0 && (
-                    <LegendOverlay tree={tree} sentiment={sentiment} level={level} isDayMode={isDayMode} />
-                )}
                 <div
-                    ref={svgWrapRef}
-                    className="mx_FanoosDashboard_svgWrap"
+                    className="mx_FanoosDashboard_tabIndicator"
                     style={{
-                        transform: transformStyle,
-                        transition: "transform 0.42s cubic-bezier(0.25,0.46,0.45,0.94)",
-                        transformOrigin: "0 0",
+                        transform: `translateX(${activeTab === "admin" ? "100%" : "0%"})`,
+                        width: `${isAdmin ? 50 : 100}%`,
                     }}
-                    onClick={handleClick}
-                    onMouseMove={handleMouseMove}
-                    onMouseLeave={() => {
-                        lastHoverRef.current = null;
-                        setHoverInfo(null);
-                    }}
-                    onMouseDown={handleMouseDown}
-                    onContextMenu={handleContextMenu}
                 />
-                {!tree.length && (
-                    <div className={`mx_FanoosDashboard_empty${isDayMode ? " day" : ""}`}>
-                        {_t("fanoos_dashboard|no_rooms")}
-                    </div>
-                )}
             </div>
 
-            {/* ── Hover tooltip (fixed, follows mouse) ── */}
-            {hoverInfo && (
-                <HoverTooltip
-                    info={hoverInfo}
-                    tree={tree}
-                    sentiment={sentiment}
-                    sentDetail={sentDetail}
-                    unread={unread}
-                    client={client}
-                    isDayMode={isDayMode}
-                />
+            {activeTab === "teams" && (
+                <>
+                    {/* ── Row 2: Depth + Names + Search + Zoom + Reload + Mode + Fullscreen ── */}
+                    <div className={`mx_FanoosDashboard_ctrlBar${isDayMode ? " day" : ""}`}>
+                        {/* Depth group */}
+                        <div className="mx_FanoosDashboard_btnGroup">
+                            <span className="mx_FanoosDashboard_ctrlLabel">{_t("fanoos_dashboard|depth")}</span>
+                            <button
+                                className={`mx_FanoosDashboard_lvlBtn${level === 1 ? " active" : ""}${isDayMode ? " day" : ""}`}
+                                onClick={() => setLevel(1)}
+                            >
+                                1
+                            </button>
+                            <button
+                                className={`mx_FanoosDashboard_lvlBtn${level === 2 ? " active" : ""}${isDayMode ? " day" : ""}`}
+                                onClick={() => setLevel(2)}
+                            >
+                                2
+                            </button>
+                        </div>
+
+                        <div className="mx_FanoosDashboard_divider" />
+
+                        {/* Names toggle */}
+                        <button
+                            className={`mx_FanoosDashboard_lvlBtn${showNames ? " active" : ""}${isDayMode ? " day" : ""}`}
+                            onClick={() => setShowNames((v) => !v)}
+                            title={_t("fanoos_dashboard|names")}
+                        >
+                            {_t("fanoos_dashboard|names")}
+                        </button>
+
+                        <div className="mx_FanoosDashboard_divider" />
+
+                        {/* Search */}
+                        <div className="mx_FanoosDashboard_searchWrap">
+                            <input
+                                className={`mx_FanoosDashboard_searchInput${isDayMode ? " day" : ""}`}
+                                type="search"
+                                placeholder={_t("fanoos_dashboard|search_placeholder")}
+                                value={search}
+                                onChange={(e) => {
+                                    setSearch(e.target.value);
+                                    setSearchIdx(-1);
+                                    if (!e.target.value.trim()) resetZoom();
+                                }}
+                                onKeyDown={(e) => {
+                                    if (e.key === "Enter") searchNext();
+                                }}
+                            />
+                            {searchCount && <span className="mx_FanoosDashboard_searchCount">{searchCount}</span>}
+                            {searchHits.length > 0 && (
+                                <>
+                                    <button
+                                        className={`mx_FanoosDashboard_navBtn${isDayMode ? " day" : ""}`}
+                                        onClick={searchPrev}
+                                        title="Previous"
+                                    >
+                                        ‹
+                                    </button>
+                                    <button
+                                        className={`mx_FanoosDashboard_navBtn${isDayMode ? " day" : ""}`}
+                                        onClick={searchNext}
+                                        title="Next"
+                                    >
+                                        ›
+                                    </button>
+                                </>
+                            )}
+                        </div>
+
+                        <div className="mx_FanoosDashboard_divider" />
+
+                        {/* Zoom group */}
+                        <div className="mx_FanoosDashboard_btnGroup">
+                            <button
+                                className={`mx_FanoosDashboard_zoomBtn${isDayMode ? " day" : ""}`}
+                                onClick={zoomIn}
+                                title="Zoom in"
+                            >
+                                +
+                            </button>
+                            <button
+                                className={`mx_FanoosDashboard_zoomBtn${isDayMode ? " day" : ""}`}
+                                onClick={resetZoom}
+                                title="Reset zoom"
+                            >
+                                ⊙
+                            </button>
+                            <button
+                                className={`mx_FanoosDashboard_zoomBtn${isDayMode ? " day" : ""}`}
+                                onClick={zoomOut}
+                                title="Zoom out"
+                            >
+                                −
+                            </button>
+                        </div>
+
+                        <div className="mx_FanoosDashboard_divider" />
+
+                        {/* Reload */}
+                        <button
+                            className={`mx_FanoosDashboard_reloadBtn${isDayMode ? " day" : ""}`}
+                            onClick={rebuildTree}
+                            title={_t("fanoos_dashboard|reload")}
+                        >
+                            ↺ <span className="mx_FanoosDashboard_reloadAge">{reloadAgeStr}</span>
+                        </button>
+
+                        <div className="mx_FanoosDashboard_spacer" />
+
+                        {/* Mode + Fullscreen */}
+                        <button
+                            className={`mx_FanoosDashboard_modeBtn${isDayMode ? " day" : ""}`}
+                            onClick={() => setIsDayMode((v) => !v)}
+                        >
+                            {isDayMode ? _t("fanoos_dashboard|night") : _t("fanoos_dashboard|day")}
+                        </button>
+                        <button
+                            className={`mx_FanoosDashboard_fsBtn${isDayMode ? " day" : ""}`}
+                            onClick={handleFullscreen}
+                            title={_t("fanoos_dashboard|fullscreen")}
+                        >
+                            {_t("fanoos_dashboard|fullscreen")}
+                        </button>
+                    </div>
+
+                    {/* ── Canvas ── */}
+                    <div className="mx_FanoosDashboard_canvasWrap" ref={containerRef} style={canvasStyle}>
+                        {tree.length > 0 && (
+                            <LegendOverlay tree={tree} sentiment={sentiment} level={level} isDayMode={isDayMode} />
+                        )}
+                        <div
+                            ref={svgWrapRef}
+                            className="mx_FanoosDashboard_svgWrap"
+                            style={{
+                                transform: transformStyle,
+                                transition: "transform 0.42s cubic-bezier(0.25,0.46,0.45,0.94)",
+                                transformOrigin: "0 0",
+                            }}
+                            onClick={handleClick}
+                            onMouseMove={handleMouseMove}
+                            onMouseLeave={() => {
+                                lastHoverRef.current = null;
+                                setHoverInfo(null);
+                            }}
+                            onMouseDown={handleMouseDown}
+                            onContextMenu={handleContextMenu}
+                        />
+                        {!tree.length && (
+                            <div className={`mx_FanoosDashboard_empty${isDayMode ? " day" : ""}`}>
+                                {_t("fanoos_dashboard|no_rooms")}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* ── Hover tooltip (fixed, follows mouse) ── */}
+                    {hoverInfo && (
+                        <HoverTooltip
+                            info={hoverInfo}
+                            tree={tree}
+                            sentiment={sentiment}
+                            sentDetail={sentDetail}
+                            unread={unread}
+                            client={client}
+                            isDayMode={isDayMode}
+                        />
+                    )}
+
+                    {/* ── Info panel (slide-in) ── */}
+                    {infoPanelNode && (
+                        <InfoPanel
+                            nodeId={infoPanelNode}
+                            tree={tree}
+                            sentiment={sentiment}
+                            sentDetail={sentDetail}
+                            unread={unread}
+                            onClose={() => setInfoPanelNode(null)}
+                            client={client}
+                            isDayMode={isDayMode}
+                        />
+                    )}
+                </>
             )}
 
-            {/* ── Info panel (slide-in) ── */}
-            {infoPanelNode && (
-                <InfoPanel
-                    nodeId={infoPanelNode}
-                    tree={tree}
-                    sentiment={sentiment}
-                    sentDetail={sentDetail}
-                    unread={unread}
-                    onClose={() => setInfoPanelNode(null)}
-                    client={client}
-                    isDayMode={isDayMode}
-                />
-            )}
+            {activeTab === "admin" && isAdmin && <AdminPanel client={client} tree={tree} isDayMode={isDayMode} />}
 
             {/* ── Send window (unified single/multi-channel compose) ── */}
             {sendWindow &&
