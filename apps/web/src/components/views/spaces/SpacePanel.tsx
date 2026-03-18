@@ -75,7 +75,7 @@ import { shouldShowComponent } from "../../../customisations/helpers/UIComponent
 import { UIComponent } from "../../../settings/UIFeature";
 import { ThreadsActivityCentre } from "./threads-activity-centre/";
 import AccessibleButton from "../elements/AccessibleButton";
-import { IconButton, Text, Tooltip } from "@vector-im/compound-web";
+import { IconButton, Tooltip } from "@vector-im/compound-web";
 import { Landmark, LandmarkNavigation } from "../../../accessibility/LandmarkNavigation";
 import { KeyboardShortcut } from "../settings/KeyboardShortcut";
 import { ModuleApi } from "../../../modules/Api.ts";
@@ -410,14 +410,7 @@ const FanoosDashboardButton: React.FC<{ isPanelCollapsed: boolean }> = ({ isPane
             onClick={onClick}
             title={isPanelCollapsed ? _t("fanoos_dashboard|aria_label") : undefined}
         >
-            <>
-                <DashboardGridIcon />
-                {!isPanelCollapsed && (
-                    <Text className="mx_FanoosDashboardButton_label" as="span" size="md">
-                        {_t("fanoos_dashboard|button")}
-                    </Text>
-                )}
-            </>
+            <DashboardGridIcon />
         </IconButton>
     );
 

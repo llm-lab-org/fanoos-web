@@ -493,7 +493,7 @@ Please see LICENSE files in the repository root for full details.
     display: flex;
     flex-direction: column;
     gap: 6px;
-    background: #ede8dc;
+    background: #f5f1e8;
     min-height: 0;
 
     /* Thin scrollbar */
@@ -689,6 +689,99 @@ Please see LICENSE files in the repository root for full details.
     color: #8a9a8e;
     align-self: flex-end;
     white-space: nowrap;
+}
+
+/* ── Reaction bar (on hover) ─────────────────────────────────────── */
+
+.mx_FanoosDashboard_chReactionBar {
+    display: flex;
+    gap: 2px;
+    margin-top: 3px;
+    flex-wrap: wrap;
+
+    &.own { justify-content: flex-end; }
+}
+
+.mx_FanoosDashboard_chReactionBtn {
+    background: rgba(255,255,255,0.70);
+    border: 1px solid rgba(0,0,0,0.12);
+    border-radius: 999px;
+    font-size: 14px;
+    width: 28px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+    transition: background 0.12s, transform 0.1s;
+
+    &:hover { background: #ffffff; transform: scale(1.18); }
+}
+
+/* ── Emoji / Sticker Picker ──────────────────────────────────────── */
+
+.mx_FanoosDashboard_emojiPicker {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+    padding: 6px 8px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.10);
+    border-radius: 8px;
+    margin-bottom: 4px;
+
+    &.day {
+        background: #f0f4f8;
+        border-color: #e2e8f0;
+    }
+}
+
+.mx_FanoosDashboard_emojiBtn {
+    background: transparent;
+    border: none;
+    font-size: 20px;
+    width: 32px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    cursor: pointer;
+    padding: 0;
+    transition: background 0.1s, transform 0.1s;
+
+    &:hover { background: rgba(255,255,255,0.12); transform: scale(1.15); }
+}
+
+.mx_FanoosDashboard_emojiPicker.day .mx_FanoosDashboard_emojiBtn:hover {
+    background: rgba(0,0,0,0.06);
+}
+
+.mx_FanoosDashboard_cbEmojiBtn {
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 6px;
+    color: #94a3b8;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 6px 10px;
+    height: 36px;
+    display: inline-flex;
+    align-items: center;
+    align-self: flex-end;
+    transition: background 0.15s, color 0.15s;
+    flex-shrink: 0;
+
+    &:hover { background: rgba(99, 102, 241, 0.20); color: #c7d2fe; }
+    &.active { background: rgba(99, 102, 241, 0.28); color: #a5b4fc; border-color: rgba(129,140,248,0.50); }
+}
+
+/* ── Main chat timeline beige tint ───────────────────────────────── */
+
+.mx_RoomView_messagePanel {
+    background: #f5f1e8;
 }
 
 /* ── Send Window (unified single/multi-channel compose) ──────────── */

@@ -15,6 +15,7 @@ import React, {
 } from "react";
 import { createPortal } from "react-dom";
 import { EventType, RoomEvent, type MatrixEvent } from "matrix-js-sdk/src/matrix";
+import type { ActionPayload } from "../../dispatcher/payloads";
 
 import { useMatrixClientContext } from "../../contexts/MatrixClientContext";
 import { RoomNotificationStateStore } from "../../stores/notifications/RoomNotificationStateStore";
@@ -511,6 +512,32 @@ function escHtml(s: string): string {
     return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
+// ─── Position helper: open send window near click, on side with more space ────
+
+function computeSendWindowPos(clientX: number, clientY: number): { x: number; y: number } {
+    const winW = UIStore.instance.windowWidth;
+    const winH = UIStore.instance.windowHeight;
+    const SW_W = 340;
+    const SW_H = 480;
+    const rightSpace = winW - clientX;
+    const leftSpace = clientX;
+    let x: number;
+    if (rightSpace >= SW_W + 24) {
+        x = clientX + 20;
+    } else if (leftSpace >= SW_W + 24) {
+        x = clientX - SW_W - 20;
+    } else {
+        x = Math.max(0, Math.round((winW - SW_W) / 2));
+    }
+    const y = Math.max(0, Math.min(Math.round(clientY - SW_H / 2), winH - SW_H - 10));
+    return { x: Math.max(0, x), y };
+}
+
+// ─── Common emoji sets ─────────────────────────────────────────────────────────
+
+const QUICK_EMOJIS = ["👍","👎","❤️","😂","😊","🙏","🎉","😢","🔥","✅","❌","🤔","😡","💯","👀","✨","💪","🥳"];
+const STICKER_EMOJIS = ["🎊","🎂","🎁","🌟","💝","🏆","🌈","🦁","🐶","🌺","⚡","💫","🎵","🍕","☕","🚀","🎈","🎯"];
+
 // ─── Interval + age helpers ───────────────────────────────────────────────────
 
 function intervalMs(v: string): number {
@@ -706,6 +733,7 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({ roomId, client, isDayMode }) 
     const [events, setEvents] = useState<MatrixEvent[]>([]);
     const [loading, setLoading] = useState(false);
     const [canLoadMore, setCanLoadMore] = useState(true);
+    const [reactionTargetId, setReactionTargetId] = useState<string | null>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
     const bottomRef = useRef<HTMLDivElement>(null);
     const topSentinelRef = useRef<HTMLDivElement>(null);
@@ -799,6 +827,7 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({ roomId, client, isDayMode }) 
             </div>
 
             {events.map((ev) => {
+                const evId = ev.getId() ?? "";
                 const isOwn = ev.getSender() === myId;
                 const senderName = ev.sender?.name || ev.getSender() || "";
                 const body = ev.getContent().body as string;
@@ -807,9 +836,19 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({ roomId, client, isDayMode }) 
                 const msgType = ev.getContent().msgtype;
                 const isAudio = msgType === "m.audio";
                 const isMedia = msgType === "m.image" || msgType === "m.file" || msgType === "m.video";
+                const showingReactions = reactionTargetId === evId;
+
+                const sendReaction = (emoji: string): void => {
+                    setReactionTargetId(null);
+                    void client.sendEvent(roomId, "m.reaction" as any, { "m.relates_to": { rel_type: "m.annotation", event_id: evId, key: emoji } });
+                };
 
                 return (
-                    <div key={ev.getId()} className={`mx_FanoosDashboard_chRow${isOwn ? " own" : ""}`}>
+                    <div
+                        key={evId}
+                        className={`mx_FanoosDashboard_chRow${isOwn ? " own" : ""}`}
+                        onMouseLeave={() => setReactionTargetId(null)}
+                    >
                         {!isOwn && (
                             <div className="mx_FanoosDashboard_chAvatar">
                                 {senderName.slice(0, 2).toUpperCase()}
@@ -817,7 +856,11 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({ roomId, client, isDayMode }) 
                         )}
                         <div className="mx_FanoosDashboard_chContent">
                             {!isOwn && <div className="mx_FanoosDashboard_chSender">{senderName}</div>}
-                            <div className={`mx_FanoosDashboard_chBubble${isOwn ? " own" : ""}`} dir="auto">
+                            <div
+                                className={`mx_FanoosDashboard_chBubble${isOwn ? " own" : ""}`}
+                                dir="auto"
+                                onMouseEnter={() => setReactionTargetId(evId)}
+                            >
                                 {isAudio ? (() => {
                                     const mxcUrl = ev.getContent().url as string | undefined;
                                     const httpUrl = mxcUrl ? mediaFromMxc(mxcUrl).srcHttp ?? "" : "";
@@ -832,6 +875,17 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({ roomId, client, isDayMode }) 
                                 )}
                                 <span className="mx_FanoosDashboard_chTime">{timeStr}</span>
                             </div>
+                            {showingReactions && (
+                                <div className={`mx_FanoosDashboard_chReactionBar${isOwn ? " own" : ""}`}>
+                                    {QUICK_EMOJIS.slice(0, 8).map((em) => (
+                                        <button
+                                            key={em}
+                                            className="mx_FanoosDashboard_chReactionBtn"
+                                            onClick={() => sendReaction(em)}
+                                        >{em}</button>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     </div>
                 );
@@ -944,6 +998,7 @@ const SendWindow: React.FC<SendWindowProps> = ({ state, onChange, onClose, clien
     const [recording, setRecording] = useState(false);
     const [recipientSearch, setRecipientSearch] = useState("");
     const [sent, setSent] = useState<string[]>([]);
+    const [showEmojiPicker, setShowEmojiPicker] = useState<"emoji" | "sticker" | null>(null);
     const stateRef = useRef(state);
     useEffect(() => { stateRef.current = state; }, [state]);
 
@@ -958,7 +1013,7 @@ const SendWindow: React.FC<SendWindowProps> = ({ state, onChange, onClose, clien
             const mxcUrl = (upload as { content_uri: string }).content_uri;
             for (const r of stateRef.current.recipients) {
                 await client.sendMessage(r.roomId, {
-                    msgtype: "m.audio",
+                    msgtype: "m.audio" as any,
                     body: "Voice message",
                     url: mxcUrl,
                     info: { mimetype: "audio/ogg; codecs=opus", size: blob.size, duration: durationMs },
@@ -1033,6 +1088,19 @@ const SendWindow: React.FC<SendWindowProps> = ({ state, onChange, onClose, clien
             console.error("Failed to send:", e);
         } finally {
             setSending(false);
+        }
+    };
+
+    const insertEmoji = (emoji: string): void => {
+        onChange({ ...stateRef.current, msgText: stateRef.current.msgText + emoji });
+        setShowEmojiPicker(null);
+    };
+
+    const sendSticker = async (emoji: string): Promise<void> => {
+        setShowEmojiPicker(null);
+        if (!stateRef.current.recipients.length) return;
+        for (const r of stateRef.current.recipients) {
+            await client.sendTextMessage(r.roomId, emoji);
         }
     };
 
@@ -1179,6 +1247,18 @@ const SendWindow: React.FC<SendWindowProps> = ({ state, onChange, onClose, clien
                         )}
 
                         <div className="mx_FanoosDashboard_cbCompose">
+                            {/* Emoji / Sticker picker panel */}
+                            {showEmojiPicker && (
+                                <div className={`mx_FanoosDashboard_emojiPicker${isDayMode ? " day" : ""}`}>
+                                    {(showEmojiPicker === "emoji" ? QUICK_EMOJIS : STICKER_EMOJIS).map((em) => (
+                                        <button
+                                            key={em}
+                                            className="mx_FanoosDashboard_emojiBtn"
+                                            onClick={() => showEmojiPicker === "emoji" ? insertEmoji(em) : void sendSticker(em)}
+                                        >{em}</button>
+                                    ))}
+                                </div>
+                            )}
                             <textarea
                                 className="mx_FanoosDashboard_cbInput"
                                 dir="auto"
@@ -1191,6 +1271,18 @@ const SendWindow: React.FC<SendWindowProps> = ({ state, onChange, onClose, clien
                                 rows={2}
                             />
                             <div className="mx_FanoosDashboard_cbActions">
+                                <button
+                                    className={`mx_FanoosDashboard_cbEmojiBtn${showEmojiPicker === "emoji" ? " active" : ""}`}
+                                    onMouseDown={(e) => e.stopPropagation()}
+                                    onClick={() => setShowEmojiPicker((v) => v === "emoji" ? null : "emoji")}
+                                    title="Emoji"
+                                >😊</button>
+                                <button
+                                    className={`mx_FanoosDashboard_cbEmojiBtn${showEmojiPicker === "sticker" ? " active" : ""}`}
+                                    onMouseDown={(e) => e.stopPropagation()}
+                                    onClick={() => setShowEmojiPicker((v) => v === "sticker" ? null : "sticker")}
+                                    title="Sticker"
+                                >🎭</button>
                                 <button
                                     className={`mx_FanoosDashboard_cbMic${recording ? " recording" : ""}`}
                                     onClick={() => void toggleRecording()}
@@ -1412,29 +1504,38 @@ const FanoosDashboard: React.FC = () => {
     const [search, setSearch] = useState("");
     const [searchHits, setSearchHits] = useState<string[]>([]);
     const [searchIdx, setSearchIdx] = useState(-1);
-    const [level, setLevel] = useState(2);
-    const [showNames, setShowNames] = useState(true);
+    const [level, setLevel] = useState<number>(() => {
+        try {
+            const s = JSON.parse(localStorage.getItem(DASH_SETTINGS_KEY) ?? "{}") as Record<string, unknown>;
+            return s.level === 1 || s.level === 2 ? (s.level as number) : 2;
+        } catch { return 2; }
+    });
+    const [showNames, setShowNames] = useState<boolean>(() => {
+        try {
+            const s = JSON.parse(localStorage.getItem(DASH_SETTINGS_KEY) ?? "{}") as Record<string, unknown>;
+            return typeof s.showNames === "boolean" ? s.showNames : true;
+        } catch { return true; }
+    });
     const [infoPanelNode, setInfoPanelNode] = useState<string | null>(null);
     const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
     const [dims, setDims] = useState({ w: 800, h: 500 });
     const [transformStyle, setTransformStyle] = useState("");
-    const [isDayMode, setIsDayMode] = useState(true);
-    const [intervalVal, setIntervalVal] = useState("24h");
+    const [isDayMode, setIsDayMode] = useState<boolean>(() => {
+        try {
+            const s = JSON.parse(localStorage.getItem(DASH_SETTINGS_KEY) ?? "{}") as Record<string, unknown>;
+            return typeof s.isDayMode === "boolean" ? s.isDayMode : true;
+        } catch { return true; }
+    });
+    const [intervalVal, setIntervalVal] = useState<string>(() => {
+        try {
+            const s = JSON.parse(localStorage.getItem(DASH_SETTINGS_KEY) ?? "{}") as Record<string, unknown>;
+            return typeof s.intervalVal === "string" ? s.intervalVal : "24h";
+        } catch { return "24h"; }
+    });
     const [lastReloaded, setLastReloaded] = useState(new Date());
     const [reloadAgeStr, setReloadAgeStr] = useState(_t("fanoos_dashboard|just_now"));
     const [hoverInfo, setHoverInfo] = useState<HoverInfo | null>(null);
     const [sendWindow, setSendWindow] = useState<SendWindowState | null>(null);
-
-    // Restore persisted settings on mount
-    useEffect(() => {
-        try {
-            const s = JSON.parse(localStorage.getItem(DASH_SETTINGS_KEY) ?? "{}") as Record<string, unknown>;
-            if (s.level === 1 || s.level === 2) setLevel(s.level as number);
-            if (typeof s.showNames === "boolean") setShowNames(s.showNames);
-            if (typeof s.isDayMode === "boolean") setIsDayMode(s.isDayMode);
-            if (typeof s.intervalVal === "string") setIntervalVal(s.intervalVal);
-        } catch { /* ignore */ }
-    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Persist settings on change
     useEffect(() => {
@@ -1503,6 +1604,24 @@ const FanoosDashboard: React.FC = () => {
         return () => ro.disconnect();
     }, []);
 
+    // When send window is open, intercept ViewRoom dispatch → switch recipient to new room
+    const sendWindowOpenRef = useRef(false);
+    const treeRef = useRef(tree);
+    useEffect(() => { treeRef.current = tree; }, [tree]);
+    useEffect(() => { sendWindowOpenRef.current = !!sendWindow; }, [sendWindow]);
+    useEffect(() => {
+        const token = dis.register((payload: ActionPayload) => {
+            if (!sendWindowOpenRef.current) return;
+            if ((payload as { action: string }).action !== Action.ViewRoom) return;
+            const roomId = (payload as { room_id?: string }).room_id;
+            if (!roomId) return;
+            const n = treeRef.current.find((x) => x.matrixRoomId === roomId && x.type !== "space" && x.type !== "virtual");
+            if (!n) return;
+            setSendWindow((prev) => prev ? { ...prev, recipients: [{ id: n.id, roomId, name: n.name }], showAnalysis: false } : null);
+        });
+        return () => dis.unregister(token);
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
     // Derive selectedIds from sendWindow recipients so selected cells are highlighted
     const selectedIds = useMemo(
         () => (sendWindow ? new Set(sendWindow.recipients.map((r) => r.id)) : new Set<string>()),
@@ -1532,9 +1651,7 @@ const FanoosDashboard: React.FC = () => {
         if (e.shiftKey && n?.matrixRoomId && n.type !== "space" && n.type !== "virtual") {
             setSendWindow((prev) => {
                 if (!prev) {
-                    const winW = UIStore.instance.windowWidth;
-                    const winH = UIStore.instance.windowHeight;
-                    const pos = { x: Math.max(0, winW - 380), y: Math.max(0, winH - 520) };
+                    const pos = computeSendWindowPos(e.clientX, e.clientY);
                     return { recipients: [{ id: n.id, roomId: n.matrixRoomId!, name: n.name }], msgText: "", pos, minimized: false, showRecipients: true, showAnalysis: false };
                 }
                 const already = prev.recipients.find((r) => r.id === nodeId);
@@ -1576,9 +1693,7 @@ const FanoosDashboard: React.FC = () => {
         if (!nodeId) return;
         const n = tree.find((x) => x.id === nodeId);
         if (!n) return;
-        const winW = UIStore.instance.windowWidth;
-        const winH = UIStore.instance.windowHeight;
-        const pos = { x: Math.max(0, winW - 380), y: Math.max(0, winH - 520) };
+        const pos = computeSendWindowPos(e.clientX, e.clientY);
         if (n.type === "space" || n.type === "virtual") {
             const recipients = tree
                 .filter((c) => c.parentId === n.id && c.matrixRoomId)
@@ -1596,7 +1711,7 @@ const FanoosDashboard: React.FC = () => {
             const lastEv = evs[evs.length - 1];
             if (lastEv) { void client.sendReadReceipt(lastEv); }
         }
-        setSendWindow({ recipients: [{ id: n.id, roomId: n.matrixRoomId, name: n.name }], msgText: "", pos, minimized: false, showRecipients: false });
+        setSendWindow({ recipients: [{ id: n.id, roomId: n.matrixRoomId, name: n.name }], msgText: "", pos, minimized: false, showRecipients: false, showAnalysis: false });
     }, [tree, client]);
 
     // Prevent right-button mousedown from bubbling (some browsers scroll-to-top on right mousedown)
@@ -1665,7 +1780,7 @@ const FanoosDashboard: React.FC = () => {
 
             {/* ── Row 1: Title + Model + Interval ── */}
             <div className={`mx_FanoosDashboard_topBar${isDayMode ? " day" : ""}`}>
-                <span className="mx_FanoosDashboard_title">🔭 {_t("fanoos_dashboard|title")}</span>
+                <span className="mx_FanoosDashboard_title">{_t("fanoos_dashboard|title")}</span>
 
                 <label className="mx_FanoosDashboard_ctrlGroup">
                     <span className="mx_FanoosDashboard_ctrlLabel">{_t("fanoos_dashboard|model")}</span>
