@@ -1602,6 +1602,12 @@ const SendWindow: React.FC<SendWindowProps> = ({
         [onChange],
     );
 
+    // Replace flower <img data:…> tags with their PUA alt char before sending,
+    // because Matrix clients strip data: URLs from img src.
+    // Our renderHtmlBody() on the receiving side converts PUA chars back to images.
+    const prepareHtmlForSend = (html: string): string =>
+        html.replace(/<img[^>]*alt="([\uE000-\uE00F])"[^>]*\/?>/g, (_, ch: string) => ch);
+
     const send = async (): Promise<void> => {
         const htmlEl = htmlEditorRef.current;
         const textContent = htmlMode ? (htmlEl?.textContent?.trim() ?? "") : state.msgText.trim();
@@ -1611,7 +1617,9 @@ const SendWindow: React.FC<SendWindowProps> = ({
         try {
             for (const r of state.recipients) {
                 if (htmlMode && htmlEl) {
-                    await client.sendHtmlMessage(r.roomId, htmlEl.textContent ?? "", htmlEl.innerHTML);
+                    const plainText = htmlEl.textContent ?? "";
+                    const htmlBody = prepareHtmlForSend(htmlEl.innerHTML);
+                    await client.sendHtmlMessage(r.roomId, plainText, htmlBody);
                 } else {
                     await client.sendTextMessage(r.roomId, state.msgText.trim());
                 }
