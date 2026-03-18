@@ -493,16 +493,24 @@ Please see LICENSE files in the repository root for full details.
     display: flex;
     flex-direction: column;
     gap: 6px;
-    background: #0f172a;
+    /* WhatsApp-inspired warm beige background with diamond pattern */
+    background-color: #ede8dc;
+    background-image:
+        linear-gradient(45deg, rgba(0,0,0,0.035) 25%, transparent 25%),
+        linear-gradient(135deg, rgba(0,0,0,0.035) 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, rgba(0,0,0,0.035) 75%),
+        linear-gradient(135deg, transparent 75%, rgba(0,0,0,0.035) 75%);
+    background-size: 18px 18px;
+    background-position: 0 0, 9px 0, 9px -9px, 0px 9px;
     min-height: 0;
 
     /* Thin scrollbar */
     scrollbar-width: thin;
-    scrollbar-color: rgba(255,255,255,0.15) transparent;
+    scrollbar-color: rgba(0,0,0,0.15) transparent;
 
     &::-webkit-scrollbar { width: 4px; }
     &::-webkit-scrollbar-track { background: transparent; }
-    &::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
+    &::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 2px; }
 }
 
 .mx_FanoosDashboard_chTop {
@@ -553,16 +561,16 @@ Please see LICENSE files in the repository root for full details.
 }
 
 .mx_FanoosDashboard_chAvatar {
-    width: 24px;
-    height: 24px;
+    width: 28px;
+    height: 28px;
     border-radius: 50%;
-    background: #334155;
+    background: #7c4fa0;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 8px;
+    font-size: 9px;
     font-weight: 700;
-    color: #94a3b8;
+    color: #ffffff;
     flex-shrink: 0;
     margin-bottom: 2px;
 }
@@ -585,7 +593,7 @@ Please see LICENSE files in the repository root for full details.
 .mx_FanoosDashboard_chSender {
     font-size: 10px;
     font-weight: 600;
-    color: #6366f1;
+    color: #7c4fa0;
     padding: 0 6px;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -594,25 +602,26 @@ Please see LICENSE files in the repository root for full details.
 }
 
 .mx_FanoosDashboard_chBubble {
-    background: rgba(255, 255, 255, 0.07);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 12px 12px 12px 3px;
+    background: #ffffff;
+    border: none;
+    border-radius: 0 12px 12px 12px;
     padding: 7px 10px 5px;
     display: flex;
     flex-direction: column;
     gap: 3px;
     word-break: break-word;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.10);
 
     &.own {
-        background: rgba(99, 102, 241, 0.22);
-        border-color: rgba(129, 140, 248, 0.30);
-        border-radius: 12px 12px 3px 12px;
+        background: #d9f7be;
+        border-radius: 12px 0 12px 12px;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.08);
     }
 }
 
 .mx_FanoosDashboard_chBody {
     font-size: 12px;
-    color: #e2e8f0;
+    color: #111b21;
     line-height: 1.45;
     white-space: pre-wrap;
 }
@@ -685,7 +694,7 @@ Please see LICENSE files in the repository root for full details.
 
 .mx_FanoosDashboard_chTime {
     font-size: 9px;
-    color: rgba(148, 163, 184, 0.45);
+    color: #8a9a8e;
     align-self: flex-end;
     white-space: nowrap;
 }
@@ -708,6 +717,7 @@ Please see LICENSE files in the repository root for full details.
 
     &.minimized { height: auto; }
     &.withPanel { width: 540px; }
+    &.withAnalysis { width: 600px; }
 }
 
 .mx_FanoosDashboard_cbHdr {
@@ -1574,18 +1584,9 @@ Please see LICENSE files in the repository root for full details.
     .mx_FanoosDashboard_swChip { background: rgba(99,102,241,0.12); border-color: #a5b4fc; color: #4338ca; }
     .mx_FanoosDashboard_swSentBanner { background: rgba(22,163,74,0.10); color: #15803d; border-bottom-color: rgba(22,163,74,0.15); }
 
-    .mx_FanoosDashboard_chatHistory {
-        background: #f0f4f8;
-        scrollbar-color: rgba(0,0,0,0.15) transparent;
-        &::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); }
-    }
+    /* Chat keeps warm colors in day mode (same as dark — already light) */
     .mx_FanoosDashboard_chLoading { color: #94a3b8; }
     .mx_FanoosDashboard_chStart { color: rgba(100,116,139,0.45); }
-    .mx_FanoosDashboard_chSender { color: #4338ca; }
-    .mx_FanoosDashboard_chBubble { background: rgba(255,255,255,0.75); border-color: rgba(0,0,0,0.08); &.own { background: rgba(99,102,241,0.18); border-color: rgba(99,102,241,0.28); } }
-    .mx_FanoosDashboard_chBody { color: #1e293b; }
-    .mx_FanoosDashboard_chTime { color: rgba(100,116,139,0.55); }
-    .mx_FanoosDashboard_chAvatar { background: #cbd5e1; color: #475569; }
 }
 
 .mx_FanoosDashboard_infoPanel.day {

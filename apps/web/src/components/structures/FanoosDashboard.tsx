@@ -33,6 +33,7 @@ interface SendWindowState {
     pos: { x: number; y: number };
     minimized: boolean;
     showRecipients: boolean;
+    showAnalysis: boolean;
 }
 
 interface TreeNode {
@@ -841,6 +842,89 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({ roomId, client, isDayMode }) 
     );
 };
 
+// ─── Analysis Panel ────────────────────────────────────────────────────────────
+
+interface AnalysisPanelProps {
+    roomId: string;
+    tree: TreeNode[];
+    sentiment: Record<string, number | null>;
+    sentDetail: Record<string, SentDetail>;
+    unread: Record<string, number>;
+    isDayMode: boolean;
+    client: ReturnType<typeof useMatrixClientContext>;
+}
+
+const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ roomId, tree, sentiment, sentDetail, unread, isDayMode, client }) => {
+    const n = tree.find((x) => x.matrixRoomId === roomId);
+    if (!n) return null;
+
+    const score = sentiment[roomId] ?? null;
+    const det = sentDetail[roomId] ?? { pos: [], neg: [], msgCount: 0 };
+    const un = unread[roomId] || 0;
+    const pct = score !== null ? Math.round(score * 100) : null;
+    const color = sentimentColor(score, isDayMode);
+    const band = sentimentBand(score);
+    const room = client.getRoom(roomId);
+    const members = room ? room.getJoinedMembers().slice(0, 15) : [];
+    const bandColors: Record<string, string> = {
+        positive: "#22c55e", neutral: "#eab308", negative: "#ef4444",
+        "no-data": isDayMode ? "#94a3b8" : "#475569",
+    };
+
+    return (
+        <div className={`mx_FanoosDashboard_analysisPanel${isDayMode ? " day" : ""}`}>
+            <div className="mx_FanoosDashboard_apHdr">
+                <span>{n.type === "dm" ? "👤" : "💬"}</span>
+                <span className="mx_FanoosDashboard_apHdrName">{n.name}</span>
+                {un > 0 && <span className="mx_FanoosDashboard_apUnread">{un}</span>}
+            </div>
+            {pct !== null && (
+                <div className="mx_FanoosDashboard_apScoreSection">
+                    <div className="mx_FanoosDashboard_apBandRow">
+                        <span className="mx_FanoosDashboard_apBand" style={{ color: bandColors[band] }}>{band}</span>
+                        <span className="mx_FanoosDashboard_apPct" style={{ color }}>{pct}%</span>
+                    </div>
+                    <div className="mx_FanoosDashboard_apTrack">
+                        <div className="mx_FanoosDashboard_apFill" style={{ width: `${pct}%`, background: color }} />
+                    </div>
+                </div>
+            )}
+            {det.msgCount > 0 && (
+                <div className="mx_FanoosDashboard_apMsgCount">{det.msgCount} {_t("fanoos_dashboard|messages_analysed")}</div>
+            )}
+            {det.pos.length > 0 && (
+                <div className="mx_FanoosDashboard_apKwGroup">
+                    <span className="mx_FanoosDashboard_apKwLabel pos">{_t("fanoos_dashboard|positive")}</span>
+                    <div className="mx_FanoosDashboard_apKws">
+                        {det.pos.map((k) => <span key={k} className="mx_FanoosDashboard_apKw pos">{k}</span>)}
+                    </div>
+                </div>
+            )}
+            {det.neg.length > 0 && (
+                <div className="mx_FanoosDashboard_apKwGroup">
+                    <span className="mx_FanoosDashboard_apKwLabel neg">{_t("fanoos_dashboard|issues")}</span>
+                    <div className="mx_FanoosDashboard_apKws">
+                        {det.neg.map((k) => <span key={k} className="mx_FanoosDashboard_apKw neg">{k}</span>)}
+                    </div>
+                </div>
+            )}
+            {members.length > 0 && (
+                <div className="mx_FanoosDashboard_apMembers">
+                    <div className="mx_FanoosDashboard_apMembersHdr">{_t("fanoos_dashboard|members")}</div>
+                    <div className="mx_FanoosDashboard_apMembersList">
+                        {members.map((m) => (
+                            <span key={m.userId} className="mx_FanoosDashboard_apMemberChip">
+                                <span className="mx_FanoosDashboard_apMemberAv">{(m.name || "?").slice(0, 2).toUpperCase()}</span>
+                                <span className="mx_FanoosDashboard_apMemberName">{m.name || m.userId}</span>
+                            </span>
+                        ))}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
 // ─── Send Window (unified single/multi-channel compose) ───────────────────────
 
 interface SendWindowProps {
@@ -851,9 +935,11 @@ interface SendWindowProps {
     isDayMode: boolean;
     tree: TreeNode[];
     unread: Record<string, number>;
+    sentiment: Record<string, number | null>;
+    sentDetail: Record<string, SentDetail>;
 }
 
-const SendWindow: React.FC<SendWindowProps> = ({ state, onChange, onClose, client, isDayMode, tree, unread }) => {
+const SendWindow: React.FC<SendWindowProps> = ({ state, onChange, onClose, client, isDayMode, tree, unread, sentiment, sentDetail }) => {
     const [sending, setSending] = useState(false);
     const [recording, setRecording] = useState(false);
     const [recipientSearch, setRecipientSearch] = useState("");
@@ -965,6 +1051,15 @@ const SendWindow: React.FC<SendWindowProps> = ({ state, onChange, onClose, clien
         }
     };
 
+    const toggleAnalysis = useCallback((): void => {
+        const next = !stateRef.current.showAnalysis;
+        const winW = UIStore.instance.windowWidth;
+        const newX = next
+            ? Math.max(0, stateRef.current.pos.x - 280)
+            : Math.min(winW - 320, stateRef.current.pos.x + 280);
+        onChange({ ...stateRef.current, showAnalysis: next, showRecipients: false, pos: { x: newX, y: stateRef.current.pos.y } });
+    }, [onChange]);
+
     const singleRecipient = state.recipients.length === 1 ? state.recipients[0] : null;
     const allRooms = tree.filter((n) => n.matrixRoomId && n.type !== "space" && n.type !== "virtual");
     const q = recipientSearch.trim().toLowerCase();
@@ -974,19 +1069,29 @@ const SendWindow: React.FC<SendWindowProps> = ({ state, onChange, onClose, clien
         ? `${firstNode?.type === "dm" ? "👤" : "💬"} ${singleRecipient.name}`
         : `📤 ${_t("fanoos_dashboard|send")} (${state.recipients.length})`;
 
+    const showSidePanel = !state.minimized && (state.showRecipients || (state.showAnalysis && !!singleRecipient));
+
     return (
         <div
-            className={`mx_FanoosDashboard_sendWindow${isDayMode ? " day" : ""}${state.minimized ? " minimized" : ""}${state.showRecipients && !state.minimized ? " withPanel" : ""}`}
+            className={`mx_FanoosDashboard_sendWindow${isDayMode ? " day" : ""}${state.minimized ? " minimized" : ""}${showSidePanel ? " withPanel" : ""}${state.showAnalysis && !state.minimized && singleRecipient ? " withAnalysis" : ""}`}
             style={{ left: state.pos.x, top: state.pos.y }}
         >
             {/* Header / drag handle */}
             <div className="mx_FanoosDashboard_cbHdr" onMouseDown={handleDragStart}>
                 <span className="mx_FanoosDashboard_cbDragHandle">⠿</span>
                 <span className="mx_FanoosDashboard_cbTitle">{title}</span>
+                {singleRecipient && (
+                    <button
+                        className={`mx_FanoosDashboard_cbCtrl${state.showAnalysis ? " active" : ""}`}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onClick={toggleAnalysis}
+                        title="Analysis"
+                    >📊</button>
+                )}
                 <button
                     className={`mx_FanoosDashboard_cbCtrl${state.showRecipients ? " active" : ""}`}
                     onMouseDown={(e) => e.stopPropagation()}
-                    onClick={() => onChange({ ...stateRef.current, showRecipients: !stateRef.current.showRecipients })}
+                    onClick={() => onChange({ ...stateRef.current, showRecipients: !stateRef.current.showRecipients, showAnalysis: false })}
                     title="Recipients"
                 >👥</button>
                 <button
@@ -1006,9 +1111,21 @@ const SendWindow: React.FC<SendWindowProps> = ({ state, onChange, onClose, clien
             </div>
 
             {!state.minimized && (
-                <div className={`mx_FanoosDashboard_swBody${state.showRecipients ? " withPanel" : ""}`}>
+                <div className={`mx_FanoosDashboard_swBody${showSidePanel ? " withPanel" : ""}`}>
+                    {/* Analysis panel (single recipient only) */}
+                    {state.showAnalysis && singleRecipient && (
+                        <AnalysisPanel
+                            roomId={singleRecipient.roomId}
+                            tree={tree}
+                            sentiment={sentiment}
+                            sentDetail={sentDetail}
+                            unread={unread}
+                            isDayMode={isDayMode}
+                            client={client}
+                        />
+                    )}
                     {/* Recipients panel – search + add/remove rooms */}
-                    {state.showRecipients && (
+                    {state.showRecipients && !state.showAnalysis && (
                         <div className="mx_FanoosDashboard_swRecipientsPanel">
                             <div className="mx_FanoosDashboard_swRpHdr">Recipients</div>
                             <input
@@ -1418,7 +1535,7 @@ const FanoosDashboard: React.FC = () => {
                     const winW = UIStore.instance.windowWidth;
                     const winH = UIStore.instance.windowHeight;
                     const pos = { x: Math.max(0, winW - 380), y: Math.max(0, winH - 520) };
-                    return { recipients: [{ id: n.id, roomId: n.matrixRoomId!, name: n.name }], msgText: "", pos, minimized: false, showRecipients: true };
+                    return { recipients: [{ id: n.id, roomId: n.matrixRoomId!, name: n.name }], msgText: "", pos, minimized: false, showRecipients: true, showAnalysis: false };
                 }
                 const already = prev.recipients.find((r) => r.id === nodeId);
                 if (already) {
@@ -1467,7 +1584,7 @@ const FanoosDashboard: React.FC = () => {
                 .filter((c) => c.parentId === n.id && c.matrixRoomId)
                 .map((c) => ({ id: c.id, roomId: c.matrixRoomId!, name: c.name }));
             if (recipients.length > 0) {
-                setSendWindow({ recipients, msgText: "", pos, minimized: false, showRecipients: false });
+                setSendWindow({ recipients, msgText: "", pos, minimized: false, showRecipients: false, showAnalysis: false });
             }
             return;
         }
@@ -1693,6 +1810,8 @@ const FanoosDashboard: React.FC = () => {
                     isDayMode={isDayMode}
                     tree={tree}
                     unread={unread}
+                    sentiment={sentiment}
+                    sentDetail={sentDetail}
                 />,
                 document.body,
             )}
