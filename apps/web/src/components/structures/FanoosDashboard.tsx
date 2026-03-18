@@ -392,24 +392,34 @@ function analyzeMessages(
                 negFound.add(t);
             }
         }
-        // Emoji scan in message body (half weight vs keywords)
+        // Emoji scan in message body (half weight; tracked so they appear in keyword chips)
         for (const g of graphemes(m.body)) {
-            if (POS_EMOJIS.has(g)) posCount += 0.5;
-            else if (NEG_EMOJIS.has(g)) negCount += 0.5;
+            if (POS_EMOJIS.has(g)) {
+                posCount += 0.5;
+                posFound.add(g);
+            } else if (NEG_EMOJIS.has(g)) {
+                negCount += 0.5;
+                negFound.add(g);
+            }
         }
     }
-    // Reaction emojis (full weight each)
+    // Reaction emojis (full weight; tracked so they appear in keyword chips)
     for (const r of reactions) {
-        if (POS_EMOJIS.has(r)) posCount += 1;
-        else if (NEG_EMOJIS.has(r)) negCount += 1;
-        else {
-            // Try grapheme-by-grapheme for compound emojis
+        if (POS_EMOJIS.has(r)) {
+            posCount += 1;
+            posFound.add(r);
+        } else if (NEG_EMOJIS.has(r)) {
+            negCount += 1;
+            negFound.add(r);
+        } else {
             for (const g of graphemes(r)) {
                 if (POS_EMOJIS.has(g)) {
                     posCount += 1;
+                    posFound.add(g);
                     break;
                 } else if (NEG_EMOJIS.has(g)) {
                     negCount += 1;
+                    negFound.add(g);
                     break;
                 }
             }
@@ -1581,10 +1591,8 @@ const SendWindow: React.FC<SendWindowProps> = ({
     const [sent, setSent] = useState<string[]>([]);
     const [showEmojiPicker, setShowEmojiPicker] = useState<"emoji" | null>(null);
     const [emojiPickerAnchor, setEmojiPickerAnchor] = useState<{ x: number; y: number } | null>(null);
-    const [htmlMode, setHtmlMode] = useState(false);
     const [htmlFlowers, setHtmlFlowers] = useState<string[]>([]);
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const plainEditorRef = useRef<HTMLDivElement>(null);
     const htmlEditorRef = useRef<HTMLDivElement>(null);
     const colorInputRef = useRef<HTMLInputElement>(null);
     const htmlSavedRangeRef = useRef<Range | null>(null);
@@ -1730,28 +1738,21 @@ const SendWindow: React.FC<SendWindowProps> = ({
 
     const send = async (): Promise<void> => {
         const htmlEl = htmlEditorRef.current;
-        const plainEl = plainEditorRef.current;
-        const textContent = htmlMode ? (htmlEl?.textContent?.trim() ?? "") : (plainEl?.textContent?.trim() ?? "");
+        const textContent = htmlEl?.textContent?.trim() ?? "";
         if (!textContent || sending || !state.recipients.length) return;
         setSending(true);
         const results: string[] = [];
         try {
             for (const r of state.recipients) {
-                if (htmlMode && htmlEl) {
-                    const plainText = htmlEl.textContent ?? "";
-                    const htmlBody = prepareHtmlForSend(htmlEl.innerHTML);
-                    await client.sendHtmlMessage(r.roomId, plainText, htmlBody);
-                } else {
-                    await client.sendTextMessage(r.roomId, plainEl?.textContent?.trim() ?? "");
-                }
+                await client.sendHtmlMessage(
+                    r.roomId,
+                    htmlEl?.textContent ?? "",
+                    prepareHtmlForSend(htmlEl?.innerHTML ?? ""),
+                );
                 results.push(r.name);
             }
             setSent(results);
-            if (htmlMode && htmlEl) {
-                htmlEl.innerHTML = "";
-            } else if (plainEl) {
-                plainEl.innerHTML = "";
-            }
+            if (htmlEl) htmlEl.innerHTML = "";
             setHtmlFlowers([]);
             onChange({ ...state, msgText: "" });
         } catch (e) {
@@ -1762,82 +1763,42 @@ const SendWindow: React.FC<SendWindowProps> = ({
     };
 
     const insertEmoji = (emoji: string): void => {
-        if (htmlMode) {
-            const imgSrc = CUSTOM_EMOJI_IMAGES[emoji];
-            const editor = htmlEditorRef.current;
-            if (!editor) {
-                setShowEmojiPicker(null);
-                return;
-            }
-            editor.focus();
-            if (imgSrc) {
-                // Restore saved selection (emoji picker stole focus), then use Range API
-                restoreHtmlSelection();
-                const sel = window.getSelection();
-                let range: Range;
-                if (sel && sel.rangeCount > 0 && editor.contains(sel.getRangeAt(0).commonAncestorContainer)) {
-                    range = sel.getRangeAt(0);
-                } else {
-                    range = document.createRange();
-                    range.selectNodeContents(editor);
-                    range.collapse(false);
-                }
-                range.deleteContents();
-                const img = document.createElement("img");
-                img.src = imgSrc;
-                img.alt = emoji;
-                img.style.width = "1.2em";
-                img.style.height = "1.2em";
-                img.style.verticalAlign = "middle";
-                range.insertNode(img);
-                range.setStartAfter(img);
-                range.collapse(true);
-                if (sel) {
-                    sel.removeAllRanges();
-                    sel.addRange(range);
-                }
-                setHtmlFlowers((prev) => [...prev, emoji]);
+        const imgSrc = CUSTOM_EMOJI_IMAGES[emoji];
+        const editor = htmlEditorRef.current;
+        if (!editor) {
+            setShowEmojiPicker(null);
+            return;
+        }
+        editor.focus();
+        if (imgSrc) {
+            // Restore saved selection (emoji picker stole focus), then use Range API
+            restoreHtmlSelection();
+            const sel = window.getSelection();
+            let range: Range;
+            if (sel && sel.rangeCount > 0 && editor.contains(sel.getRangeAt(0).commonAncestorContainer)) {
+                range = sel.getRangeAt(0);
             } else {
-                document.execCommand("insertText", false, emoji);
+                range = document.createRange();
+                range.selectNodeContents(editor);
+                range.collapse(false);
             }
+            range.deleteContents();
+            const img = document.createElement("img");
+            img.src = imgSrc;
+            img.alt = emoji;
+            img.style.width = "1.2em";
+            img.style.height = "1.2em";
+            img.style.verticalAlign = "middle";
+            range.insertNode(img);
+            range.setStartAfter(img);
+            range.collapse(true);
+            if (sel) {
+                sel.removeAllRanges();
+                sel.addRange(range);
+            }
+            setHtmlFlowers((prev) => [...prev, emoji]);
         } else {
-            const editor = plainEditorRef.current;
-            if (!editor) {
-                setShowEmojiPicker(null);
-                return;
-            }
-            const imgSrc = CUSTOM_EMOJI_IMAGES[emoji];
-            editor.focus();
-            if (imgSrc) {
-                const sel = window.getSelection();
-                let range: Range;
-                if (sel && sel.rangeCount > 0 && editor.contains(sel.getRangeAt(0).commonAncestorContainer)) {
-                    range = sel.getRangeAt(0);
-                } else {
-                    range = document.createRange();
-                    range.selectNodeContents(editor);
-                    range.collapse(false);
-                }
-                range.deleteContents();
-                const img = document.createElement("img");
-                img.src = imgSrc;
-                img.alt = emoji;
-                img.style.width = "1.2em";
-                img.style.height = "1.2em";
-                img.style.verticalAlign = "middle";
-                range.insertNode(img);
-                range.setStartAfter(img);
-                range.collapse(true);
-                if (sel) {
-                    sel.removeAllRanges();
-                    sel.addRange(range);
-                }
-                setHtmlFlowers((prev) => [...prev, emoji]);
-                onChange({ ...stateRef.current, msgText: editor.textContent ?? "" });
-            } else {
-                document.execCommand("insertText", false, emoji);
-                onChange({ ...stateRef.current, msgText: editor.textContent ?? "" });
-            }
+            document.execCommand("insertText", false, emoji);
         }
         setShowEmojiPicker(null);
     };
@@ -2047,183 +2008,141 @@ const SendWindow: React.FC<SendWindowProps> = ({
                         )}
 
                         <div className="mx_FanoosDashboard_cbCompose">
-                            {/* HTML toolbar (shown in HTML mode) */}
-                            {htmlMode && (
-                                <div className="mx_FanoosDashboard_htmlToolbar">
-                                    <button
-                                        onMouseDown={(e) => e.preventDefault()}
-                                        onClick={() => document.execCommand("bold")}
-                                        title={_t("fanoos_dashboard|html_bold")}
-                                    >
-                                        <b>B</b>
-                                    </button>
-                                    <button
-                                        onMouseDown={(e) => e.preventDefault()}
-                                        onClick={() => document.execCommand("italic")}
-                                        title={_t("fanoos_dashboard|html_italic")}
-                                    >
-                                        <i>I</i>
-                                    </button>
-                                    <button
-                                        onMouseDown={(e) => e.preventDefault()}
-                                        onClick={() => document.execCommand("underline")}
-                                        title={_t("fanoos_dashboard|html_underline")}
-                                    >
-                                        <u>U</u>
-                                    </button>
-                                    <button
-                                        onMouseDown={(e) => e.preventDefault()}
-                                        onClick={() => document.execCommand("strikeThrough")}
-                                        title={_t("fanoos_dashboard|html_strikethrough")}
-                                    >
-                                        <s>S</s>
-                                    </button>
-                                    <span className="mx_FanoosDashboard_htmlToolbarDivider" />
-                                    <label
-                                        className="mx_FanoosDashboard_htmlColorBtn"
-                                        title={_t("fanoos_dashboard|html_color")}
-                                        onMouseDown={(e) => {
-                                            e.preventDefault();
-                                            saveHtmlSelection();
+                            {/* HTML toolbar — always visible */}
+                            <div className="mx_FanoosDashboard_htmlToolbar">
+                                <button
+                                    onMouseDown={(e) => e.preventDefault()}
+                                    onClick={() => document.execCommand("bold")}
+                                    title={_t("fanoos_dashboard|html_bold")}
+                                >
+                                    <b>B</b>
+                                </button>
+                                <button
+                                    onMouseDown={(e) => e.preventDefault()}
+                                    onClick={() => document.execCommand("italic")}
+                                    title={_t("fanoos_dashboard|html_italic")}
+                                >
+                                    <i>I</i>
+                                </button>
+                                <button
+                                    onMouseDown={(e) => e.preventDefault()}
+                                    onClick={() => document.execCommand("underline")}
+                                    title={_t("fanoos_dashboard|html_underline")}
+                                >
+                                    <u>U</u>
+                                </button>
+                                <button
+                                    onMouseDown={(e) => e.preventDefault()}
+                                    onClick={() => document.execCommand("strikeThrough")}
+                                    title={_t("fanoos_dashboard|html_strikethrough")}
+                                >
+                                    <s>S</s>
+                                </button>
+                                <span className="mx_FanoosDashboard_htmlToolbarDivider" />
+                                <label
+                                    className="mx_FanoosDashboard_htmlColorBtn"
+                                    title={_t("fanoos_dashboard|html_color")}
+                                    onMouseDown={(e) => {
+                                        e.preventDefault();
+                                        saveHtmlSelection();
+                                    }}
+                                    onClick={() => colorInputRef.current?.click()}
+                                >
+                                    <span>A</span>
+                                    <input
+                                        ref={colorInputRef}
+                                        type="color"
+                                        defaultValue="#e879f9"
+                                        style={{
+                                            position: "absolute",
+                                            opacity: 0,
+                                            width: 0,
+                                            height: 0,
+                                            pointerEvents: "none",
                                         }}
-                                        onClick={() => colorInputRef.current?.click()}
-                                    >
-                                        <span>A</span>
-                                        <input
-                                            ref={colorInputRef}
-                                            type="color"
-                                            defaultValue="#e879f9"
-                                            style={{
-                                                position: "absolute",
-                                                opacity: 0,
-                                                width: 0,
-                                                height: 0,
-                                                pointerEvents: "none",
-                                            }}
-                                            onChange={(e) => applyForeColor(e.target.value)}
-                                        />
-                                    </label>
-                                    <span className="mx_FanoosDashboard_htmlToolbarDivider" />
-                                    <button
-                                        onMouseDown={(e) => e.preventDefault()}
-                                        onClick={() => {
-                                            const el = htmlEditorRef.current;
-                                            if (el) el.dir = "ltr";
-                                        }}
-                                        title={_t("fanoos_dashboard|html_ltr")}
-                                    >
-                                        ⇒
-                                    </button>
-                                    <button
-                                        onMouseDown={(e) => e.preventDefault()}
-                                        onClick={() => {
-                                            const el = htmlEditorRef.current;
-                                            if (el) el.dir = "rtl";
-                                        }}
-                                        title={_t("fanoos_dashboard|html_rtl")}
-                                    >
-                                        ⇐
-                                    </button>
-                                    <span className="mx_FanoosDashboard_htmlToolbarDivider" />
-                                    <button
-                                        onMouseDown={(e) => e.preventDefault()}
-                                        onClick={() => document.execCommand("insertUnorderedList")}
-                                        title={_t("fanoos_dashboard|html_ul")}
-                                    >
-                                        •≡
-                                    </button>
-                                    <button
-                                        onMouseDown={(e) => e.preventDefault()}
-                                        onClick={() => document.execCommand("insertOrderedList")}
-                                        title={_t("fanoos_dashboard|html_ol")}
-                                    >
-                                        1≡
-                                    </button>
-                                    <button
-                                        onMouseDown={(e) => e.preventDefault()}
-                                        onClick={() => document.execCommand("indent")}
-                                        title={_t("fanoos_dashboard|html_indent")}
-                                    >
-                                        →
-                                    </button>
-                                    <button
-                                        onMouseDown={(e) => e.preventDefault()}
-                                        onClick={() => document.execCommand("outdent")}
-                                        title={_t("fanoos_dashboard|html_outdent")}
-                                    >
-                                        ←
-                                    </button>
-                                </div>
-                            )}
+                                        onChange={(e) => applyForeColor(e.target.value)}
+                                    />
+                                </label>
+                                <span className="mx_FanoosDashboard_htmlToolbarDivider" />
+                                <button
+                                    onMouseDown={(e) => e.preventDefault()}
+                                    onClick={() => {
+                                        const el = htmlEditorRef.current;
+                                        if (el) el.dir = "ltr";
+                                    }}
+                                    title={_t("fanoos_dashboard|html_ltr")}
+                                >
+                                    ⇒
+                                </button>
+                                <button
+                                    onMouseDown={(e) => e.preventDefault()}
+                                    onClick={() => {
+                                        const el = htmlEditorRef.current;
+                                        if (el) el.dir = "rtl";
+                                    }}
+                                    title={_t("fanoos_dashboard|html_rtl")}
+                                >
+                                    ⇐
+                                </button>
+                                <span className="mx_FanoosDashboard_htmlToolbarDivider" />
+                                <button
+                                    onMouseDown={(e) => e.preventDefault()}
+                                    onClick={() => document.execCommand("insertUnorderedList")}
+                                    title={_t("fanoos_dashboard|html_ul")}
+                                >
+                                    •≡
+                                </button>
+                                <button
+                                    onMouseDown={(e) => e.preventDefault()}
+                                    onClick={() => document.execCommand("insertOrderedList")}
+                                    title={_t("fanoos_dashboard|html_ol")}
+                                >
+                                    1≡
+                                </button>
+                                <button
+                                    onMouseDown={(e) => e.preventDefault()}
+                                    onClick={() => document.execCommand("indent")}
+                                    title={_t("fanoos_dashboard|html_indent")}
+                                >
+                                    →
+                                </button>
+                                <button
+                                    onMouseDown={(e) => e.preventDefault()}
+                                    onClick={() => document.execCommand("outdent")}
+                                    title={_t("fanoos_dashboard|html_outdent")}
+                                >
+                                    ←
+                                </button>
+                            </div>
 
-                            {/* Plain text editor (normal mode — contentEditable so flowers render inline) */}
-                            {!htmlMode && (
-                                <div
-                                    ref={plainEditorRef}
-                                    className="mx_FanoosDashboard_cbInput mx_FanoosDashboard_cbHtmlEditor"
-                                    contentEditable
-                                    dir="auto"
-                                    suppressContentEditableWarning
-                                    onInput={(e) => {
-                                        const text = (e.currentTarget as HTMLDivElement).textContent ?? "";
-                                        onChange({ ...stateRef.current, msgText: text });
-                                    }}
-                                    onKeyDown={(e) => {
-                                        if (e.key === "Enter" && !e.shiftKey) {
-                                            e.preventDefault();
-                                            void send();
-                                        }
-                                    }}
-                                    data-placeholder={
-                                        state.recipients.length > 1
-                                            ? _t("fanoos_dashboard|send_to_channels", {
-                                                  count: state.recipients.length,
-                                              })
-                                            : _t("fanoos_dashboard|send_placeholder")
+                            {/* HTML editor — always active; Enter = new line, Ctrl+Enter = send */}
+                            <div
+                                ref={htmlEditorRef}
+                                className="mx_FanoosDashboard_cbInput mx_FanoosDashboard_cbHtmlEditor"
+                                contentEditable
+                                dir="auto"
+                                suppressContentEditableWarning
+                                onInput={(e) => {
+                                    onChange({
+                                        ...stateRef.current,
+                                        msgText: (e.currentTarget as HTMLDivElement).textContent ?? "",
+                                    });
+                                }}
+                                onKeyDown={(e) => {
+                                    if (e.key === "Enter" && e.ctrlKey) {
+                                        e.preventDefault();
+                                        void send();
                                     }
-                                />
-                            )}
-
-                            {/* HTML contenteditable editor (HTML mode) */}
-                            {htmlMode && (
-                                <div
-                                    ref={htmlEditorRef}
-                                    className="mx_FanoosDashboard_cbInput mx_FanoosDashboard_cbHtmlEditor"
-                                    contentEditable
-                                    dir="auto"
-                                    suppressContentEditableWarning
-                                    onKeyDown={(e) => {
-                                        if (e.key === "Enter" && !e.shiftKey) {
-                                            e.preventDefault();
-                                            void send();
-                                        }
-                                    }}
-                                    data-placeholder={
-                                        state.recipients.length > 1
-                                            ? _t("fanoos_dashboard|send_to_channels", {
-                                                  count: state.recipients.length,
-                                              })
-                                            : _t("fanoos_dashboard|send_placeholder")
-                                    }
-                                />
-                            )}
+                                }}
+                                data-placeholder={
+                                    state.recipients.length > 1
+                                        ? _t("fanoos_dashboard|send_to_channels", { count: state.recipients.length })
+                                        : _t("fanoos_dashboard|send_placeholder")
+                                }
+                            />
 
                             {/* Flower chips row */}
-                            {!htmlMode && state.msgText && /[\uE000-\uE00F]/.test(state.msgText) && (
-                                <div className="mx_FanoosDashboard_cbFlowerChips">
-                                    {[...state.msgText]
-                                        .filter((ch) => CUSTOM_EMOJI_IMAGES[ch])
-                                        .map((ch, i) => (
-                                            <img
-                                                key={i}
-                                                src={CUSTOM_EMOJI_IMAGES[ch]}
-                                                alt={ch}
-                                                className="mx_FanoosDashboard_cbFlowerChip"
-                                            />
-                                        ))}
-                                </div>
-                            )}
-                            {htmlMode && htmlFlowers.length > 0 && (
+                            {htmlFlowers.length > 0 && (
                                 <div className="mx_FanoosDashboard_cbFlowerChips">
                                     {htmlFlowers.map((ch, i) => (
                                         <img
@@ -2263,14 +2182,6 @@ const SendWindow: React.FC<SendWindowProps> = ({
                                     title={_t("fanoos_dashboard|emoji_btn")}
                                 >
                                     😊
-                                </button>
-                                <button
-                                    className={`mx_FanoosDashboard_cbEmojiBtn${htmlMode ? " active" : ""}`}
-                                    onMouseDown={(e) => e.stopPropagation()}
-                                    onClick={() => setHtmlMode((v) => !v)}
-                                    title={_t("fanoos_dashboard|html_editor")}
-                                >
-                                    🖊
                                 </button>
                                 <button
                                     className="mx_FanoosDashboard_cbEmojiBtn"
