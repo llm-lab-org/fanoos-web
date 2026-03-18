@@ -638,6 +638,13 @@ Please see LICENSE files in the repository root for full details.
     display: flex;
     align-items: center;
     gap: 4px;
+
+    /* Own messages (right side): reverse so reaction button is to the LEFT (inner/center side).
+       Opponent messages (left side): keep row so button is to the RIGHT (inner/center side).
+       This also works correctly in RTL because row/row-reverse mirror automatically. */
+    &.own {
+        flex-direction: row-reverse;
+    }
 }
 
 .mx_FanoosDashboard_chSender {
@@ -839,7 +846,7 @@ Please see LICENSE files in the repository root for full details.
     color: #6366f1;
     padding: 0;
     flex-shrink: 0;
-    opacity: 0.25;
+    opacity: 0;
     transition:
         opacity 0.15s,
         background 0.12s;
@@ -848,6 +855,10 @@ Please see LICENSE files in the repository root for full details.
         opacity: 1;
         background: rgb(99, 102, 241, 0.15);
     }
+}
+
+.mx_FanoosDashboard_chRow:hover .mx_FanoosDashboard_chReactionMore {
+    opacity: 0.45;
 }
 
 /* Portal container for the full EmojiPicker */
