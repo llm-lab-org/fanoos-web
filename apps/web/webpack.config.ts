@@ -254,6 +254,10 @@ export default (env: string, argv: Record<string, any>): webpack.Configuration =
                 // Make shared-components imports resolve to EW deps
                 "counterpart": getPackageRoot("counterpart"),
                 "@vector-im/compound-web": getPackageRoot("@vector-im/compound-web", ""),
+
+                // excalidraw's pre-built bundle imports roughjs/bin/rough without .js extension
+                "roughjs/bin/rough": path.resolve(__dirname, "../../node_modules/roughjs/bin/rough.js"),
+                "roughjs/bin/generator": path.resolve(__dirname, "../../node_modules/roughjs/bin/generator.js"),
             },
             fallback: {
                 // Mock out the NodeFS module: The opus decoder imports this wrongly.
@@ -294,6 +298,13 @@ export default (env: string, argv: Record<string, any>): webpack.Configuration =
                 /highlight\.js[\\/]lib[\\/]languages/,
             ],
             rules: [
+                // excalidraw ships ESM that imports roughjs without .js extension.
+                // Disable fullySpecified for its dist so webpack resolves extensions normally.
+                {
+                    test: /\.js$/,
+                    include: /node_modules[\\/]@excalidraw/,
+                    resolve: { fullySpecified: false },
+                },
                 {
                     test: /\.js$/,
                     enforce: "pre" as const,

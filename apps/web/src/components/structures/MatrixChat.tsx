@@ -1504,6 +1504,15 @@ export default class MatrixChat extends React.PureComponent<IProps, IState> {
     }
 
     private showScreenAfterLogin(): void {
+        // If the user was on the Fanoos dashboard when a language reload was triggered,
+        // return them to the dashboard instead of the default post-login screen.
+        if (sessionStorage.getItem("fanoos_return_to_dashboard")) {
+            sessionStorage.removeItem("fanoos_return_to_dashboard");
+            logger.debug("showScreenAfterLogin: returning to Fanoos dashboard after language reload");
+            dis.dispatch({ action: Action.ViewDashboard });
+            return;
+        }
+
         // If screenAfterLogin is set, use that, then null it so that a second login will
         // result in view_home_page, _user_settings or _room_directory
         if (this.screenAfterLogin && this.screenAfterLogin.screen) {

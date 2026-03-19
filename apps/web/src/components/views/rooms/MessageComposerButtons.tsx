@@ -14,7 +14,15 @@ import {
     THREAD_RELATION_TYPE,
     M_POLL_START,
 } from "matrix-js-sdk/src/matrix";
-import React, { type JSX, createContext, type ReactElement, type ReactNode, useContext, useRef } from "react";
+import React, {
+    type JSX,
+    createContext,
+    type ReactElement,
+    type ReactNode,
+    useCallback,
+    useContext,
+    useRef,
+} from "react";
 import {
     AttachmentIcon,
     MicOnIcon,
@@ -43,6 +51,7 @@ import { filterBoolean } from "../../../utils/arrays";
 import { useSettingValue } from "../../../hooks/useSettings";
 import AccessibleButton, { type ButtonEvent } from "../elements/AccessibleButton";
 import { useScopedRoomContext } from "../../../contexts/ScopedRoomContext.tsx";
+import { exportDrawingAsPng } from "../../structures/FanoosDrawTab";
 
 interface IProps {
     addEmoji: (emoji: string) => boolean;
@@ -70,6 +79,25 @@ const MessageComposerButtons: React.FC<IProps> = (props: IProps) => {
     const moreButtonRef = useRef<HTMLDivElement | null>(null);
 
     const isWysiwygLabEnabled = useSettingValue("feature_wysiwyg_composer");
+
+    const sendDrawing = useCallback(async () => {
+        if (!room) return;
+        const blob = await exportDrawingAsPng();
+        if (!blob) return;
+        const file = new File([blob], "drawing.png", { type: "image/png" });
+        const client = MatrixClientPeg.safeGet();
+        try {
+            await ContentMessages.sharedInstance().sendContentToRoom(
+                file,
+                room.roomId,
+                props.relation,
+                client,
+                undefined,
+            );
+        } catch (e) {
+            Modal.createDialog(ErrorDialog, { title: "Failed to send drawing", description: String(e) });
+        }
+    }, [room, props.relation]);
 
     if (!matrixClient || !room || props.haveRecording) {
         return null;
@@ -108,6 +136,33 @@ const MessageComposerButtons: React.FC<IProps> = (props: IProps) => {
                 emojiButton(props)
             ),
             uploadButton(), // props passed via UploadButtonContext
+            <CollapsibleButton
+                key="send_drawing"
+                className="mx_MessageComposer_button mx_MessageComposer_sendDrawing"
+                onClick={() => void sendDrawing()}
+                title={_t("fanoos_dashboard|draw_send")}
+            >
+                <svg
+                    viewBox="0 0 20 20"
+                    width="20"
+                    height="20"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.4"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                >
+                    {/* Painter's palette */}
+                    <path d="M10 2.5C6 2.5 2.5 5.7 2.5 9.5c0 2 1 3.7 2.8 4.5.5.2.7.8.4 1.3-.4.8-.2 1.7.7 2 4.5 1.5 9-1.5 9-5.8C15.4 5.7 13 2.5 10 2.5Z" />
+                    {/* Paint dots on palette */}
+                    <circle cx="7" cy="8.5" r="1" fill="currentColor" stroke="none" />
+                    <circle cx="10" cy="6.5" r="1" fill="currentColor" stroke="none" />
+                    <circle cx="13" cy="8.5" r="1" fill="currentColor" stroke="none" />
+                    <circle cx="12" cy="11.5" r="1" fill="currentColor" stroke="none" />
+                    {/* Brush handle sticking out top-right */}
+                    <path d="M14.5 4.5l2-2" strokeWidth="1.8" />
+                </svg>
+            </CollapsibleButton>,
         ];
         moreButtons = [
             showStickersButton(props),
@@ -143,9 +198,9 @@ const MessageComposerButtons: React.FC<IProps> = (props: IProps) => {
                 <IconizedContextMenu
                     onFinished={props.toggleButtonMenu}
                     {...(moreButtonRef.current
-                        ? (document.documentElement.dir === "rtl"
+                        ? document.documentElement.dir === "rtl"
                             ? aboveRightOf(moreButtonRef.current.getBoundingClientRect())
-                            : aboveLeftOf(moreButtonRef.current.getBoundingClientRect()))
+                            : aboveLeftOf(moreButtonRef.current.getBoundingClientRect())
                         : props.menuPosition)}
                     wrapperClassName="mx_MessageComposer_Menu"
                     compact={true}
@@ -160,13 +215,7 @@ const MessageComposerButtons: React.FC<IProps> = (props: IProps) => {
 };
 
 function emojiButton(props: IProps): ReactElement {
-    return (
-        <EmojiButton
-            key="emoji_button"
-            addEmoji={props.addEmoji}
-            className="mx_MessageComposer_button"
-        />
-    );
+    return <EmojiButton key="emoji_button" addEmoji={props.addEmoji} className="mx_MessageComposer_button" />;
 }
 
 function uploadButton(): ReactElement {

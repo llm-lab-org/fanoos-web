@@ -76,6 +76,10 @@ const QuickSettingsButton: React.FC<{
         const dir = getInterfaceDirection(langCode);
         document.documentElement.setAttribute("lang", langCode);
         document.documentElement.setAttribute("dir", dir);
+        // If the user is currently viewing the dashboard, restore it after reload
+        if (document.querySelector(".mx_FanoosDashboard")) {
+            sessionStorage.setItem("fanoos_return_to_dashboard", "1");
+        }
         // Reload to fully apply the new language strings
         window.location.reload();
     };
@@ -124,9 +128,7 @@ const QuickSettingsButton: React.FC<{
                 )}
 
                 {/* Fanoos: Language quick switcher */}
-                <h4 className="mx_QuickSettingsButton_sectionHeading">
-                    🌐 {_t("quick_settings|language")}
-                </h4>
+                <h4 className="mx_QuickSettingsButton_sectionHeading">🌐 {_t("quick_settings|language")}</h4>
                 <div className="mx_QuickSettingsButton_langRow">
                     {QUICK_LANGUAGES.map((lang) => (
                         <AccessibleButton
@@ -142,9 +144,7 @@ const QuickSettingsButton: React.FC<{
                 </div>
 
                 {/* Fanoos: Direction quick toggle */}
-                <h4 className="mx_QuickSettingsButton_sectionHeading">
-                    ↔ {_t("quick_settings|direction")}
-                </h4>
+                <h4 className="mx_QuickSettingsButton_sectionHeading">↔ {_t("quick_settings|direction")}</h4>
                 <div className="mx_QuickSettingsButton_langRow">
                     <AccessibleButton
                         className={classNames("mx_QuickSettingsButton_langButton", {
@@ -183,9 +183,7 @@ const QuickSettingsButton: React.FC<{
                 </div>
 
                 {/* Fanoos: Font size quick control */}
-                <h4 className="mx_QuickSettingsButton_sectionHeading">
-                    Aa {_t("settings|appearance|font_size")}
-                </h4>
+                <h4 className="mx_QuickSettingsButton_sectionHeading">Aa {_t("settings|appearance|font_size")}</h4>
                 <div className="mx_QuickSettingsButton_fontSizeWidget">
                     <AccessibleButton
                         className="mx_QuickSettingsButton_fontSizeStep"

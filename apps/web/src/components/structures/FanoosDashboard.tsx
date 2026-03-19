@@ -22,6 +22,7 @@ import { mediaFromMxc } from "../../customisations/Media";
 import EmojiPicker from "../views/emojipicker/EmojiPicker";
 import { uploadFile } from "../../ContentMessages";
 import { CUSTOM_EMOJI_IMAGES } from "../../fanoos/customFlowerEmojis";
+import { exportDrawingAsPng, FanoosDrawTab } from "./FanoosDrawTab";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -1805,6 +1806,32 @@ const SendWindow: React.FC<SendWindowProps> = ({
         setShowEmojiPicker(null);
     };
 
+    const sendDrawing = useCallback(async (): Promise<void> => {
+        const recipients = stateRef.current.recipients;
+        if (!recipients.length) return;
+        setUploading(true);
+        try {
+            const blob = await exportDrawingAsPng();
+            if (!blob) return;
+            const file = new File([blob], "drawing.png", { type: "image/png" });
+            const result = await uploadFile(client, recipients[0].roomId, file);
+            const content = {
+                msgtype: "m.image",
+                body: "drawing.png",
+                url: result.url,
+                file: result.file,
+                info: { mimetype: "image/png", size: blob.size },
+            };
+            for (const r of recipients) {
+                await client.sendMessage(r.roomId, content as any);
+            }
+        } catch (err) {
+            console.error("Drawing send failed:", err);
+        } finally {
+            setUploading(false);
+        }
+    }, [client]); // eslint-disable-line react-hooks/exhaustive-deps
+
     const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>): Promise<void> => {
         const files = Array.from(e.target.files ?? []);
         if (!files.length || !stateRef.current.recipients.length) return;
@@ -2195,6 +2222,30 @@ const SendWindow: React.FC<SendWindowProps> = ({
                                     📎
                                 </button>
                                 <button
+                                    className="mx_FanoosDashboard_cbEmojiBtn"
+                                    onClick={() => void sendDrawing()}
+                                    title={_t("fanoos_dashboard|draw_send")}
+                                    disabled={uploading || !state.recipients.length}
+                                >
+                                    <svg
+                                        viewBox="0 0 20 20"
+                                        width="16"
+                                        height="16"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="1.4"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                    >
+                                        <path d="M10 2.5C6 2.5 2.5 5.7 2.5 9.5c0 2 1 3.7 2.8 4.5.5.2.7.8.4 1.3-.4.8-.2 1.7.7 2 4.5 1.5 9-1.5 9-5.8C15.4 5.7 13 2.5 10 2.5Z" />
+                                        <circle cx="7" cy="8.5" r="1" fill="currentColor" stroke="none" />
+                                        <circle cx="10" cy="6.5" r="1" fill="currentColor" stroke="none" />
+                                        <circle cx="13" cy="8.5" r="1" fill="currentColor" stroke="none" />
+                                        <circle cx="12" cy="11.5" r="1" fill="currentColor" stroke="none" />
+                                        <path d="M14.5 4.5l2-2" strokeWidth="1.8" />
+                                    </svg>
+                                </button>
+                                <button
                                     className={`mx_FanoosDashboard_cbMic${recording ? " recording" : ""}`}
                                     onClick={() => void toggleRecording()}
                                     title={
@@ -2447,12 +2498,21 @@ const InfoPanel: React.FC<InfoPanelProps> = ({
 
 // ─── Admin Panel ──────────────────────────────────────────────────────────────
 
+const nodeAvatarColor = (id: string): string => {
+    const p = ["#6366f1", "#8b5cf6", "#ec4899", "#f43f5e", "#f97316", "#22c55e", "#14b8a6", "#3b82f6", "#06b6d4"];
+    let h = 0;
+    for (const c of id) h = (h * 31 + c.charCodeAt(0)) & 0xffffffff;
+    return p[Math.abs(h) % p.length];
+};
+
 interface SynapseUser {
     name: string;
     displayname?: string;
+    avatar_url?: string;
     deactivated: boolean;
     admin: boolean;
     creation_ts: number;
+    last_seen_ts?: number;
 }
 
 interface RoomInfo {
@@ -2463,31 +2523,1669 @@ interface RoomInfo {
     room_type?: string;
 }
 
-function AdminPanel({
+// ─── Space Outline ────────────────────────────────────────────────────────────
+// Three-level hierarchy: Space → Group (room/dm) → Member
+// "Main Space" is a virtual bucket for groups with no parent space.
+
+function SpaceOutline({
     client,
     tree,
     isDayMode,
+    onRefresh,
 }: {
     client: ReturnType<typeof useMatrixClientContext>;
     tree: TreeNode[];
     isDayMode: boolean;
+    onRefresh?: () => void;
+}): React.ReactElement {
+    // ── Core state ─────────────────────────────────────────────────────────
+    const [expandedSpaces, setExpandedSpaces] = useState<Set<string>>(
+        () => new Set([...tree.filter((n) => n.type === "space").map((n) => n.id), "__main__"]),
+    );
+    const [rootExpanded, setRootExpanded] = useState(true);
+    const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+    const [selectedId, setSelectedId] = useState<string | null>(null);
+    const [inlineEditId, setInlineEditId] = useState<string | null>(null);
+    const [inlineEditName, setInlineEditName] = useState("");
+    const [addingTo, setAddingTo] = useState<{ parentId: string | null; isSpace: boolean } | null>(null);
+    const [newName, setNewName] = useState("");
+    const [dragSrc, setDragSrc] = useState<string | null>(null);
+    const [dragOver, setDragOver] = useState<string | null>(null);
+    const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+    const [busyIds, setBusyIds] = useState<Set<string>>(new Set());
+    const [rooms, setRooms] = useState<RoomInfo[]>([]);
+    const [search, setSearch] = useState("");
+    const [dirOverride, setDirOverride] = useState<"ltr" | "rtl">(() => {
+        const s = localStorage.getItem("fanoos_outline_dir");
+        if (s === "ltr" || s === "rtl") return s;
+        return document.documentElement.dir === "rtl" ? "rtl" : "ltr";
+    });
+
+    // Float edit window
+    const [floatNode, setFloatNode] = useState<TreeNode | null>(null);
+    const [floatPos, setFloatPos] = useState({ x: 300, y: 80 });
+    const floatNodeDragRef = useRef<{ sx: number; sy: number; px: number; py: number } | null>(null);
+    const [floatName, setFloatName] = useState("");
+    const [floatAvatarFile, setFloatAvatarFile] = useState<File | null>(null);
+    const [floatAvatarPreview, setFloatAvatarPreview] = useState<string | null>(null);
+    const floatAvatarInputRef = useRef<HTMLInputElement>(null);
+    const [floatSaving, setFloatSaving] = useState(false);
+    const [floatConfirmDelete, setFloatConfirmDelete] = useState(false);
+    const [synapseUsers, setSynapseUsers] = useState<SynapseUser[] | null>(null);
+    const [floatMemberSearch, setFloatMemberSearch] = useState("");
+    const floatMemberInputRef = useRef<HTMLInputElement>(null);
+    const [memberBusyIds, setMemberBusyIds] = useState<Set<string>>(new Set());
+    const [confirmKickId, setConfirmKickId] = useState<string | null>(null);
+    const [floatTopic, setFloatTopic] = useState("");
+    const [floatPowerLevels, setFloatPowerLevels] = useState<Record<string, number>>({});
+
+    const token = client.getAccessToken() ?? "";
+    const baseUrl = client.getHomeserverUrl();
+    const serverDomain = client.getDomain() ?? "";
+
+    // ── Helpers ────────────────────────────────────────────────────────────
+    const o = (c: string): string => `mx_FanoosDashboard_adminOutline${c}${isDayMode ? " day" : ""}`;
+    const setBusyId = (id: string, on: boolean): void =>
+        setBusyIds((prev) => {
+            const s = new Set(prev);
+            if (on) s.add(id);
+            else s.delete(id);
+            return s;
+        });
+    const setMemberBusyId = (id: string, on: boolean): void =>
+        setMemberBusyIds((prev) => {
+            const s = new Set(prev);
+            if (on) s.add(id);
+            else s.delete(id);
+            return s;
+        });
+
+    // ── Derived data ────────────────────────────────────────────────────────
+    const spaces = useMemo(() => tree.filter((n) => n.type === "space"), [tree]);
+    const groups = useMemo(() => tree.filter((n) => n.type === "room" || n.type === "dm"), [tree]);
+
+    // Map: spaceId | null → groups in that space (null = "Main Space" / orphans)
+    const spaceGroups = useMemo<Map<string | null, TreeNode[]>>(() => {
+        const map = new Map<string | null, TreeNode[]>();
+        map.set(null, []);
+        for (const s of spaces) map.set(s.id, []);
+        for (const g of groups) {
+            const pid = spaces.find((s) => s.id === g.parentId)?.id ?? null;
+            (map.get(pid) ?? map.get(null)!).push(g);
+        }
+        return map;
+    }, [spaces, groups]);
+
+    const memberCountMap = useMemo(() => new Map(rooms.map((r) => [r.room_id, r.joined_members])), [rooms]);
+
+    // ── Effects ────────────────────────────────────────────────────────────
+    useEffect(() => {
+        fetch(`${baseUrl}/_synapse/admin/v1/rooms?limit=500`, {
+            headers: { Authorization: `Bearer ${token}` },
+        })
+            .then((r) => r.json())
+            .then((d: { rooms?: RoomInfo[] }) => setRooms(d.rooms ?? []))
+            .catch(() => {});
+    }, [baseUrl, token, tree]);
+
+    // ── Float window helpers ───────────────────────────────────────────────
+    const openFloat = useCallback(
+        (node: TreeNode, anchorRect: DOMRect): void => {
+            setFloatNode(node);
+            setFloatName(node.name);
+            setFloatAvatarFile(null);
+            setFloatAvatarPreview(null);
+            setFloatSaving(false);
+            setFloatConfirmDelete(false);
+            setFloatMemberSearch("");
+            setConfirmKickId(null);
+            // Fetch topic
+            if (node.matrixRoomId) {
+                const topicEv = client.getRoom(node.matrixRoomId)?.currentState.getStateEvents("m.room.topic", "");
+                setFloatTopic((topicEv?.getContent?.() as any)?.topic ?? "");
+                // Fetch power levels
+                const plEv = client.getRoom(node.matrixRoomId)?.currentState.getStateEvents("m.room.power_levels", "");
+                const users = (plEv?.getContent?.() as any)?.users ?? {};
+                setFloatPowerLevels({ ...users });
+            } else {
+                setFloatTopic("");
+                setFloatPowerLevels({});
+            }
+            setFloatPos({
+                x: Math.max(8, Math.min(anchorRect.right + 12, UIStore.instance.windowWidth - 380)),
+                y: Math.max(8, Math.min(anchorRect.top - 24, UIStore.instance.windowHeight - 520)),
+            });
+            if ((node.type === "room" || node.type === "dm") && synapseUsers === null) {
+                fetch(`${baseUrl}/_synapse/admin/v2/users?from=0&limit=500&guests=false`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                })
+                    .then((r) => r.json())
+                    .then((d: { users?: SynapseUser[] }) => setSynapseUsers(d.users ?? []))
+                    .catch(() => setSynapseUsers([]));
+            }
+        },
+        [baseUrl, client, token, synapseUsers],
+    );
+
+    const startFloatNodeDrag = useCallback(
+        (e: React.MouseEvent): void => {
+            floatNodeDragRef.current = { sx: e.clientX, sy: e.clientY, px: floatPos.x, py: floatPos.y };
+            const onMove = (me: MouseEvent): void => {
+                if (!floatNodeDragRef.current) return;
+                setFloatPos({
+                    x: floatNodeDragRef.current.px + (me.clientX - floatNodeDragRef.current.sx),
+                    y: floatNodeDragRef.current.py + (me.clientY - floatNodeDragRef.current.sy),
+                });
+            };
+            const onUp = (): void => {
+                floatNodeDragRef.current = null;
+                document.removeEventListener("mousemove", onMove);
+                document.removeEventListener("mouseup", onUp);
+            };
+            document.addEventListener("mousemove", onMove);
+            document.addEventListener("mouseup", onUp);
+        },
+        [floatPos],
+    );
+
+    // ── API ────────────────────────────────────────────────────────────────
+    const renameNode = useCallback(
+        async (node: TreeNode, name: string): Promise<void> => {
+            if (!node.matrixRoomId || !name.trim()) return;
+            setBusyId(node.id, true);
+            try {
+                await fetch(
+                    `${baseUrl}/_matrix/client/v3/rooms/${encodeURIComponent(node.matrixRoomId)}/state/m.room.name`,
+                    {
+                        method: "PUT",
+                        headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
+                        body: JSON.stringify({ name: name.trim() }),
+                    },
+                );
+                onRefresh?.();
+            } finally {
+                setBusyId(node.id, false);
+            }
+        },
+        [baseUrl, token, onRefresh],
+    ); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const uploadNodeAvatar = useCallback(
+        async (file: File): Promise<string> => {
+            const res = await fetch(`${baseUrl}/_matrix/media/v3/upload`, {
+                method: "POST",
+                headers: { "Authorization": `Bearer ${token}`, "Content-Type": file.type },
+                body: file,
+            });
+            return ((await res.json()) as { content_uri: string }).content_uri;
+        },
+        [baseUrl, token],
+    );
+
+    const handleCreate = async (): Promise<void> => {
+        if (!newName.trim()) {
+            setAddingTo(null);
+            return;
+        }
+        const name = newName.trim();
+        const cur = addingTo;
+        setAddingTo(null);
+        setNewName("");
+        setBusyIds((s) => new Set([...s, "__creating__"]));
+        try {
+            if (cur?.isSpace) {
+                await (client as any).createRoom({
+                    name,
+                    visibility: "private",
+                    creation_content: { type: "m.space" },
+                });
+            } else {
+                const result = (await (client as any).createRoom({ name, visibility: "private" })) as {
+                    room_id: string;
+                };
+                if (cur?.parentId) {
+                    const spaceNode = tree.find((n) => n.id === cur.parentId);
+                    if (spaceNode?.matrixRoomId) {
+                        await client.sendStateEvent(
+                            spaceNode.matrixRoomId,
+                            "m.space.child" as any,
+                            { via: [serverDomain], suggested: false, auto_join: false },
+                            result.room_id,
+                        );
+                    }
+                }
+            }
+            onRefresh?.();
+        } catch {
+            /* ignore */
+        } finally {
+            setBusyIds((s) => {
+                const n = new Set(s);
+                n.delete("__creating__");
+                return n;
+            });
+        }
+    };
+
+    const handleMove = useCallback(
+        async (groupNode: TreeNode, targetSpaceId: string | null): Promise<void> => {
+            if (!groupNode.matrixRoomId) return;
+            setBusyId(groupNode.id, true);
+            try {
+                const oldSpace = spaces.find((s) => s.id === groupNode.parentId);
+                if (oldSpace?.matrixRoomId) {
+                    await client.sendStateEvent(
+                        oldSpace.matrixRoomId,
+                        "m.space.child" as any,
+                        {},
+                        groupNode.matrixRoomId,
+                    );
+                }
+                if (targetSpaceId) {
+                    const newSpace = spaces.find((s) => s.id === targetSpaceId);
+                    if (newSpace?.matrixRoomId) {
+                        await client.sendStateEvent(
+                            newSpace.matrixRoomId,
+                            "m.space.child" as any,
+                            { via: [serverDomain], suggested: false, auto_join: false },
+                            groupNode.matrixRoomId,
+                        );
+                    }
+                }
+                onRefresh?.();
+            } finally {
+                setBusyId(groupNode.id, false);
+            }
+        },
+        [client, spaces, serverDomain, onRefresh],
+    ); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const handleDelete = useCallback(
+        async (node: TreeNode): Promise<void> => {
+            if (!node.matrixRoomId) return;
+            setBusyId(node.id, true);
+            try {
+                await fetch(`${baseUrl}/_synapse/admin/v2/rooms/${encodeURIComponent(node.matrixRoomId)}`, {
+                    method: "DELETE",
+                    headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
+                    body: JSON.stringify({ block: false, purge: false }),
+                });
+                setConfirmDeleteId(null);
+                setFloatNode(null);
+                setSelectedId(null);
+                onRefresh?.();
+            } finally {
+                setBusyId(node.id, false);
+            }
+        },
+        [baseUrl, token, onRefresh],
+    ); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const saveFloat = useCallback(async (): Promise<void> => {
+        if (!floatNode) return;
+        setFloatSaving(true);
+        try {
+            const tasks: Promise<void>[] = [];
+            if (floatName.trim() && floatName.trim() !== floatNode.name) tasks.push(renameNode(floatNode, floatName));
+            if (floatAvatarFile && floatNode.matrixRoomId) {
+                tasks.push(
+                    (async () => {
+                        const mxc = await uploadNodeAvatar(floatAvatarFile);
+                        await fetch(
+                            `${baseUrl}/_matrix/client/v3/rooms/${encodeURIComponent(floatNode.matrixRoomId!)}/state/m.room.avatar`,
+                            {
+                                method: "PUT",
+                                headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
+                                body: JSON.stringify({ url: mxc }),
+                            },
+                        );
+                        onRefresh?.();
+                    })(),
+                );
+            }
+            // Topic
+            if (floatTopic !== undefined && floatNode.matrixRoomId) {
+                const topicEv = client.getRoom(floatNode.matrixRoomId)?.currentState.getStateEvents("m.room.topic", "");
+                const oldTopic = (topicEv?.getContent?.() as any)?.topic ?? "";
+                if (floatTopic !== oldTopic) {
+                    tasks.push(
+                        fetch(
+                            `${baseUrl}/_matrix/client/v3/rooms/${encodeURIComponent(floatNode.matrixRoomId)}/state/m.room.topic`,
+                            {
+                                method: "PUT",
+                                headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
+                                body: JSON.stringify({ topic: floatTopic }),
+                            },
+                        ).then(() => {}),
+                    );
+                }
+            }
+            // Power levels
+            if (Object.keys(floatPowerLevels).length > 0 && floatNode.matrixRoomId) {
+                const plEv = client
+                    .getRoom(floatNode.matrixRoomId)
+                    ?.currentState.getStateEvents("m.room.power_levels", "");
+                const current = plEv?.getContent?.() ?? {};
+                const merged = { ...current, users: floatPowerLevels };
+                tasks.push(
+                    fetch(
+                        `${baseUrl}/_matrix/client/v3/rooms/${encodeURIComponent(floatNode.matrixRoomId)}/state/m.room.power_levels`,
+                        {
+                            method: "PUT",
+                            headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
+                            body: JSON.stringify(merged),
+                        },
+                    ).then(() => {}),
+                );
+            }
+            await Promise.all(tasks);
+            setFloatNode(null);
+        } finally {
+            setFloatSaving(false);
+        }
+    }, [
+        floatNode,
+        floatName,
+        floatAvatarFile,
+        floatTopic,
+        floatPowerLevels,
+        renameNode,
+        uploadNodeAvatar,
+        baseUrl,
+        token,
+        client,
+        onRefresh,
+    ]);
+
+    const kickMember = useCallback(
+        async (roomId: string, userId: string): Promise<void> => {
+            setMemberBusyId(userId, true);
+            try {
+                await fetch(`${baseUrl}/_matrix/client/v3/rooms/${encodeURIComponent(roomId)}/kick`, {
+                    method: "POST",
+                    headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
+                    body: JSON.stringify({ user_id: userId }),
+                });
+                setConfirmKickId(null);
+                onRefresh?.();
+            } finally {
+                setMemberBusyId(userId, false);
+            }
+        },
+        [baseUrl, token, onRefresh],
+    ); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const addToRoom = useCallback(
+        async (roomId: string, userId: string): Promise<void> => {
+            setMemberBusyId(userId, true);
+            try {
+                await fetch(`${baseUrl}/_synapse/admin/v1/join/${encodeURIComponent(roomId)}`, {
+                    method: "POST",
+                    headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
+                    body: JSON.stringify({ user_id: userId }),
+                });
+                setFloatMemberSearch("");
+                onRefresh?.();
+            } finally {
+                setMemberBusyId(userId, false);
+            }
+        },
+        [baseUrl, token, onRefresh],
+    ); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const commitInline = useCallback(
+        async (nodeId: string, name: string): Promise<void> => {
+            setInlineEditId(null);
+            const node = tree.find((n) => n.id === nodeId);
+            if (node && name.trim() && name.trim() !== node.name) await renameNode(node, name.trim());
+        },
+        [tree, renameNode],
+    );
+
+    // ── Dir toggle ─────────────────────────────────────────────────────────
+    const toggleDir = (): void => {
+        const next = dirOverride === "ltr" ? "rtl" : "ltr";
+        setDirOverride(next);
+        localStorage.setItem("fanoos_outline_dir", next);
+    };
+
+    // ── Keyboard (Tab/Shift+Tab to indent/outdent groups) ──────────────────
+    const handleKeyDown = useCallback(
+        (e: React.KeyboardEvent): void => {
+            if (inlineEditId !== null || addingTo !== null) return;
+            if (!selectedId) return;
+            const selNode = tree.find((n) => n.id === selectedId);
+            if (!selNode || selNode.type === "space") return;
+            if (e.key === "Tab") {
+                e.preventDefault();
+                const curIdx = spaces.findIndex((s) => s.id === selNode.parentId);
+                if (e.shiftKey) {
+                    void handleMove(selNode, curIdx > 0 ? spaces[curIdx - 1].id : null);
+                } else {
+                    if (curIdx < spaces.length - 1) void handleMove(selNode, spaces[curIdx + 1].id);
+                }
+            }
+        },
+        [inlineEditId, addingTo, selectedId, tree, spaces, handleMove],
+    );
+
+    // ── Search helpers ─────────────────────────────────────────────────────
+    const sq = search.toLowerCase().trim();
+    const nodeMatches = (n: TreeNode): boolean =>
+        !sq || n.name.toLowerCase().includes(sq) || (n.matrixRoomId ?? "").toLowerCase().includes(sq);
+    const memberMatches = (userId: string, name: string): boolean =>
+        !sq || userId.toLowerCase().includes(sq) || name.toLowerCase().includes(sq);
+
+    // sections = [{spaceNode: TreeNode|null, gList: TreeNode[]}]
+    type Section = { spaceNode: TreeNode | null; gList: TreeNode[] };
+    const sections: Section[] = [];
+    const mainGroups = (spaceGroups.get(null) ?? []).filter((g) => {
+        if (!sq) return true;
+        if (nodeMatches(g)) return true;
+        const ms = g.matrixRoomId ? (client.getRoom(g.matrixRoomId)?.getMembersWithMembership("join") ?? []) : [];
+        return ms.some((m) => memberMatches(m.userId, m.name));
+    });
+    for (const space of spaces) {
+        const gList = (spaceGroups.get(space.id) ?? []).filter((g) => {
+            if (!sq) return true;
+            if (nodeMatches(g)) return true;
+            const ms = g.matrixRoomId ? (client.getRoom(g.matrixRoomId)?.getMembersWithMembership("join") ?? []) : [];
+            return ms.some((m) => memberMatches(m.userId, m.name));
+        });
+        if (!sq || nodeMatches(space) || gList.length > 0) sections.push({ spaceNode: space, gList });
+    }
+    if (!sq || mainGroups.length > 0) sections.push({ spaceNode: null, gList: mainGroups });
+
+    // ── Local SVG icons ────────────────────────────────────────────────────
+    const IcoPen = (): React.ReactElement => (
+        <svg
+            viewBox="0 0 16 16"
+            width="12"
+            height="12"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <path d="M11 2L14 5L5 14H2V11L11 2Z" />
+        </svg>
+    );
+    const IcoBin = (): React.ReactElement => (
+        <svg
+            viewBox="0 0 16 16"
+            width="12"
+            height="12"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <polyline points="2,4 14,4" />
+            <path d="M5 4V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1M3.5 4l.7 9.3A1 1 0 0 0 5.2 14h5.6a1 1 0 0 0 1-.7L12.5 4" />
+        </svg>
+    );
+    const IcoAdd = (): React.ReactElement => (
+        <svg
+            viewBox="0 0 14 14"
+            width="12"
+            height="12"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+        >
+            <path d="M7 2v10M2 7h10" />
+        </svg>
+    );
+    const IcoOpen = (): React.ReactElement => (
+        <svg
+            viewBox="0 0 14 14"
+            width="12"
+            height="12"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <path d="M6 2H2a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1V8" />
+            <path d="M9 1h4v4M13 1L6 8" />
+        </svg>
+    );
+    const IcoChevD = (): React.ReactElement => (
+        <svg
+            viewBox="0 0 10 6"
+            width="9"
+            height="9"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+        >
+            <path d="M1 1l4 4 4-4" />
+        </svg>
+    );
+    const IcoChevR = (): React.ReactElement => (
+        <svg
+            viewBox="0 0 6 10"
+            width="9"
+            height="9"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+        >
+            <path d="M1 1l4 4-4 4" />
+        </svg>
+    );
+    const IcoCamSm = (): React.ReactElement => (
+        <svg
+            viewBox="0 0 16 16"
+            width="13"
+            height="13"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <path d="M1 5a1 1 0 0 1 1-1h1.2L4.5 2h7l1.3 2H14a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V5Z" />
+            <circle cx="8" cy="8.5" r="2.5" />
+        </svg>
+    );
+
+    const AddRow = ({ placeholder }: { placeholder: string }): React.ReactElement => (
+        <div className={o("AddRow")}>
+            <input
+                className={o("InlineInput")}
+                dir="auto"
+                autoFocus
+                placeholder={placeholder}
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                onKeyDown={(e) => {
+                    e.stopPropagation();
+                    if (e.key === "Enter") void handleCreate();
+                    if (e.key === "Escape") setAddingTo(null);
+                }}
+            />
+            <button className={o("AddConfirm")} onClick={() => void handleCreate()} disabled={!newName.trim()}>
+                ✓
+            </button>
+            <button className={o("AddCancel")} onClick={() => setAddingTo(null)}>
+                ✕
+            </button>
+        </div>
+    );
+
+    // ── Render ─────────────────────────────────────────────────────────────
+    const fMemberQ = floatMemberSearch.toLowerCase().trim();
+    const dropdownAnchor = floatNode ? (floatMemberInputRef.current?.getBoundingClientRect() ?? null) : null;
+
+    return (
+        <div className={o("Wrap")} dir={dirOverride} tabIndex={0} onKeyDown={handleKeyDown}>
+            {/* Confirm delete overlay */}
+            {confirmDeleteId &&
+                (() => {
+                    const node = tree.find((n) => n.id === confirmDeleteId);
+                    const isBusy = busyIds.has(confirmDeleteId);
+                    return (
+                        <div className={`mx_FanoosDashboard_adminConfirmOverlay${isDayMode ? " day" : ""}`}>
+                            <div className={`mx_FanoosDashboard_adminConfirmBox${isDayMode ? " day" : ""}`}>
+                                <p dir="auto">
+                                    {_t("fanoos_dashboard|outline_confirm_delete", {
+                                        name: node?.name ?? confirmDeleteId,
+                                    })}
+                                </p>
+                                <button
+                                    className={`mx_FanoosDashboard_adminBtnDanger${isDayMode ? " day" : ""}`}
+                                    disabled={isBusy}
+                                    onClick={() => node && void handleDelete(node)}
+                                >
+                                    {isBusy ? "…" : _t("fanoos_dashboard|outline_delete")}
+                                </button>
+                                <button
+                                    className={`mx_FanoosDashboard_adminBtnCancel${isDayMode ? " day" : ""}`}
+                                    onClick={() => setConfirmDeleteId(null)}
+                                >
+                                    {_t("fanoos_dashboard|outline_cancel")}
+                                </button>
+                            </div>
+                        </div>
+                    );
+                })()}
+
+            {/* Toolbar */}
+            <div className={o("Toolbar")}>
+                <input
+                    className={o("ToolSearch")}
+                    type="search"
+                    placeholder={_t("fanoos_dashboard|outline_search_ph")}
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                />
+                <button
+                    className={o("ToolDirBtn")}
+                    onClick={toggleDir}
+                    title={
+                        dirOverride === "rtl"
+                            ? _t("fanoos_dashboard|outline_switch_ltr")
+                            : _t("fanoos_dashboard|outline_switch_rtl")
+                    }
+                >
+                    {dirOverride === "rtl" ? "LTR" : "RTL"} ⇆
+                </button>
+                <button
+                    className={`${o("ToolIconBtn")} add`}
+                    title={_t("fanoos_dashboard|outline_new_space")}
+                    onClick={() => {
+                        setAddingTo({ parentId: null, isSpace: true });
+                        setNewName("");
+                    }}
+                >
+                    🏢 <IcoAdd />
+                </button>
+                <button
+                    className={o("ToolIconBtn")}
+                    title={_t("fanoos_dashboard|outline_refresh")}
+                    onClick={() => onRefresh?.()}
+                >
+                    ↺
+                </button>
+            </div>
+
+            {/* Add new space input */}
+            {addingTo?.isSpace && <AddRow placeholder={_t("fanoos_dashboard|outline_new_space_ph")} />}
+
+            {/* Three-level tree */}
+            <div className={o("Body")}>
+                {/* ── Root: My Spaces ── */}
+                <div className={o("RootRow")} onClick={() => setRootExpanded((p) => !p)}>
+                    <button
+                        className={o("Expander")}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setRootExpanded((p) => !p);
+                        }}
+                    >
+                        {rootExpanded ? <IcoChevD /> : <IcoChevR />}
+                    </button>
+                    <span className={o("RootLabel")}>{_t("fanoos_dashboard|outline_my_spaces")}</span>
+                    <span className={o("Badge")}>{sections.length}</span>
+                </div>
+                {rootExpanded &&
+                    sections.map(({ spaceNode, gList }) => {
+                        const sKey = spaceNode?.id ?? "__main__";
+                        const spaceKey = spaceNode?.id ?? "__main__";
+                        const isSpaceExpanded = expandedSpaces.has(spaceKey);
+                        const isDragTarget = dragOver === sKey;
+                        const rawMxc = spaceNode?.matrixRoomId
+                            ? (client.getRoom(spaceNode.matrixRoomId)?.getMxcAvatarUrl() ?? null)
+                            : null;
+                        const spaceAvatar = rawMxc ? (mediaFromMxc(rawMxc).srcHttp ?? null) : null;
+
+                        return (
+                            <div
+                                key={sKey}
+                                className={`${o("Section")}${isDragTarget ? " dragover" : ""}`}
+                                onDragOver={(e) => {
+                                    e.preventDefault();
+                                    setDragOver(sKey);
+                                }}
+                                onDrop={(e) => {
+                                    e.preventDefault();
+                                    if (dragSrc) {
+                                        const srcNode = tree.find((n) => n.id === dragSrc);
+                                        if (srcNode && srcNode.type !== "space")
+                                            void handleMove(srcNode, spaceNode?.id ?? null);
+                                    }
+                                    setDragSrc(null);
+                                    setDragOver(null);
+                                }}
+                                onDragLeave={(e) => {
+                                    if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOver(null);
+                                }}
+                            >
+                                {/* ── Level 0: Space row ── */}
+                                <div
+                                    data-row
+                                    className={`${o("SpaceRow")}${selectedId === spaceNode?.id ? " selected" : ""}`}
+                                    onClick={() =>
+                                        setSelectedId((p) => (p === spaceNode?.id ? null : (spaceNode?.id ?? null)))
+                                    }
+                                >
+                                    <button
+                                        className={o("Expander")}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setExpandedSpaces((p) => {
+                                                const s = new Set(p);
+                                                if (s.has(spaceKey)) s.delete(spaceKey);
+                                                else s.add(spaceKey);
+                                                return s;
+                                            });
+                                        }}
+                                    >
+                                        {isSpaceExpanded ? <IcoChevD /> : <IcoChevR />}
+                                    </button>
+                                    <span
+                                        className={`${o("NodeAvatar")} space${!spaceNode ? " main" : ""}`}
+                                        style={
+                                            spaceAvatar
+                                                ? undefined
+                                                : { background: spaceNode ? nodeAvatarColor(spaceNode.id) : "#6366f1" }
+                                        }
+                                    >
+                                        {spaceAvatar ? (
+                                            <img src={spaceAvatar} alt="" />
+                                        ) : spaceNode ? (
+                                            spaceNode.name.slice(0, 1).toUpperCase()
+                                        ) : (
+                                            "🏠"
+                                        )}
+                                    </span>
+                                    {inlineEditId === spaceNode?.id ? (
+                                        <input
+                                            className={o("InlineInput")}
+                                            dir="auto"
+                                            autoFocus
+                                            value={inlineEditName}
+                                            onChange={(e) => setInlineEditName(e.target.value)}
+                                            onKeyDown={(e) => {
+                                                e.stopPropagation();
+                                                if (e.key === "Enter") void commitInline(spaceNode!.id, inlineEditName);
+                                                if (e.key === "Escape") setInlineEditId(null);
+                                            }}
+                                            onBlur={() => void commitInline(spaceNode!.id, inlineEditName)}
+                                            onClick={(e) => e.stopPropagation()}
+                                        />
+                                    ) : (
+                                        <span
+                                            className={o("SpaceName")}
+                                            dir="auto"
+                                            onDoubleClick={
+                                                spaceNode
+                                                    ? (e) => {
+                                                          e.stopPropagation();
+                                                          setInlineEditId(spaceNode.id);
+                                                          setInlineEditName(spaceNode.name);
+                                                      }
+                                                    : undefined
+                                            }
+                                        >
+                                            {spaceNode?.name ?? _t("fanoos_dashboard|outline_main_space")}
+                                        </span>
+                                    )}
+                                    <span className={o("Badge")}>{gList.length}</span>
+                                    {busyIds.has(spaceNode?.id ?? "") && <span className={o("Spinner")} />}
+                                    <span className={o("RowActions")}>
+                                        {spaceNode && (
+                                            <button
+                                                className={o("ActionBtn")}
+                                                title={_t("fanoos_dashboard|outline_edit_space")}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    openFloat(
+                                                        spaceNode,
+                                                        (e.currentTarget as HTMLElement)
+                                                            .closest("[data-row]")
+                                                            ?.getBoundingClientRect() ??
+                                                            (e.currentTarget as HTMLElement).getBoundingClientRect(),
+                                                    );
+                                                }}
+                                            >
+                                                <IcoPen />
+                                            </button>
+                                        )}
+                                        <button
+                                            className={o("ActionBtn")}
+                                            title={_t("fanoos_dashboard|outline_add_group")}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setAddingTo({ parentId: spaceNode?.id ?? null, isSpace: false });
+                                                setNewName("");
+                                                if (!expandedSpaces.has(spaceKey))
+                                                    setExpandedSpaces((p) => new Set([...p, spaceKey]));
+                                            }}
+                                        >
+                                            <IcoAdd />
+                                        </button>
+                                        {spaceNode?.matrixRoomId && (
+                                            <button
+                                                className={o("ActionBtn")}
+                                                title={_t("fanoos_dashboard|outline_open")}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    dis.dispatch({
+                                                        action: Action.ViewRoom,
+                                                        room_id: spaceNode.matrixRoomId!,
+                                                    });
+                                                }}
+                                            >
+                                                <IcoOpen />
+                                            </button>
+                                        )}
+                                        {spaceNode && (
+                                            <button
+                                                className={`${o("ActionBtn")} danger`}
+                                                title={_t("fanoos_dashboard|outline_delete_space")}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setConfirmDeleteId(spaceNode.id);
+                                                }}
+                                            >
+                                                <IcoBin />
+                                            </button>
+                                        )}
+                                    </span>
+                                </div>
+
+                                {/* Add group under this space */}
+                                {addingTo &&
+                                    !addingTo.isSpace &&
+                                    addingTo.parentId === (spaceNode?.id ?? null) &&
+                                    isSpaceExpanded && (
+                                        <div className={o("GroupIndent")}>
+                                            <AddRow placeholder={_t("fanoos_dashboard|outline_new_group_ph")} />
+                                        </div>
+                                    )}
+
+                                {/* ── Level 1: Groups ── */}
+                                {isSpaceExpanded && (
+                                    <div className={o("GroupIndent")}>
+                                        {gList.map((group) => {
+                                            const gRawMxc = group.matrixRoomId
+                                                ? (client.getRoom(group.matrixRoomId)?.getMxcAvatarUrl() ?? null)
+                                                : null;
+                                            const gAvatar = gRawMxc ? (mediaFromMxc(gRawMxc).srcHttp ?? null) : null;
+                                            const isGExpanded = expandedGroups.has(group.id);
+                                            const isGBusy = busyIds.has(group.id);
+                                            const members = group.matrixRoomId
+                                                ? (client
+                                                      .getRoom(group.matrixRoomId)
+                                                      ?.getMembersWithMembership("join") ?? [])
+                                                : [];
+                                            const filtMembers = sq
+                                                ? members.filter((m) => memberMatches(m.userId, m.name))
+                                                : members;
+                                            const mCount =
+                                                memberCountMap.get(group.matrixRoomId ?? "") ?? members.length;
+
+                                            return (
+                                                <div key={group.id}>
+                                                    <div
+                                                        data-row
+                                                        className={`${o("GroupRow")}${selectedId === group.id ? " selected" : ""}${dragSrc === group.id ? " dragging" : ""}`}
+                                                        draggable={!isGBusy}
+                                                        onDragStart={(e) => {
+                                                            e.stopPropagation();
+                                                            setDragSrc(group.id);
+                                                            e.dataTransfer.effectAllowed = "move";
+                                                        }}
+                                                        onDragEnd={() => {
+                                                            setDragSrc(null);
+                                                            setDragOver(null);
+                                                        }}
+                                                        onClick={() =>
+                                                            setSelectedId((p) => (p === group.id ? null : group.id))
+                                                        }
+                                                    >
+                                                        <span className={o("Grip")}>⠿</span>
+                                                        <button
+                                                            className={o("Expander")}
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setExpandedGroups((p) => {
+                                                                    const s = new Set(p);
+                                                                    if (s.has(group.id)) s.delete(group.id);
+                                                                    else s.add(group.id);
+                                                                    return s;
+                                                                });
+                                                            }}
+                                                        >
+                                                            {isGExpanded ? <IcoChevD /> : <IcoChevR />}
+                                                        </button>
+                                                        <span
+                                                            className={`${o("NodeAvatar")} group`}
+                                                            style={
+                                                                gAvatar
+                                                                    ? undefined
+                                                                    : { background: nodeAvatarColor(group.id) }
+                                                            }
+                                                        >
+                                                            {gAvatar ? (
+                                                                <img src={gAvatar} alt="" />
+                                                            ) : (
+                                                                group.name.slice(0, 1).toUpperCase()
+                                                            )}
+                                                        </span>
+                                                        {inlineEditId === group.id ? (
+                                                            <input
+                                                                className={o("InlineInput")}
+                                                                dir="auto"
+                                                                autoFocus
+                                                                value={inlineEditName}
+                                                                onChange={(e) => setInlineEditName(e.target.value)}
+                                                                onKeyDown={(e) => {
+                                                                    e.stopPropagation();
+                                                                    if (e.key === "Enter")
+                                                                        void commitInline(group.id, inlineEditName);
+                                                                    if (e.key === "Escape") setInlineEditId(null);
+                                                                }}
+                                                                onBlur={() =>
+                                                                    void commitInline(group.id, inlineEditName)
+                                                                }
+                                                                onClick={(e) => e.stopPropagation()}
+                                                            />
+                                                        ) : (
+                                                            <span
+                                                                className={o("GroupName")}
+                                                                dir="auto"
+                                                                onDoubleClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setInlineEditId(group.id);
+                                                                    setInlineEditName(group.name);
+                                                                }}
+                                                            >
+                                                                {group.name}
+                                                            </span>
+                                                        )}
+                                                        <span className={o("Badge")}>{mCount}</span>
+                                                        {isGBusy && <span className={o("Spinner")} />}
+                                                        {!isGBusy && inlineEditId !== group.id && (
+                                                            <span className={o("RowActions")}>
+                                                                <button
+                                                                    className={o("ActionBtn")}
+                                                                    title={_t("fanoos_dashboard|outline_edit_group")}
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        openFloat(
+                                                                            group,
+                                                                            (e.currentTarget as HTMLElement)
+                                                                                .closest("[data-row]")
+                                                                                ?.getBoundingClientRect() ??
+                                                                                (
+                                                                                    e.currentTarget as HTMLElement
+                                                                                ).getBoundingClientRect(),
+                                                                        );
+                                                                    }}
+                                                                >
+                                                                    <IcoPen />
+                                                                </button>
+                                                                {group.matrixRoomId && (
+                                                                    <button
+                                                                        className={o("ActionBtn")}
+                                                                        title={_t("fanoos_dashboard|outline_open")}
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            dis.dispatch({
+                                                                                action: Action.ViewRoom,
+                                                                                room_id: group.matrixRoomId!,
+                                                                            });
+                                                                        }}
+                                                                    >
+                                                                        <IcoOpen />
+                                                                    </button>
+                                                                )}
+                                                                <button
+                                                                    className={`${o("ActionBtn")} danger`}
+                                                                    title={_t("fanoos_dashboard|outline_delete")}
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        setConfirmDeleteId(group.id);
+                                                                    }}
+                                                                >
+                                                                    <IcoBin />
+                                                                </button>
+                                                            </span>
+                                                        )}
+                                                    </div>
+
+                                                    {/* ── Level 2: Members ── */}
+                                                    {isGExpanded && (
+                                                        <div className={o("MemberIndent")}>
+                                                            {filtMembers.map((m) => {
+                                                                const mxc = (m as any).getMxcAvatarUrl?.() ?? null;
+                                                                const msrc = mxc
+                                                                    ? (mediaFromMxc(mxc).srcHttp ?? null)
+                                                                    : null;
+                                                                return (
+                                                                    <div key={m.userId} className={o("MemberRow")}>
+                                                                        <span
+                                                                            className={o("MemberAvatar")}
+                                                                            style={
+                                                                                msrc
+                                                                                    ? undefined
+                                                                                    : {
+                                                                                          background: nodeAvatarColor(
+                                                                                              m.userId,
+                                                                                          ),
+                                                                                      }
+                                                                            }
+                                                                        >
+                                                                            {msrc ? (
+                                                                                <img src={msrc} alt="" />
+                                                                            ) : (
+                                                                                m.name.slice(0, 1).toUpperCase()
+                                                                            )}
+                                                                        </span>
+                                                                        <span className={o("MemberName")} dir="auto">
+                                                                            {m.name}
+                                                                        </span>
+                                                                        <span className={o("MemberId")} dir="ltr">
+                                                                            {m.userId}
+                                                                        </span>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                            {filtMembers.length === 0 && (
+                                                                <span className={o("EmptyLabel")}>
+                                                                    {_t("fanoos_dashboard|outline_no_members")}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                        {gList.length === 0 && !addingTo && (
+                                            <span className={o("EmptyLabel")}>
+                                                {sq
+                                                    ? _t("fanoos_dashboard|outline_no_matches")
+                                                    : _t("fanoos_dashboard|outline_no_groups")}
+                                            </span>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })}
+                {rootExpanded && sections.length === 0 && (
+                    <div className={`mx_FanoosDashboard_adminEmpty${isDayMode ? " day" : ""}`}>
+                        {_t("fanoos_dashboard|outline_empty")}
+                    </div>
+                )}
+            </div>
+
+            {/* ── Float edit window (portaled) ── */}
+            {floatNode &&
+                createPortal(
+                    <div
+                        className={`mx_FanoosDashboard_adminOutlineFloat${isDayMode ? " day" : ""}`}
+                        style={{ left: floatPos.x, top: floatPos.y }}
+                    >
+                        {/* Header / drag handle */}
+                        <div
+                            className={`mx_FanoosDashboard_adminOutlineFloatHead${isDayMode ? " day" : ""}`}
+                            onMouseDown={startFloatNodeDrag}
+                        >
+                            <span>
+                                {floatNode.type === "space"
+                                    ? _t("fanoos_dashboard|outline_edit_space_title")
+                                    : _t("fanoos_dashboard|outline_edit_group_title")}
+                            </span>
+                            <button
+                                className={`mx_FanoosDashboard_adminFloatClose${isDayMode ? " day" : ""}`}
+                                onMouseDown={(e) => e.stopPropagation()}
+                                onClick={() => setFloatNode(null)}
+                            >
+                                ✕
+                            </button>
+                        </div>
+                        <div className={`mx_FanoosDashboard_adminOutlineFloatBody${isDayMode ? " day" : ""}`}>
+                            {/* Avatar */}
+                            {(() => {
+                                const fn = floatNode;
+                                const rawM = fn.matrixRoomId
+                                    ? (client.getRoom(fn.matrixRoomId)?.getMxcAvatarUrl() ?? null)
+                                    : null;
+                                const avatarSrc = rawM ? (mediaFromMxc(rawM).srcHttp ?? null) : null;
+                                const isGroup = fn.type === "room" || fn.type === "dm";
+                                const members =
+                                    isGroup && fn.matrixRoomId
+                                        ? (client.getRoom(fn.matrixRoomId)?.getMembersWithMembership("join") ?? [])
+                                        : [];
+                                return (
+                                    <>
+                                        <div
+                                            className={`mx_FanoosDashboard_adminFloatAvatarRow${isDayMode ? " day" : ""}`}
+                                        >
+                                            <div
+                                                className={`mx_FanoosDashboard_adminFormAvatarWrap${isDayMode ? " day" : ""}`}
+                                                style={
+                                                    floatAvatarPreview || avatarSrc
+                                                        ? undefined
+                                                        : { background: nodeAvatarColor(fn.id) }
+                                                }
+                                                onClick={() => floatAvatarInputRef.current?.click()}
+                                            >
+                                                {floatAvatarPreview || avatarSrc ? (
+                                                    <img
+                                                        src={floatAvatarPreview ?? avatarSrc!}
+                                                        alt=""
+                                                        className={`mx_FanoosDashboard_adminFormAvatarImg${isDayMode ? " day" : ""}`}
+                                                    />
+                                                ) : (
+                                                    <span>{fn.name.slice(0, 1).toUpperCase()}</span>
+                                                )}
+                                                <div
+                                                    className={`mx_FanoosDashboard_adminFormAvatarOverlay${isDayMode ? " day" : ""}`}
+                                                >
+                                                    <IcoCamSm />
+                                                </div>
+                                                <input
+                                                    ref={floatAvatarInputRef}
+                                                    type="file"
+                                                    accept="image/*"
+                                                    style={{ display: "none" }}
+                                                    onChange={(e) => {
+                                                        const f = e.target.files?.[0];
+                                                        if (f) {
+                                                            setFloatAvatarFile(f);
+                                                            setFloatAvatarPreview(URL.createObjectURL(f));
+                                                        }
+                                                    }}
+                                                />
+                                            </div>
+                                            <div
+                                                className={`mx_FanoosDashboard_adminFloatUserInfo${isDayMode ? " day" : ""}`}
+                                            >
+                                                <span
+                                                    className={`mx_FanoosDashboard_adminFloatUserDn${isDayMode ? " day" : ""}`}
+                                                    dir="auto"
+                                                >
+                                                    {fn.name}
+                                                </span>
+                                                <span
+                                                    className={`mx_FanoosDashboard_adminFloatUserId${isDayMode ? " day" : ""}`}
+                                                    dir="ltr"
+                                                >
+                                                    {fn.matrixRoomId ?? fn.id}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <input
+                                            className={`mx_FanoosDashboard_adminEditInput${isDayMode ? " day" : ""}`}
+                                            placeholder={_t("fanoos_dashboard|outline_display_name_ph")}
+                                            dir="auto"
+                                            value={floatName}
+                                            onChange={(e) => setFloatName(e.target.value)}
+                                        />
+                                        <input
+                                            className={`mx_FanoosDashboard_adminEditInput${isDayMode ? " day" : ""}`}
+                                            placeholder={_t("fanoos_dashboard|outline_topic_ph")}
+                                            dir="auto"
+                                            value={floatTopic}
+                                            onChange={(e) => setFloatTopic(e.target.value)}
+                                        />
+                                        <div className={`mx_FanoosDashboard_adminFormBtns${isDayMode ? " day" : ""}`}>
+                                            <button
+                                                className={`mx_FanoosDashboard_adminBtnSave${isDayMode ? " day" : ""}`}
+                                                disabled={floatSaving}
+                                                onClick={() => void saveFloat()}
+                                            >
+                                                {floatSaving ? "…" : _t("fanoos_dashboard|outline_save")}
+                                            </button>
+                                            <button
+                                                className={`mx_FanoosDashboard_adminBtnCancel${isDayMode ? " day" : ""}`}
+                                                onClick={() => setFloatNode(null)}
+                                            >
+                                                {_t("fanoos_dashboard|outline_cancel")}
+                                            </button>
+                                        </div>
+
+                                        {/* Members section — groups only */}
+                                        {isGroup && fn.matrixRoomId && (
+                                            <div
+                                                className={`mx_FanoosDashboard_adminFloatSection${isDayMode ? " day" : ""}`}
+                                            >
+                                                <div
+                                                    className={`mx_FanoosDashboard_adminFloatSectionHead${isDayMode ? " day" : ""}`}
+                                                >
+                                                    <span
+                                                        className={`mx_FanoosDashboard_adminFloatSectionTitle${isDayMode ? " day" : ""}`}
+                                                    >
+                                                        {_t("fanoos_dashboard|outline_members")}
+                                                    </span>
+                                                    <span
+                                                        className={`mx_FanoosDashboard_adminFloatSectionCount${isDayMode ? " day" : ""}`}
+                                                    >
+                                                        {members.length}
+                                                    </span>
+                                                </div>
+                                                <div
+                                                    className={`mx_FanoosDashboard_adminOutlineFloatMembers${isDayMode ? " day" : ""}`}
+                                                >
+                                                    {members.map((m) => {
+                                                        const mxc = (m as any).getMxcAvatarUrl?.() ?? null;
+                                                        const msrc = mxc ? (mediaFromMxc(mxc).srcHttp ?? null) : null;
+                                                        const isKickBusy = memberBusyIds.has(m.userId);
+                                                        const isPendingKick = confirmKickId === m.userId;
+                                                        return (
+                                                            <div
+                                                                key={m.userId}
+                                                                className={`mx_FanoosDashboard_adminOutlineFloatMember${isDayMode ? " day" : ""}${isPendingKick ? " confirming" : ""}`}
+                                                            >
+                                                                <span
+                                                                    className={`mx_FanoosDashboard_adminOutlineFloatMemberAvatar${isDayMode ? " day" : ""}`}
+                                                                    style={
+                                                                        msrc
+                                                                            ? undefined
+                                                                            : { background: nodeAvatarColor(m.userId) }
+                                                                    }
+                                                                >
+                                                                    {msrc ? (
+                                                                        <img src={msrc} alt="" />
+                                                                    ) : (
+                                                                        m.name.slice(0, 1).toUpperCase()
+                                                                    )}
+                                                                </span>
+                                                                <span
+                                                                    className={`mx_FanoosDashboard_adminOutlineFloatMemberName${isDayMode ? " day" : ""}`}
+                                                                    dir="auto"
+                                                                >
+                                                                    {m.name}
+                                                                </span>
+                                                                {!isPendingKick && !isKickBusy && (
+                                                                    <select
+                                                                        className={`mx_FanoosDashboard_adminOutlineFloatPLSelect${isDayMode ? " day" : ""}`}
+                                                                        value={floatPowerLevels[m.userId] ?? 0}
+                                                                        onChange={(e) =>
+                                                                            setFloatPowerLevels((p) => ({
+                                                                                ...p,
+                                                                                [m.userId]: Number(e.target.value),
+                                                                            }))
+                                                                        }
+                                                                        onClick={(e) => e.stopPropagation()}
+                                                                    >
+                                                                        <option value={0}>
+                                                                            {_t("fanoos_dashboard|outline_pl_user")}
+                                                                        </option>
+                                                                        <option value={50}>
+                                                                            {_t("fanoos_dashboard|outline_pl_mod")}
+                                                                        </option>
+                                                                        <option value={100}>
+                                                                            {_t("fanoos_dashboard|outline_pl_admin")}
+                                                                        </option>
+                                                                    </select>
+                                                                )}
+                                                                {isPendingKick ? (
+                                                                    <span
+                                                                        className={`mx_FanoosDashboard_adminOutlineFloatMemberConfirm${isDayMode ? " day" : ""}`}
+                                                                    >
+                                                                        <button
+                                                                            className={`mx_FanoosDashboard_adminFloatRoomConfirmBtn${isDayMode ? " day" : ""} yes`}
+                                                                            onClick={() =>
+                                                                                void kickMember(
+                                                                                    fn.matrixRoomId!,
+                                                                                    m.userId,
+                                                                                )
+                                                                            }
+                                                                        >
+                                                                            {_t("fanoos_dashboard|outline_remove")}
+                                                                        </button>
+                                                                        <button
+                                                                            className={`mx_FanoosDashboard_adminFloatRoomConfirmBtn${isDayMode ? " day" : ""}`}
+                                                                            onClick={() => setConfirmKickId(null)}
+                                                                        >
+                                                                            {_t("fanoos_dashboard|outline_cancel")}
+                                                                        </button>
+                                                                    </span>
+                                                                ) : isKickBusy ? (
+                                                                    <span
+                                                                        className={`mx_FanoosDashboard_adminFloatChipSpinner${isDayMode ? " day" : ""}`}
+                                                                    />
+                                                                ) : (
+                                                                    <button
+                                                                        className={`mx_FanoosDashboard_adminOutlineFloatMemberBtn${isDayMode ? " day" : ""}`}
+                                                                        title={_t(
+                                                                            "fanoos_dashboard|outline_remove_from_group",
+                                                                        )}
+                                                                        onClick={() => setConfirmKickId(m.userId)}
+                                                                    >
+                                                                        ✕
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })}
+                                                    {members.length === 0 && (
+                                                        <span
+                                                            className={`mx_FanoosDashboard_adminFloatEmpty${isDayMode ? " day" : ""}`}
+                                                        >
+                                                            {_t("fanoos_dashboard|outline_no_members")}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                {/* Add member search */}
+                                                <div
+                                                    className={`mx_FanoosDashboard_adminFloatRoomAdd${isDayMode ? " day" : ""}`}
+                                                >
+                                                    <input
+                                                        ref={floatMemberInputRef}
+                                                        className={`mx_FanoosDashboard_adminEditInput${isDayMode ? " day" : ""}`}
+                                                        placeholder={_t("fanoos_dashboard|outline_add_member_ph")}
+                                                        value={floatMemberSearch}
+                                                        onChange={(e) => setFloatMemberSearch(e.target.value)}
+                                                        onKeyDown={(e) => {
+                                                            if (e.key === "Escape") setFloatMemberSearch("");
+                                                        }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Actions section */}
+                                        <div
+                                            className={`mx_FanoosDashboard_adminFloatSection${isDayMode ? " day" : ""}`}
+                                        >
+                                            <div
+                                                className={`mx_FanoosDashboard_adminFloatSectionHead${isDayMode ? " day" : ""}`}
+                                            >
+                                                <span
+                                                    className={`mx_FanoosDashboard_adminFloatSectionTitle${isDayMode ? " day" : ""}`}
+                                                >
+                                                    {_t("fanoos_dashboard|outline_actions")}
+                                                </span>
+                                            </div>
+                                            {floatConfirmDelete ? (
+                                                <div
+                                                    className={`mx_FanoosDashboard_adminFloatConfirmRow${isDayMode ? " day" : ""}`}
+                                                >
+                                                    <span
+                                                        className={`mx_FanoosDashboard_adminFloatConfirmMsg${isDayMode ? " day" : ""}`}
+                                                    >
+                                                        {_t("fanoos_dashboard|outline_delete_confirm_msg", {
+                                                            name: fn.name,
+                                                        })}
+                                                    </span>
+                                                    <button
+                                                        className={`mx_FanoosDashboard_adminFloatActionBtn${isDayMode ? " day" : ""} danger`}
+                                                        onClick={() => void handleDelete(fn)}
+                                                    >
+                                                        {_t("fanoos_dashboard|outline_delete")}
+                                                    </button>
+                                                    <button
+                                                        className={`mx_FanoosDashboard_adminFloatActionBtn${isDayMode ? " day" : ""}`}
+                                                        onClick={() => setFloatConfirmDelete(false)}
+                                                    >
+                                                        {_t("fanoos_dashboard|outline_cancel")}
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <div
+                                                    className={`mx_FanoosDashboard_adminFloatActionBtns${isDayMode ? " day" : ""}`}
+                                                >
+                                                    {fn.matrixRoomId && (
+                                                        <button
+                                                            className={`mx_FanoosDashboard_adminFloatActionBtn${isDayMode ? " day" : ""}`}
+                                                            onClick={() =>
+                                                                dis.dispatch({
+                                                                    action: Action.ViewRoom,
+                                                                    room_id: fn.matrixRoomId!,
+                                                                })
+                                                            }
+                                                        >
+                                                            → {_t("fanoos_dashboard|outline_open")}
+                                                        </button>
+                                                    )}
+                                                    <button
+                                                        className={`mx_FanoosDashboard_adminFloatActionBtn${isDayMode ? " day" : ""} danger`}
+                                                        onClick={() => setFloatConfirmDelete(true)}
+                                                    >
+                                                        🗑 {_t("fanoos_dashboard|outline_delete")}
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </>
+                                );
+                            })()}
+                        </div>
+                    </div>,
+                    document.body,
+                )}
+
+            {/* Member-add dropdown (separate portal to escape overflow) */}
+            {floatNode &&
+                fMemberQ &&
+                dropdownAnchor &&
+                createPortal(
+                    <div
+                        className={`mx_FanoosDashboard_adminFloatRoomDropdown${isDayMode ? " day" : ""}`}
+                        style={{
+                            position: "fixed",
+                            left: dropdownAnchor.left,
+                            top: dropdownAnchor.bottom + 4,
+                            width: dropdownAnchor.width,
+                            zIndex: 10000,
+                        }}
+                    >
+                        {(() => {
+                            const fn = floatNode;
+                            const members = fn.matrixRoomId
+                                ? (client.getRoom(fn.matrixRoomId)?.getMembersWithMembership("join") ?? [])
+                                : [];
+                            const candidates = synapseUsers
+                                ? synapseUsers
+                                      .filter(
+                                          (u) =>
+                                              !members.find((m) => m.userId === u.name) &&
+                                              !u.deactivated &&
+                                              (u.name.toLowerCase().includes(fMemberQ) ||
+                                                  (u.displayname ?? "").toLowerCase().includes(fMemberQ)),
+                                      )
+                                      .slice(0, 6)
+                                : [];
+                            if (candidates.length === 0) {
+                                return (
+                                    <span style={{ padding: "8px 10px", display: "block", opacity: 0.5, fontSize: 12 }}>
+                                        {synapseUsers === null
+                                            ? _t("fanoos_dashboard|outline_loading")
+                                            : _t("fanoos_dashboard|outline_no_matches")}
+                                    </span>
+                                );
+                            }
+                            return candidates.map((u) => (
+                                <button
+                                    key={u.name}
+                                    className={`mx_FanoosDashboard_adminFloatRoomOption${isDayMode ? " day" : ""}`}
+                                    disabled={memberBusyIds.has(u.name)}
+                                    onClick={() => fn.matrixRoomId && void addToRoom(fn.matrixRoomId, u.name)}
+                                >
+                                    <span dir="auto">{u.displayname || u.name.split(":")[0].slice(1)}</span>
+                                    <span dir="ltr" style={{ opacity: 0.5, marginInlineStart: "auto", fontSize: 11 }}>
+                                        {u.name.split(":")[0]}
+                                    </span>
+                                </button>
+                            ));
+                        })()}
+                    </div>,
+                    document.body,
+                )}
+        </div>
+    );
+}
+
+// ─── SVG action icons ─────────────────────────────────────────────────────────
+const IcoEdit = (): React.ReactElement => (
+    <svg
+        viewBox="0 0 16 16"
+        width="14"
+        height="14"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+    >
+        <path d="M11 2L14 5L5 14H2V11L11 2Z" />
+    </svg>
+);
+const IcoKey = (): React.ReactElement => (
+    <svg
+        viewBox="0 0 16 16"
+        width="14"
+        height="14"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+    >
+        <circle cx="5.5" cy="9.5" r="3.5" />
+        <path d="M8.5 6.5L14 1" />
+        <line x1="13" y1="1" x2="13" y2="3.5" />
+        <line x1="11" y1="1.5" x2="11" y2="4" />
+    </svg>
+);
+const IcoCrown = (): React.ReactElement => (
+    <svg
+        viewBox="0 0 16 16"
+        width="14"
+        height="14"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+    >
+        <path d="M2 12.5h12M3 12.5L4.5 6 8 10l3.5-7 1.5 6.5" />
+        <circle cx="2.5" cy="5.5" r="1" fill="currentColor" stroke="none" />
+        <circle cx="13.5" cy="5.5" r="1" fill="currentColor" stroke="none" />
+    </svg>
+);
+const IcoBan = (): React.ReactElement => (
+    <svg
+        viewBox="0 0 16 16"
+        width="14"
+        height="14"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+    >
+        <circle cx="8" cy="8" r="6" />
+        <line x1="3.76" y1="3.76" x2="12.24" y2="12.24" />
+    </svg>
+);
+const IcoTrash = (): React.ReactElement => (
+    <svg
+        viewBox="0 0 16 16"
+        width="14"
+        height="14"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+    >
+        <polyline points="2,4 14,4" />
+        <path d="M5 4V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1M3.5 4l.7 9.3A1 1 0 0 0 5.2 14h5.6a1 1 0 0 0 1-.7L12.5 4" />
+        <line x1="6.5" y1="7" x2="6.5" y2="11.5" />
+        <line x1="9.5" y1="7" x2="9.5" y2="11.5" />
+    </svg>
+);
+const IcoCamera = (): React.ReactElement => (
+    <svg
+        viewBox="0 0 16 16"
+        width="13"
+        height="13"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+    >
+        <path d="M1 5a1 1 0 0 1 1-1h1.2L4.5 2h7l1.3 2H14a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V5Z" />
+        <circle cx="8" cy="8.5" r="2.5" />
+    </svg>
+);
+const IcoSortNone = (): React.ReactElement => (
+    <svg viewBox="0 0 10 12" width="8" height="10" fill="currentColor" aria-hidden="true" style={{ opacity: 0.35 }}>
+        <path d="M5 0L9 4H1L5 0ZM5 12L1 8H9L5 12Z" />
+    </svg>
+);
+const IcoSortAsc = (): React.ReactElement => (
+    <svg viewBox="0 0 10 12" width="8" height="10" fill="currentColor" aria-hidden="true">
+        <path d="M5 0L9 4H1L5 0Z" />
+        <path d="M5 12L1 8H9L5 12Z" style={{ opacity: 0.3 }} />
+    </svg>
+);
+const IcoSortDesc = (): React.ReactElement => (
+    <svg viewBox="0 0 10 12" width="8" height="10" fill="currentColor" aria-hidden="true">
+        <path d="M5 0L9 4H1L5 0Z" style={{ opacity: 0.3 }} />
+        <path d="M5 12L1 8H9L5 12Z" />
+    </svg>
+);
+
+function AdminPanel({
+    client,
+    tree,
+    isDayMode,
+    onRefresh,
+}: {
+    client: ReturnType<typeof useMatrixClientContext>;
+    tree: TreeNode[];
+    isDayMode: boolean;
+    onRefresh?: () => void;
 }): React.ReactElement {
     const [view, setView] = useState<"users" | "spaces">("users");
     const [search, setSearch] = useState("");
     const [users, setUsers] = useState<SynapseUser[]>([]);
-    const [rooms, setRooms] = useState<RoomInfo[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [editingUser, setEditingUser] = useState<string | null>(null);
     const [editDisplayName, setEditDisplayName] = useState("");
     const [newPassword, setNewPassword] = useState("");
-    const [expandedSpaces, setExpandedSpaces] = useState<Set<string>>(new Set());
-    const [editingRoom, setEditingRoom] = useState<string | null>(null);
-    const [editRoomName, setEditRoomName] = useState("");
     const [confirmAction, setConfirmAction] = useState<{ userId: string; action: "ban" | "delete" } | null>(null);
+    // Create user
+    const [showAddUser, setShowAddUser] = useState(false);
+    const [newLocalpart, setNewLocalpart] = useState("");
+    const [newDisplayName, setNewDisplayName] = useState("");
+    const [newPwd, setNewPwd] = useState("");
+    const [newIsAdmin, setNewIsAdmin] = useState(false);
+    // Random password feedback
+    const [copiedUserId, setCopiedUserId] = useState<string | null>(null);
+    // Filters / sort
+    const [roleFilter, setRoleFilter] = useState<"all" | "admin" | "user">("all");
+    const [statusFilter, setStatusFilter] = useState<"all" | "active" | "deactivated">("all");
+    const [sortField, setSortField] = useState<"name" | "role" | "status" | "date" | "activity">("name");
+    const [sortDir, setSortDir] = useState<1 | -1>(1);
+    // Avatar upload
+    const newAvatarRef = useRef<HTMLInputElement>(null);
+    const editAvatarRef = useRef<HTMLInputElement>(null);
+    const [newAvatarPreview, setNewAvatarPreview] = useState<string | null>(null);
+    const [editAvatarPreview, setEditAvatarPreview] = useState<string | null>(null);
+    // Inline name edit
+    const [inlineEditUserId, setInlineEditUserId] = useState<string | null>(null);
+    const [inlineEditName, setInlineEditName] = useState("");
+    // Float edit window
+    const [floatPos, setFloatPos] = useState({ x: 240, y: 120 });
+    const floatDragRef = useRef<{ sx: number; sy: number; px: number; py: number } | null>(null);
+    // Groups in float window
+    const [editUserRooms, setEditUserRooms] = useState<string[] | null>(null);
+    const [editUserRoomsLoading, setEditUserRoomsLoading] = useState(false);
+    const [editRoomBusyIds, setEditRoomBusyIds] = useState<Set<string>>(new Set());
+    const [roomPowerBusyIds, setRoomPowerBusyIds] = useState<Set<string>>(new Set());
+    const [editUserRoomPowers, setEditUserRoomPowers] = useState<Map<string, number>>(new Map());
+    const [confirmRemoveRoom, setConfirmRemoveRoom] = useState<string | null>(null);
+    const [floatConfirm, setFloatConfirm] = useState<"ban" | "delete" | null>(null);
+    const [roomAddSearch, setRoomAddSearch] = useState("");
+    const roomSearchInputRef = useRef<HTMLInputElement>(null);
 
     const token = client.getAccessToken() ?? "";
     const baseUrl = client.getHomeserverUrl();
+    const serverDomain = client.getDomain() ?? "";
 
     const adminFetch = useCallback(
         (path: string, opts?: RequestInit) =>
@@ -2517,25 +4215,9 @@ function AdminPanel({
         }
     }, [adminFetch]);
 
-    const loadRooms = useCallback(async () => {
-        setLoading(true);
-        setError(null);
-        try {
-            const res = await adminFetch("/_synapse/admin/v1/rooms?limit=500");
-            if (!res.ok) throw new Error(`${res.status}`);
-            const data = (await res.json()) as { rooms: RoomInfo[] };
-            setRooms(data.rooms);
-        } catch (e) {
-            setError(String(e));
-        } finally {
-            setLoading(false);
-        }
-    }, [adminFetch]);
-
     useEffect(() => {
         if (view === "users") void loadUsers();
-        else void loadRooms();
-    }, [view, loadUsers, loadRooms]);
+    }, [view, loadUsers]);
 
     const deactivateUser = async (userId: string, erase = false): Promise<void> => {
         await adminFetch(`/_synapse/admin/v1/deactivate/${encodeURIComponent(userId)}`, {
@@ -2555,11 +4237,23 @@ function AdminPanel({
     };
 
     const saveDisplayName = async (userId: string, displayname: string): Promise<void> => {
-        await adminFetch(`/_synapse/admin/v2/users/${encodeURIComponent(userId)}`, {
-            method: "PUT",
-            body: JSON.stringify({ displayname }),
-        });
+        const body: Record<string, unknown> = {};
+        if (displayname) body.displayname = displayname;
+        if (editAvatarRef.current?.files?.[0]) {
+            try {
+                body.avatar_url = await uploadAvatar(editAvatarRef.current.files[0]);
+            } catch {
+                /* ignore */
+            }
+        }
+        if (Object.keys(body).length) {
+            await adminFetch(`/_synapse/admin/v2/users/${encodeURIComponent(userId)}`, {
+                method: "PUT",
+                body: JSON.stringify(body),
+            });
+        }
         setEditingUser(null);
+        setEditAvatarPreview(null);
         void loadUsers();
     };
 
@@ -2571,26 +4265,268 @@ function AdminPanel({
         void loadUsers();
     };
 
-    const renameRoom = async (roomId: string, name: string): Promise<void> => {
-        await fetch(`${baseUrl}/_matrix/client/v3/rooms/${encodeURIComponent(roomId)}/state/m.room.name`, {
-            method: "PUT",
-            headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
-            body: JSON.stringify({ name }),
+    const generatePassword = (): string => {
+        const chars = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$";
+        return Array.from({ length: 14 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+    };
+
+    const createUser = async (): Promise<void> => {
+        if (!newLocalpart || !newPwd) return;
+        const userId = `@${newLocalpart}:${serverDomain}`;
+        try {
+            let avatarUrl: string | undefined;
+            if (newAvatarRef.current?.files?.[0]) {
+                avatarUrl = await uploadAvatar(newAvatarRef.current.files[0]);
+            }
+            const body: Record<string, unknown> = {
+                password: newPwd,
+                displayname: newDisplayName || newLocalpart,
+                admin: newIsAdmin,
+            };
+            if (avatarUrl) body.avatar_url = avatarUrl;
+            const res = await adminFetch(`/_synapse/admin/v2/users/${encodeURIComponent(userId)}`, {
+                method: "PUT",
+                body: JSON.stringify(body),
+            });
+            if (!res.ok) throw new Error(`${res.status}`);
+            setShowAddUser(false);
+            setNewLocalpart("");
+            setNewDisplayName("");
+            setNewPwd("");
+            setNewIsAdmin(false);
+            setNewAvatarPreview(null);
+            void loadUsers();
+        } catch (e) {
+            setError(String(e));
+        }
+    };
+
+    const assignRandomPassword = async (userId: string): Promise<void> => {
+        const pwd = generatePassword();
+        try {
+            await resetPassword(userId, pwd);
+            await navigator.clipboard.writeText(`user:${userId} pass:${pwd}`);
+            setCopiedUserId(userId);
+            setTimeout(() => setCopiedUserId((prev) => (prev === userId ? null : prev)), 2500);
+        } catch (e) {
+            setError(String(e));
+        }
+    };
+
+    const uploadAvatar = useCallback(
+        async (file: File): Promise<string> => {
+            const res = await fetch(`${baseUrl}/_matrix/media/v3/upload`, {
+                method: "POST",
+                headers: { "Authorization": `Bearer ${token}`, "Content-Type": file.type },
+                body: file,
+            });
+            if (!res.ok) throw new Error(`Upload failed ${res.status}`);
+            return ((await res.json()) as { content_uri: string }).content_uri;
+        },
+        [baseUrl, token],
+    );
+
+    const loadUserRooms = useCallback(
+        async (userId: string): Promise<void> => {
+            setEditUserRoomsLoading(true);
+            try {
+                const res = await adminFetch(`/_synapse/admin/v1/users/${encodeURIComponent(userId)}/joined_rooms`);
+                if (!res.ok) throw new Error(`${res.status}`);
+                const data = (await res.json()) as { joined_rooms: string[] };
+                setEditUserRooms(data.joined_rooms);
+            } catch {
+                setEditUserRooms([]);
+            } finally {
+                setEditUserRoomsLoading(false);
+            }
+        },
+        [adminFetch],
+    );
+
+    const setRoomBusy = (roomId: string, on: boolean): void =>
+        setEditRoomBusyIds((prev) => {
+            const s = new Set(prev);
+            if (on) s.add(roomId);
+            else s.delete(roomId);
+            return s;
         });
-        setEditingRoom(null);
-        void loadRooms();
+
+    const addUserToRoom = async (userId: string, roomId: string): Promise<void> => {
+        setRoomBusy(roomId, true);
+        try {
+            await adminFetch(`/_synapse/admin/v1/join/${encodeURIComponent(roomId)}`, {
+                method: "POST",
+                body: JSON.stringify({ user_id: userId }),
+            });
+            void loadUserRooms(userId);
+        } finally {
+            setRoomBusy(roomId, false);
+        }
+    };
+
+    const removeUserFromRoom = async (userId: string, roomId: string): Promise<void> => {
+        setRoomBusy(roomId, true);
+        try {
+            await fetch(`${baseUrl}/_matrix/client/v3/rooms/${encodeURIComponent(roomId)}/kick`, {
+                method: "POST",
+                headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
+                body: JSON.stringify({ user_id: userId }),
+            });
+            setConfirmRemoveRoom(null);
+            void loadUserRooms(userId);
+        } finally {
+            setRoomBusy(roomId, false);
+        }
+    };
+
+    const loadRoomPowerLevel = useCallback(
+        async (userId: string, roomId: string): Promise<void> => {
+            try {
+                const res = await fetch(
+                    `${baseUrl}/_matrix/client/v3/rooms/${encodeURIComponent(roomId)}/state/m.room.power_levels`,
+                    { headers: { Authorization: `Bearer ${token}` } },
+                );
+                if (!res.ok) return;
+                const data = (await res.json()) as { users?: Record<string, number>; users_default?: number };
+                const level = data.users?.[userId] ?? data.users_default ?? 0;
+                setEditUserRoomPowers((prev) => new Map(prev).set(roomId, level));
+            } catch {
+                /* ignore */
+            }
+        },
+        [baseUrl, token],
+    );
+
+    const toggleRoomAdmin = async (userId: string, roomId: string, makeAdmin: boolean): Promise<void> => {
+        setRoomPowerBusyIds((prev) => {
+            const s = new Set(prev);
+            s.add(roomId);
+            return s;
+        });
+        try {
+            const res = await fetch(
+                `${baseUrl}/_matrix/client/v3/rooms/${encodeURIComponent(roomId)}/state/m.room.power_levels`,
+                { headers: { Authorization: `Bearer ${token}` } },
+            );
+            if (!res.ok) return;
+            const pl = (await res.json()) as Record<string, unknown>;
+            const users = { ...((pl.users as Record<string, number>) ?? {}) };
+            if (makeAdmin) users[userId] = 100;
+            else delete users[userId];
+            pl.users = users;
+            await fetch(`${baseUrl}/_matrix/client/v3/rooms/${encodeURIComponent(roomId)}/state/m.room.power_levels`, {
+                method: "PUT",
+                headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
+                body: JSON.stringify(pl),
+            });
+            setEditUserRoomPowers((prev) => new Map(prev).set(roomId, makeAdmin ? 100 : 0));
+        } finally {
+            setRoomPowerBusyIds((prev) => {
+                const s = new Set(prev);
+                s.delete(roomId);
+                return s;
+            });
+        }
+    };
+
+    useEffect(() => {
+        if (editingUser) {
+            setEditUserRooms(null);
+            setEditUserRoomPowers(new Map());
+            setConfirmRemoveRoom(null);
+            setFloatConfirm(null);
+            setRoomAddSearch("");
+            void loadUserRooms(editingUser);
+        }
+    }, [editingUser, loadUserRooms]);
+
+    useEffect(() => {
+        if (editingUser && editUserRooms) {
+            for (const roomId of editUserRooms) {
+                void loadRoomPowerLevel(editingUser, roomId);
+            }
+        }
+    }, [editUserRooms, editingUser, loadRoomPowerLevel]);
+
+    const toggleSort = (field: typeof sortField): void => {
+        if (sortField === field) setSortDir((d) => (d === 1 ? -1 : 1));
+        else {
+            setSortField(field);
+            setSortDir(-1);
+        }
+    };
+
+    const commitInlineName = useCallback(
+        async (userId: string, name: string): Promise<void> => {
+            setInlineEditUserId(null);
+            const u = users.find((x) => x.name === userId);
+            const current = u?.displayname || u?.name.split(":")[0].slice(1) || "";
+            if (!name.trim() || name.trim() === current) return;
+            await adminFetch(`/_synapse/admin/v2/users/${encodeURIComponent(userId)}`, {
+                method: "PUT",
+                body: JSON.stringify({ displayname: name.trim() }),
+            });
+            void loadUsers();
+        },
+        [adminFetch, loadUsers, users],
+    );
+
+    const startFloatDrag = (e: React.MouseEvent): void => {
+        e.preventDefault();
+        floatDragRef.current = { sx: e.clientX, sy: e.clientY, px: floatPos.x, py: floatPos.y };
+        const onMove = (me: MouseEvent): void => {
+            if (!floatDragRef.current) return;
+            setFloatPos({
+                x: floatDragRef.current.px + (me.clientX - floatDragRef.current.sx),
+                y: floatDragRef.current.py + (me.clientY - floatDragRef.current.sy),
+            });
+        };
+        const onUp = (): void => {
+            floatDragRef.current = null;
+            document.removeEventListener("mousemove", onMove);
+            document.removeEventListener("mouseup", onUp);
+        };
+        document.addEventListener("mousemove", onMove);
+        document.addEventListener("mouseup", onUp);
+    };
+
+    const openFloatEdit = (u: SynapseUser, e: React.MouseEvent): void => {
+        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+        setFloatPos({
+            x: Math.max(8, Math.min(rect.right + 10, UIStore.instance.windowWidth - 370)),
+            y: Math.max(8, Math.min(rect.top - 30, UIStore.instance.windowHeight - 400)),
+        });
+        setEditingUser(u.name);
+        setEditDisplayName(u.displayname ?? "");
+        setNewPassword("");
+        setEditAvatarPreview(null);
+    };
+
+    const SortIcon = ({ field }: { field: typeof sortField }): React.ReactElement => {
+        if (sortField !== field) return <IcoSortNone />;
+        return sortDir === 1 ? <IcoSortAsc /> : <IcoSortDesc />;
     };
 
     const cls = (c: string): string => `mx_FanoosDashboard_admin${c}${isDayMode ? " day" : ""}`;
 
-    const filteredUsers = users.filter((u) => {
-        const q = search.toLowerCase();
-        return !q || u.name.toLowerCase().includes(q) || (u.displayname ?? "").toLowerCase().includes(q);
-    });
-
-    // Build spaces → rooms hierarchy from tree
-    const spaces = tree.filter((n) => n.type === "space");
-    const roomMembersMap = new Map<string, number>(rooms.map((r) => [r.room_id, r.joined_members]));
+    const filteredUsers = users
+        .filter((u) => {
+            const q = search.toLowerCase();
+            const matchSearch =
+                !q || u.name.toLowerCase().includes(q) || (u.displayname ?? "").toLowerCase().includes(q);
+            const matchRole = roleFilter === "all" || (roleFilter === "admin" ? u.admin : !u.admin);
+            const matchStatus = statusFilter === "all" || (statusFilter === "active" ? !u.deactivated : u.deactivated);
+            return matchSearch && matchRole && matchStatus;
+        })
+        .sort((a, b) => {
+            let diff = 0;
+            if (sortField === "name") diff = (a.displayname || a.name).localeCompare(b.displayname || b.name);
+            else if (sortField === "role") diff = Number(a.admin) - Number(b.admin);
+            else if (sortField === "status") diff = Number(a.deactivated) - Number(b.deactivated);
+            else if (sortField === "date") diff = (a.creation_ts ?? 0) - (b.creation_ts ?? 0);
+            else if (sortField === "activity") diff = (a.last_seen_ts ?? 0) - (b.last_seen_ts ?? 0);
+            return diff * sortDir;
+        });
 
     return (
         <div className={cls("Panel")}>
@@ -2600,31 +4536,176 @@ function AdminPanel({
                     className={`${cls("SubTab")}${view === "users" ? " active" : ""}`}
                     onClick={() => setView("users")}
                 >
-                    👤 Users
+                    👤 {_t("fanoos_dashboard|admin_tab_users")}
                 </button>
                 <button
                     className={`${cls("SubTab")}${view === "spaces" ? " active" : ""}`}
                     onClick={() => setView("spaces")}
                 >
-                    🏢 Spaces & Rooms
+                    🏢 {_t("fanoos_dashboard|admin_tab_spaces")}
                 </button>
             </div>
 
-            {/* Search */}
+            {/* Search + reload + add button */}
             <div className={cls("SearchRow")}>
                 <input
                     className={cls("Search")}
                     type="search"
-                    placeholder={view === "users" ? "Search users…" : "Search spaces / rooms…"}
+                    placeholder={
+                        view === "users"
+                            ? _t("fanoos_dashboard|admin_search_users")
+                            : _t("fanoos_dashboard|admin_search_spaces")
+                    }
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                 />
-                <button className={cls("Reload")} onClick={() => void (view === "users" ? loadUsers() : loadRooms())}>
+                <button className={cls("Reload")} onClick={() => void (view === "users" ? loadUsers() : onRefresh?.())}>
                     ↺
                 </button>
+                {view === "users" && (
+                    <button className={cls("BtnAdd")} onClick={() => setShowAddUser((v) => !v)}>
+                        {_t("fanoos_dashboard|admin_add_user")}
+                    </button>
+                )}
             </div>
 
-            {loading && <div className={cls("Loading")}>⏳ Loading…</div>}
+            {/* Filter / sort bar (users only) */}
+            {view === "users" && (
+                <div className={cls("FilterBar")}>
+                    {(["all", "admin", "user"] as const).map((r) => (
+                        <button
+                            key={r}
+                            className={`${cls("FilterChip")}${roleFilter === r ? " active" : ""}`}
+                            onClick={() => setRoleFilter(r)}
+                        >
+                            {r === "all"
+                                ? _t("fanoos_dashboard|admin_filter_all")
+                                : r === "admin"
+                                  ? _t("fanoos_dashboard|admin_filter_admins")
+                                  : _t("fanoos_dashboard|admin_filter_users")}
+                        </button>
+                    ))}
+                    <span className={cls("FilterSep")} />
+                    {(["all", "active", "deactivated"] as const).map((s) => (
+                        <button
+                            key={s}
+                            className={`${cls("FilterChip")}${statusFilter === s ? " active" : ""}${s === "deactivated" ? " danger" : ""}`}
+                            onClick={() => setStatusFilter(s)}
+                        >
+                            {s === "all"
+                                ? _t("fanoos_dashboard|admin_filter_all_status")
+                                : s === "active"
+                                  ? _t("fanoos_dashboard|admin_filter_active")
+                                  : _t("fanoos_dashboard|admin_filter_deactivated")}
+                        </button>
+                    ))}
+                </div>
+            )}
+
+            {/* Add user form */}
+            {view === "users" && showAddUser && (
+                <div className={cls("AddUserForm")}>
+                    <div className={cls("AddUserTop")}>
+                        {/* Avatar picker */}
+                        <div
+                            className={cls("FormAvatarWrap")}
+                            style={
+                                newAvatarPreview
+                                    ? undefined
+                                    : { background: newLocalpart ? nodeAvatarColor(`@${newLocalpart}:x`) : "#6366f1" }
+                            }
+                            onClick={() => newAvatarRef.current?.click()}
+                        >
+                            {newAvatarPreview ? (
+                                <img src={newAvatarPreview} alt="" className={cls("FormAvatarImg")} />
+                            ) : (
+                                <span>{(newDisplayName || newLocalpart || "?").slice(0, 1).toUpperCase()}</span>
+                            )}
+                            <div className={cls("FormAvatarOverlay")}>
+                                <IcoCamera />
+                            </div>
+                            <input
+                                ref={newAvatarRef}
+                                type="file"
+                                accept="image/*"
+                                style={{ display: "none" }}
+                                onChange={(e) => {
+                                    const f = e.target.files?.[0];
+                                    if (f) setNewAvatarPreview(URL.createObjectURL(f));
+                                }}
+                            />
+                        </div>
+                        {/* Fields */}
+                        <div className={cls("AddUserFields")}>
+                            <div className={cls("NewUserIdRow")}>
+                                <input
+                                    className={cls("EditInput")}
+                                    placeholder={_t("fanoos_dashboard|admin_username_label")}
+                                    value={newLocalpart}
+                                    autoFocus
+                                    onChange={(e) => setNewLocalpart(e.target.value.replace(/[^a-z0-9._-]/gi, ""))}
+                                    dir="ltr"
+                                />
+                                {serverDomain && (
+                                    <span className={cls("DomainHint")} dir="ltr">
+                                        @{newLocalpart || "…"}:{serverDomain}
+                                    </span>
+                                )}
+                            </div>
+                            <input
+                                className={cls("EditInput")}
+                                placeholder={_t("fanoos_dashboard|admin_display_name_label")}
+                                value={newDisplayName}
+                                onChange={(e) => setNewDisplayName(e.target.value)}
+                            />
+                            <div className={cls("PwdRow")}>
+                                <input
+                                    className={cls("EditInput")}
+                                    type="password"
+                                    placeholder={_t("fanoos_dashboard|admin_password_label")}
+                                    value={newPwd}
+                                    onChange={(e) => setNewPwd(e.target.value)}
+                                />
+                                <button
+                                    className={cls("BtnRandom")}
+                                    title={_t("fanoos_dashboard|admin_random_pwd")}
+                                    onClick={() => setNewPwd(generatePassword())}
+                                >
+                                    <IcoKey />
+                                </button>
+                            </div>
+                            <label className={cls("AdminToggle")}>
+                                <input
+                                    type="checkbox"
+                                    checked={newIsAdmin}
+                                    onChange={(e) => setNewIsAdmin(e.target.checked)}
+                                />
+                                {_t("fanoos_dashboard|admin_is_admin_label")}
+                            </label>
+                        </div>
+                    </div>
+                    <div className={cls("FormBtns")}>
+                        <button className={cls("BtnSave")} onClick={() => void createUser()}>
+                            {_t("fanoos_dashboard|admin_create")}
+                        </button>
+                        <button
+                            className={cls("BtnCancel")}
+                            onClick={() => {
+                                setShowAddUser(false);
+                                setNewLocalpart("");
+                                setNewDisplayName("");
+                                setNewPwd("");
+                                setNewIsAdmin(false);
+                                setNewAvatarPreview(null);
+                            }}
+                        >
+                            {_t("fanoos_dashboard|admin_cancel")}
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {loading && <div className={cls("Loading")}>{_t("fanoos_dashboard|admin_loading")}</div>}
             {error && <div className={cls("Error")}>⚠ {error}</div>}
 
             {/* Confirm dialog */}
@@ -2633,8 +4714,8 @@ function AdminPanel({
                     <div className={cls("ConfirmBox")}>
                         <p>
                             {confirmAction.action === "ban"
-                                ? `Ban ${confirmAction.userId}?`
-                                : `Delete & erase ${confirmAction.userId}?`}
+                                ? _t("fanoos_dashboard|admin_confirm_ban", { userId: confirmAction.userId })
+                                : _t("fanoos_dashboard|admin_confirm_delete", { userId: confirmAction.userId })}
                         </p>
                         <button
                             className={cls("BtnDanger")}
@@ -2643,10 +4724,10 @@ function AdminPanel({
                                 setConfirmAction(null);
                             }}
                         >
-                            Confirm
+                            {_t("fanoos_dashboard|admin_confirm")}
                         </button>
                         <button className={cls("BtnCancel")} onClick={() => setConfirmAction(null)}>
-                            Cancel
+                            {_t("fanoos_dashboard|admin_cancel")}
                         </button>
                     </div>
                 </div>
@@ -2654,214 +4735,548 @@ function AdminPanel({
 
             {/* Users view */}
             {!loading && view === "users" && (
-                <div className={cls("List")}>
-                    <div className={cls("ListHeader")}>
-                        <span>User</span>
-                        <span>Status</span>
-                        <span>Actions</span>
-                    </div>
-                    {filteredUsers.map((u) => (
-                        <div
-                            key={u.name}
-                            className={`${cls("Row")}${u.deactivated ? " deactivated" : ""}${u.admin ? " admin" : ""}`}
-                        >
-                            <div className={cls("UserInfo")}>
-                                <span className={cls("UserName")}>
-                                    {u.displayname || u.name.split(":")[0].slice(1)}
-                                </span>
-                                <span className={cls("UserId")}>{u.name}</span>
-                                {u.admin && <span className={cls("Badge")}>admin</span>}
-                            </div>
-                            <span className={cls("Status")}>{u.deactivated ? "⛔ banned" : "✓ active"}</span>
-                            <div className={cls("Actions")}>
-                                {editingUser === u.name ? (
-                                    <div className={cls("EditForm")}>
-                                        <input
-                                            className={cls("EditInput")}
-                                            placeholder="New display name"
-                                            value={editDisplayName}
-                                            onChange={(e) => setEditDisplayName(e.target.value)}
-                                        />
-                                        <input
-                                            className={cls("EditInput")}
-                                            placeholder="New password (optional)"
-                                            type="password"
-                                            value={newPassword}
-                                            onChange={(e) => setNewPassword(e.target.value)}
-                                        />
-                                        <button
-                                            className={cls("BtnSave")}
-                                            onClick={async () => {
-                                                if (editDisplayName) await saveDisplayName(u.name, editDisplayName);
-                                                if (newPassword) await resetPassword(u.name, newPassword);
-                                                if (!editDisplayName && !newPassword) setEditingUser(null);
-                                            }}
-                                        >
-                                            Save
-                                        </button>
-                                        <button className={cls("BtnCancel")} onClick={() => setEditingUser(null)}>
-                                            ✕
-                                        </button>
-                                    </div>
-                                ) : (
-                                    <>
-                                        <button
-                                            className={cls("BtnEdit")}
-                                            title="Edit"
-                                            onClick={() => {
-                                                setEditingUser(u.name);
-                                                setEditDisplayName(u.displayname ?? "");
-                                                setNewPassword("");
-                                            }}
-                                        >
-                                            ✏️
-                                        </button>
-                                        <button
-                                            className={cls("BtnToggleAdmin")}
-                                            title={u.admin ? "Remove admin" : "Make admin"}
-                                            onClick={() => void toggleAdmin(u.name, !u.admin)}
-                                        >
-                                            {u.admin ? "👑" : "⬜"}
-                                        </button>
-                                        {!u.deactivated && (
-                                            <button
-                                                className={cls("BtnBan")}
-                                                title="Ban"
-                                                onClick={() => setConfirmAction({ userId: u.name, action: "ban" })}
-                                            >
-                                                🚫
-                                            </button>
-                                        )}
-                                        <button
-                                            className={cls("BtnDelete")}
-                                            title="Delete & erase"
-                                            onClick={() => setConfirmAction({ userId: u.name, action: "delete" })}
-                                        >
-                                            🗑
-                                        </button>
-                                    </>
-                                )}
-                            </div>
+                <div className={cls("UserTable")}>
+                    {/* Table header */}
+                    <div className={cls("TableHead")}>
+                        <div className={`${cls("Th")} user`}>
+                            <button className={cls("ThBtn")} onClick={() => toggleSort("name")}>
+                                {_t("fanoos_dashboard|admin_user_col")} <SortIcon field="name" />
+                            </button>
                         </div>
-                    ))}
-                    {!filteredUsers.length && !loading && <div className={cls("Empty")}>No users found.</div>}
+                        <div className={`${cls("Th")} role`}>
+                            <button className={cls("ThBtn")} onClick={() => toggleSort("role")}>
+                                Role <SortIcon field="role" />
+                            </button>
+                        </div>
+                        <div className={`${cls("Th")} status`}>
+                            <button className={cls("ThBtn")} onClick={() => toggleSort("status")}>
+                                {_t("fanoos_dashboard|admin_status_col")} <SortIcon field="status" />
+                            </button>
+                        </div>
+                        <div className={`${cls("Th")} date`}>
+                            <button className={cls("ThBtn")} onClick={() => toggleSort("date")}>
+                                Joined <SortIcon field="date" />
+                            </button>
+                        </div>
+                        <div className={`${cls("Th")} activity`}>
+                            <button className={cls("ThBtn")} onClick={() => toggleSort("activity")}>
+                                {_t("fanoos_dashboard|admin_last_seen")} <SortIcon field="activity" />
+                            </button>
+                        </div>
+                        <div className={`${cls("Th")} actions`}>{_t("fanoos_dashboard|admin_actions_col")}</div>
+                    </div>
+
+                    {filteredUsers.map((u) => {
+                        const displayName = u.displayname || u.name.split(":")[0].slice(1);
+                        const avatarSrc = u.avatar_url ? (mediaFromMxc(u.avatar_url).srcHttp ?? null) : null;
+                        const isInlineEdit = inlineEditUserId === u.name;
+                        return (
+                            <div
+                                key={u.name}
+                                className={`${cls("UserRow")}${u.deactivated ? " deactivated" : ""}${u.admin ? " admin" : ""}`}
+                            >
+                                {/* Col: Avatar + Name (with inline name edit) */}
+                                <div className={cls("TdUser")}>
+                                    <div
+                                        className={cls("UserAvatar")}
+                                        style={avatarSrc ? undefined : { background: nodeAvatarColor(u.name) }}
+                                    >
+                                        {avatarSrc ? (
+                                            <img src={avatarSrc} alt="" className={cls("UserAvatarImg")} />
+                                        ) : (
+                                            displayName.slice(0, 1).toUpperCase()
+                                        )}
+                                    </div>
+                                    <div className={cls("UserIdent")}>
+                                        {isInlineEdit ? (
+                                            <input
+                                                className={cls("UserInlineInput")}
+                                                value={inlineEditName}
+                                                dir="auto"
+                                                autoFocus
+                                                onChange={(e) => setInlineEditName(e.target.value)}
+                                                onKeyDown={(e) => {
+                                                    e.stopPropagation();
+                                                    if (e.key === "Enter")
+                                                        void commitInlineName(u.name, inlineEditName);
+                                                    if (e.key === "Escape") setInlineEditUserId(null);
+                                                }}
+                                                onBlur={() => void commitInlineName(u.name, inlineEditName)}
+                                                onClick={(e) => e.stopPropagation()}
+                                            />
+                                        ) : (
+                                            <span
+                                                className={cls("UserDisplayName")}
+                                                dir="auto"
+                                                title="Double-click to rename"
+                                                onDoubleClick={() => {
+                                                    setInlineEditUserId(u.name);
+                                                    setInlineEditName(displayName);
+                                                }}
+                                            >
+                                                {displayName}
+                                            </span>
+                                        )}
+                                        <span className={cls("UserMatrixId")} dir="ltr">
+                                            {u.name}
+                                        </span>
+                                    </div>
+                                </div>
+                                {/* Col: Role */}
+                                <div className={cls("TdRole")}>
+                                    {u.admin && <span className={cls("BadgeAdmin")}>admin</span>}
+                                </div>
+                                {/* Col: Status */}
+                                <div className={cls("TdStatus")}>
+                                    <span className={`${cls("BadgeStatus")}${u.deactivated ? " banned" : ""}`}>
+                                        {u.deactivated
+                                            ? _t("fanoos_dashboard|admin_filter_deactivated")
+                                            : _t("fanoos_dashboard|admin_filter_active")}
+                                    </span>
+                                </div>
+                                {/* Col: Joined */}
+                                <div className={cls("TdDate")}>
+                                    {u.creation_ts > 0
+                                        ? new Date(
+                                              u.creation_ts * 1000 > 9999999999 ? u.creation_ts : u.creation_ts * 1000,
+                                          ).toLocaleDateString()
+                                        : "—"}
+                                </div>
+                                {/* Col: Last seen */}
+                                <div className={cls("TdActivity")}>
+                                    {u.last_seen_ts != null && u.last_seen_ts > 0
+                                        ? new Date(u.last_seen_ts).toLocaleDateString()
+                                        : "—"}
+                                </div>
+                                {/* Col: Actions */}
+                                <div className={cls("UserActions")}>
+                                    <button
+                                        className={cls("UABtn")}
+                                        title={_t("fanoos_dashboard|admin_edit")}
+                                        onClick={(e) => openFloatEdit(u, e)}
+                                    >
+                                        <IcoEdit />
+                                    </button>
+                                    <button
+                                        className={`${cls("UABtn")}${copiedUserId === u.name ? " copied" : ""}`}
+                                        title={_t("fanoos_dashboard|admin_random_pwd")}
+                                        onClick={() => void assignRandomPassword(u.name)}
+                                    >
+                                        <IcoKey />
+                                    </button>
+                                    <button
+                                        className={`${cls("UABtn")}${u.admin ? " active" : ""}`}
+                                        title={
+                                            u.admin
+                                                ? _t("fanoos_dashboard|admin_remove_admin")
+                                                : _t("fanoos_dashboard|admin_make_admin")
+                                        }
+                                        onClick={() => void toggleAdmin(u.name, !u.admin)}
+                                    >
+                                        <IcoCrown />
+                                    </button>
+                                    {!u.deactivated && (
+                                        <button
+                                            className={`${cls("UABtn")} danger`}
+                                            title={_t("fanoos_dashboard|admin_ban")}
+                                            onClick={() => setConfirmAction({ userId: u.name, action: "ban" })}
+                                        >
+                                            <IcoBan />
+                                        </button>
+                                    )}
+                                    <button
+                                        className={`${cls("UABtn")} danger`}
+                                        title={_t("fanoos_dashboard|admin_delete")}
+                                        onClick={() => setConfirmAction({ userId: u.name, action: "delete" })}
+                                    >
+                                        <IcoTrash />
+                                    </button>
+                                </div>
+                            </div>
+                        );
+                    })}
+                    {!filteredUsers.length && !loading && (
+                        <div className={cls("Empty")}>{_t("fanoos_dashboard|admin_no_users")}</div>
+                    )}
                 </div>
             )}
 
             {/* Spaces & Rooms view */}
-            {!loading && view === "spaces" && (
-                <div className={cls("List")}>
-                    {spaces
-                        .filter((s) => !search || s.name.toLowerCase().includes(search.toLowerCase()))
-                        .map((space) => {
-                            const spaceRooms = tree.filter((n) => n.parentId === space.id && n.type !== "space");
-                            const isExpanded = expandedSpaces.has(space.id);
-                            return (
-                                <div key={space.id} className={cls("SpaceBlock")}>
-                                    <div className={cls("SpaceRow")}>
-                                        <button
-                                            className={cls("Expand")}
-                                            onClick={() =>
-                                                setExpandedSpaces((prev) => {
-                                                    const s = new Set(prev);
-                                                    if (s.has(space.id)) {
-                                                        s.delete(space.id);
-                                                    } else {
-                                                        s.add(space.id);
-                                                    }
-                                                    return s;
-                                                })
-                                            }
-                                        >
-                                            {isExpanded ? "▼" : "▶"}
-                                        </button>
-                                        <span className={cls("SpaceName")}>🏢 {space.name}</span>
-                                        {editingRoom === space.id ? (
-                                            <>
-                                                <input
-                                                    className={cls("EditInput")}
-                                                    value={editRoomName}
-                                                    onChange={(e) => setEditRoomName(e.target.value)}
-                                                />
-                                                <button
-                                                    className={cls("BtnSave")}
-                                                    onClick={() =>
-                                                        space.matrixRoomId &&
-                                                        void renameRoom(space.matrixRoomId, editRoomName)
-                                                    }
-                                                >
-                                                    ✓
-                                                </button>
-                                                <button
-                                                    className={cls("BtnCancel")}
-                                                    onClick={() => setEditingRoom(null)}
-                                                >
-                                                    ✕
-                                                </button>
-                                            </>
+            {view === "spaces" && (
+                <SpaceOutline client={client} tree={tree} isDayMode={isDayMode} onRefresh={onRefresh} />
+            )}
+
+            {/* ── Floating user edit window ── */}
+            {editingUser &&
+                (() => {
+                    const u = users.find((x) => x.name === editingUser);
+                    if (!u) return null;
+                    const dn = u.displayname || u.name.split(":")[0].slice(1);
+                    const avatarSrc = u.avatar_url ? (mediaFromMxc(u.avatar_url).srcHttp ?? null) : null;
+                    return createPortal(
+                        <div className={cls("FloatWin")} style={{ left: floatPos.x, top: floatPos.y }}>
+                            {/* Drag handle / title bar */}
+                            <div className={cls("FloatHead")} onMouseDown={startFloatDrag}>
+                                <span className={cls("FloatTitle")}>Edit user</span>
+                                <button
+                                    className={cls("FloatClose")}
+                                    onMouseDown={(e) => e.stopPropagation()}
+                                    onClick={() => {
+                                        setEditingUser(null);
+                                        setEditAvatarPreview(null);
+                                    }}
+                                >
+                                    ✕
+                                </button>
+                            </div>
+                            {/* Body */}
+                            <div className={cls("FloatBody")}>
+                                {/* Avatar picker */}
+                                <div className={cls("FloatAvatarRow")}>
+                                    <div
+                                        className={cls("FormAvatarWrap")}
+                                        style={
+                                            editAvatarPreview || avatarSrc
+                                                ? undefined
+                                                : { background: nodeAvatarColor(u.name) }
+                                        }
+                                        onClick={() => editAvatarRef.current?.click()}
+                                    >
+                                        {editAvatarPreview || avatarSrc ? (
+                                            <img
+                                                src={editAvatarPreview ?? avatarSrc!}
+                                                alt=""
+                                                className={cls("FormAvatarImg")}
+                                            />
                                         ) : (
-                                            <button
-                                                className={cls("BtnEdit")}
-                                                onClick={() => {
-                                                    setEditingRoom(space.id);
-                                                    setEditRoomName(space.name);
-                                                }}
-                                            >
-                                                ✏️
-                                            </button>
+                                            <span>{dn.slice(0, 1).toUpperCase()}</span>
+                                        )}
+                                        <div className={cls("FormAvatarOverlay")}>
+                                            <IcoCamera />
+                                        </div>
+                                        <input
+                                            ref={editAvatarRef}
+                                            type="file"
+                                            accept="image/*"
+                                            style={{ display: "none" }}
+                                            onChange={(e) => {
+                                                const f = e.target.files?.[0];
+                                                if (f) setEditAvatarPreview(URL.createObjectURL(f));
+                                            }}
+                                        />
+                                    </div>
+                                    <div className={cls("FloatUserInfo")}>
+                                        <span className={cls("FloatUserDn")} dir="auto">
+                                            {dn}
+                                        </span>
+                                        <span className={cls("FloatUserId")} dir="ltr">
+                                            {u.name}
+                                        </span>
+                                    </div>
+                                </div>
+                                {/* Fields */}
+                                <input
+                                    className={cls("EditInput")}
+                                    placeholder={_t("fanoos_dashboard|admin_display_name_ph")}
+                                    value={editDisplayName}
+                                    autoFocus
+                                    onChange={(e) => setEditDisplayName(e.target.value)}
+                                />
+                                <div className={cls("PwdRow")}>
+                                    <input
+                                        className={cls("EditInput")}
+                                        placeholder={_t("fanoos_dashboard|admin_password_ph")}
+                                        type="password"
+                                        value={newPassword}
+                                        onChange={(e) => setNewPassword(e.target.value)}
+                                    />
+                                    <button
+                                        className={cls("BtnRandom")}
+                                        title={_t("fanoos_dashboard|admin_random_pwd")}
+                                        onClick={() => setNewPassword(generatePassword())}
+                                    >
+                                        <IcoKey />
+                                    </button>
+                                </div>
+                                <div className={cls("FormBtns")}>
+                                    <button
+                                        className={cls("BtnSave")}
+                                        onClick={async () => {
+                                            await saveDisplayName(u.name, editDisplayName);
+                                            if (newPassword) await resetPassword(u.name, newPassword);
+                                        }}
+                                    >
+                                        {_t("fanoos_dashboard|admin_save")}
+                                    </button>
+                                    <button
+                                        className={cls("BtnCancel")}
+                                        onClick={() => {
+                                            setEditingUser(null);
+                                            setEditAvatarPreview(null);
+                                        }}
+                                    >
+                                        {_t("fanoos_dashboard|admin_cancel")}
+                                    </button>
+                                </div>
+
+                                {/* ── Groups section ── */}
+                                <div className={cls("FloatSection")}>
+                                    <div className={cls("FloatSectionHead")}>
+                                        <span className={cls("FloatSectionTitle")}>Groups</span>
+                                        {editUserRoomsLoading && <span className={cls("FloatSpinner")} />}
+                                        {editUserRooms && (
+                                            <span className={cls("FloatSectionCount")}>{editUserRooms.length}</span>
                                         )}
                                     </div>
-                                    {isExpanded &&
-                                        spaceRooms.map((room) => (
-                                            <div key={room.id} className={cls("RoomRow")}>
-                                                <span className={cls("RoomName")}>
-                                                    💬 {room.name}
-                                                    {room.matrixRoomId && roomMembersMap.has(room.matrixRoomId)
-                                                        ? ` (${roomMembersMap.get(room.matrixRoomId)} members)`
-                                                        : ""}
-                                                </span>
-                                                {editingRoom === room.id ? (
-                                                    <>
-                                                        <input
-                                                            className={cls("EditInput")}
-                                                            value={editRoomName}
-                                                            onChange={(e) => setEditRoomName(e.target.value)}
-                                                        />
-                                                        <button
-                                                            className={cls("BtnSave")}
-                                                            onClick={() =>
-                                                                room.matrixRoomId &&
-                                                                void renameRoom(room.matrixRoomId, editRoomName)
-                                                            }
-                                                        >
-                                                            ✓
-                                                        </button>
-                                                        <button
-                                                            className={cls("BtnCancel")}
-                                                            onClick={() => setEditingRoom(null)}
-                                                        >
-                                                            ✕
-                                                        </button>
-                                                    </>
-                                                ) : (
-                                                    <button
-                                                        className={cls("BtnEdit")}
-                                                        onClick={() => {
-                                                            setEditingRoom(room.id);
-                                                            setEditRoomName(room.name);
+
+                                    {/* Current memberships */}
+                                    <div className={cls("FloatRoomList")}>
+                                        {editUserRooms?.map((roomId) => {
+                                            const node = tree.find((n) => n.matrixRoomId === roomId);
+                                            const isBusy = editRoomBusyIds.has(roomId);
+                                            const isPowerBusy = roomPowerBusyIds.has(roomId);
+                                            const isAdmin = (editUserRoomPowers.get(roomId) ?? 0) >= 100;
+                                            const isPendingRemove = confirmRemoveRoom === roomId;
+                                            return (
+                                                <div
+                                                    key={roomId}
+                                                    className={`${cls("FloatRoomChip")}${isBusy ? " busy" : ""}${isPendingRemove ? " confirming" : ""}`}
+                                                >
+                                                    <span className={cls("FloatRoomIcon")}>
+                                                        {node?.type === "space"
+                                                            ? "🏢"
+                                                            : node?.type === "dm"
+                                                              ? "👤"
+                                                              : "💬"}
+                                                    </span>
+                                                    <span className={cls("FloatRoomName")} dir="auto">
+                                                        {node?.name ?? roomId}
+                                                    </span>
+                                                    {isPendingRemove ? (
+                                                        <span className={cls("FloatRoomConfirm")}>
+                                                            <button
+                                                                className={`${cls("FloatRoomConfirmBtn")} yes`}
+                                                                onClick={() => void removeUserFromRoom(u.name, roomId)}
+                                                            >
+                                                                Remove
+                                                            </button>
+                                                            <button
+                                                                className={cls("FloatRoomConfirmBtn")}
+                                                                onClick={() => setConfirmRemoveRoom(null)}
+                                                            >
+                                                                Cancel
+                                                            </button>
+                                                        </span>
+                                                    ) : isBusy ? (
+                                                        <span className={cls("FloatChipSpinner")} />
+                                                    ) : (
+                                                        <span className={cls("FloatRoomActions")}>
+                                                            {/* Open room */}
+                                                            {node?.matrixRoomId && (
+                                                                <button
+                                                                    className={cls("FloatRoomBtn")}
+                                                                    title="Open room"
+                                                                    onClick={() => {
+                                                                        dis.dispatch({
+                                                                            action: Action.ViewRoom,
+                                                                            room_id: node.matrixRoomId!,
+                                                                        });
+                                                                    }}
+                                                                >
+                                                                    <svg
+                                                                        viewBox="0 0 14 14"
+                                                                        width="12"
+                                                                        height="12"
+                                                                        fill="none"
+                                                                        stroke="currentColor"
+                                                                        strokeWidth="1.5"
+                                                                        strokeLinecap="round"
+                                                                        strokeLinejoin="round"
+                                                                    >
+                                                                        <path d="M6 2H2a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1V8" />
+                                                                        <path d="M9 1h4v4" />
+                                                                        <line x1="13" y1="1" x2="6" y2="8" />
+                                                                    </svg>
+                                                                </button>
+                                                            )}
+                                                            {/* Admin toggle */}
+                                                            <button
+                                                                className={`${cls("FloatRoomBtn")}${isAdmin ? " active" : ""}${isPowerBusy ? " busy" : ""}`}
+                                                                title={
+                                                                    isAdmin ? "Remove room admin" : "Make room admin"
+                                                                }
+                                                                disabled={isPowerBusy}
+                                                                onClick={() =>
+                                                                    void toggleRoomAdmin(u.name, roomId, !isAdmin)
+                                                                }
+                                                            >
+                                                                {isPowerBusy ? (
+                                                                    <span className={cls("FloatChipSpinner")} />
+                                                                ) : (
+                                                                    <IcoCrown />
+                                                                )}
+                                                            </button>
+                                                            {/* Remove */}
+                                                            <button
+                                                                className={`${cls("FloatRoomBtn")} danger`}
+                                                                title="Remove from group"
+                                                                onClick={() => setConfirmRemoveRoom(roomId)}
+                                                            >
+                                                                ✕
+                                                            </button>
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                        {editUserRooms?.length === 0 && !editUserRoomsLoading && (
+                                            <span className={cls("FloatEmpty")}>Not in any groups</span>
+                                        )}
+                                    </div>
+
+                                    {/* Add to group — dropdown portaled to body to escape overflow clip */}
+                                    <div className={cls("FloatRoomAdd")}>
+                                        <input
+                                            ref={roomSearchInputRef}
+                                            className={cls("EditInput")}
+                                            placeholder="Add to group…"
+                                            value={roomAddSearch}
+                                            onChange={(e) => setRoomAddSearch(e.target.value)}
+                                            onKeyDown={(e) => {
+                                                if (e.key === "Escape") setRoomAddSearch("");
+                                            }}
+                                        />
+                                        {roomAddSearch.trim() &&
+                                            (() => {
+                                                const anchor = roomSearchInputRef.current?.getBoundingClientRect();
+                                                if (!anchor) return null;
+                                                const q = roomAddSearch.toLowerCase();
+                                                const opts = tree
+                                                    .filter(
+                                                        (n) =>
+                                                            n.matrixRoomId &&
+                                                            !editUserRooms?.includes(n.matrixRoomId) &&
+                                                            (n.name.toLowerCase().includes(q) ||
+                                                                (n.matrixRoomId ?? "").toLowerCase().includes(q)),
+                                                    )
+                                                    .slice(0, 8);
+                                                return createPortal(
+                                                    <div
+                                                        className={cls("FloatRoomDropdown")}
+                                                        style={{
+                                                            position: "fixed",
+                                                            left: anchor.left,
+                                                            top: anchor.bottom + 4,
+                                                            width: anchor.width,
+                                                            zIndex: 10000,
                                                         }}
                                                     >
-                                                        ✏️
-                                                    </button>
-                                                )}
-                                            </div>
-                                        ))}
+                                                        {opts.length === 0 ? (
+                                                            <span
+                                                                className={cls("FloatEmpty")}
+                                                                style={{ padding: "8px 10px", display: "block" }}
+                                                            >
+                                                                No matches
+                                                            </span>
+                                                        ) : (
+                                                            opts.map((n) => (
+                                                                <button
+                                                                    key={n.id}
+                                                                    className={cls("FloatRoomOption")}
+                                                                    disabled={editRoomBusyIds.has(n.matrixRoomId!)}
+                                                                    onClick={() => {
+                                                                        void addUserToRoom(u.name, n.matrixRoomId!);
+                                                                        setRoomAddSearch("");
+                                                                    }}
+                                                                >
+                                                                    <span>
+                                                                        {n.type === "space"
+                                                                            ? "🏢"
+                                                                            : n.type === "dm"
+                                                                              ? "👤"
+                                                                              : "💬"}
+                                                                    </span>
+                                                                    <span dir="auto">{n.name}</span>
+                                                                </button>
+                                                            ))
+                                                        )}
+                                                    </div>,
+                                                    document.body,
+                                                );
+                                            })()}
+                                    </div>
                                 </div>
-                            );
-                        })}
-                    {!spaces.length && <div className={cls("Empty")}>No spaces found.</div>}
-                </div>
-            )}
+
+                                {/* ── User actions section ── */}
+                                <div className={cls("FloatSection")}>
+                                    <div className={cls("FloatSectionHead")}>
+                                        <span className={cls("FloatSectionTitle")}>Account</span>
+                                    </div>
+                                    {floatConfirm ? (
+                                        <div className={cls("FloatConfirmRow")}>
+                                            <span className={cls("FloatConfirmMsg")}>
+                                                {floatConfirm === "ban"
+                                                    ? `Deactivate ${u.name}?`
+                                                    : `Permanently delete ${u.name}? This cannot be undone.`}
+                                            </span>
+                                            <button
+                                                className={`${cls("FloatActionBtn")} danger`}
+                                                onClick={async () => {
+                                                    await deactivateUser(u.name, floatConfirm === "delete");
+                                                    setFloatConfirm(null);
+                                                    setEditingUser(null);
+                                                }}
+                                            >
+                                                {floatConfirm === "ban" ? "Deactivate" : "Delete"}
+                                            </button>
+                                            <button
+                                                className={cls("FloatActionBtn")}
+                                                onClick={() => setFloatConfirm(null)}
+                                            >
+                                                Cancel
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div className={cls("FloatActionBtns")}>
+                                            {u.deactivated ? (
+                                                <button
+                                                    className={cls("FloatActionBtn")}
+                                                    onClick={async () => {
+                                                        await adminFetch(
+                                                            `/_synapse/admin/v2/users/${encodeURIComponent(u.name)}`,
+                                                            {
+                                                                method: "PUT",
+                                                                body: JSON.stringify({ deactivated: false }),
+                                                            },
+                                                        );
+                                                        void loadUsers();
+                                                        setEditingUser(null);
+                                                    }}
+                                                >
+                                                    ✓ Activate user
+                                                </button>
+                                            ) : (
+                                                <button
+                                                    className={`${cls("FloatActionBtn")} warn`}
+                                                    onClick={() => setFloatConfirm("ban")}
+                                                >
+                                                    <IcoBan /> Deactivate
+                                                </button>
+                                            )}
+                                            <button
+                                                className={`${cls("FloatActionBtn")} danger`}
+                                                onClick={() => setFloatConfirm("delete")}
+                                            >
+                                                <IcoTrash /> Delete user
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>,
+                        document.body,
+                    );
+                })()}
         </div>
     );
 }
@@ -2952,7 +5367,7 @@ const FanoosDashboard: React.FC = () => {
     const [hoverInfo, setHoverInfo] = useState<HoverInfo | null>(null);
     const [sendWindow, setSendWindow] = useState<SendWindowState | null>(null);
     const [isAdmin, setIsAdmin] = useState(false);
-    const [activeTab, setActiveTab] = useState<"teams" | "admin">("teams");
+    const [activeTab, setActiveTab] = useState<"teams" | "admin" | "draw">("teams");
 
     useEffect(() => {
         const token = client.getAccessToken();
@@ -3102,7 +5517,7 @@ const FanoosDashboard: React.FC = () => {
         layoutRef.current = rendered.layout;
         dimsRef.current = rendered.dims;
         setSearchHits(rendered.hits);
-    }, [rendered]);
+    }, [rendered, activeTab]); // activeTab re-injects SVG when switching back to teams tab
 
     // Click → toggle info panel + navigate to room; shift-click → add/remove from send window
     const handleClick = useCallback(
@@ -3340,32 +5755,6 @@ const FanoosDashboard: React.FC = () => {
 
     return (
         <div className={`mx_FanoosDashboard${isDayMode ? " day" : " night"}`} ref={dashboardRef}>
-            {/* ── Row 1: Title + Model + Interval ── */}
-            <div className={`mx_FanoosDashboard_topBar${isDayMode ? " day" : ""}`}>
-                <span className="mx_FanoosDashboard_title">{_t("fanoos_dashboard|title")}</span>
-
-                <label className="mx_FanoosDashboard_ctrlGroup">
-                    <span className="mx_FanoosDashboard_ctrlLabel">{_t("fanoos_dashboard|model")}</span>
-                    <select className="mx_FanoosDashboard_select" value="keyword" onChange={() => {}}>
-                        <option value="keyword">{_t("fanoos_dashboard|keyword_model")}</option>
-                    </select>
-                </label>
-
-                <label className="mx_FanoosDashboard_ctrlGroup">
-                    <span className="mx_FanoosDashboard_ctrlLabel">{_t("fanoos_dashboard|interval")}</span>
-                    <select
-                        className="mx_FanoosDashboard_select"
-                        value={intervalVal}
-                        onChange={(e) => setIntervalVal(e.target.value)}
-                    >
-                        <option value="24h">{_t("fanoos_dashboard|interval_24h")}</option>
-                        <option value="7d">{_t("fanoos_dashboard|interval_7d")}</option>
-                        <option value="30d">{_t("fanoos_dashboard|interval_30d")}</option>
-                        <option value="all">{_t("fanoos_dashboard|interval_all")}</option>
-                    </select>
-                </label>
-            </div>
-
             {/* ── Dashboard Tabs ── */}
             <div className={`mx_FanoosDashboard_tabBar${isDayMode ? " day" : ""}`}>
                 <div className="mx_FanoosDashboard_tabList">
@@ -3385,20 +5774,55 @@ const FanoosDashboard: React.FC = () => {
                             {_t("fanoos_dashboard|tab_admin")}
                         </button>
                     )}
+                    <button
+                        className={`mx_FanoosDashboard_tab${activeTab === "draw" ? " active" : ""}${isDayMode ? " day" : ""}`}
+                        onClick={() => setActiveTab("draw")}
+                    >
+                        <span className="mx_FanoosDashboard_tabIcon">✏️</span>
+                        {_t("fanoos_dashboard|draw_tab")}
+                    </button>
                 </div>
                 <div
                     className="mx_FanoosDashboard_tabIndicator"
                     style={{
-                        transform: `translateX(${activeTab === "admin" ? "100%" : "0%"})`,
-                        width: `${isAdmin ? 50 : 100}%`,
+                        transform: `translateX(${activeTab === "draw" ? (isAdmin ? "200%" : "100%") : activeTab === "admin" ? "100%" : "0%"})`,
+                        width: `${isAdmin ? "33.333%" : "50%"}`,
                     }}
                 />
             </div>
 
-            {activeTab === "teams" && (
+            {/* Keep all tab content mounted; toggle visibility with display so state is preserved on tab switch */}
+            <div style={{ display: activeTab === "teams" ? "contents" : "none" }}>
                 <>
-                    {/* ── Row 2: Depth + Names + Search + Zoom + Reload + Mode + Fullscreen ── */}
+                    {/* ── Row 2: Model + Interval + Depth + Names + Search + Zoom + Reload + Mode + Fullscreen ── */}
                     <div className={`mx_FanoosDashboard_ctrlBar${isDayMode ? " day" : ""}`}>
+                        {/* Model */}
+                        <label className="mx_FanoosDashboard_ctrlGroup">
+                            <span className="mx_FanoosDashboard_ctrlLabel">{_t("fanoos_dashboard|model")}</span>
+                            <select className="mx_FanoosDashboard_select" value="keyword" onChange={() => {}}>
+                                <option value="keyword">{_t("fanoos_dashboard|keyword_model")}</option>
+                            </select>
+                        </label>
+
+                        <div className="mx_FanoosDashboard_divider" />
+
+                        {/* Interval */}
+                        <label className="mx_FanoosDashboard_ctrlGroup">
+                            <span className="mx_FanoosDashboard_ctrlLabel">{_t("fanoos_dashboard|interval")}</span>
+                            <select
+                                className="mx_FanoosDashboard_select"
+                                value={intervalVal}
+                                onChange={(e) => setIntervalVal(e.target.value)}
+                            >
+                                <option value="24h">{_t("fanoos_dashboard|interval_24h")}</option>
+                                <option value="7d">{_t("fanoos_dashboard|interval_7d")}</option>
+                                <option value="30d">{_t("fanoos_dashboard|interval_30d")}</option>
+                                <option value="all">{_t("fanoos_dashboard|interval_all")}</option>
+                            </select>
+                        </label>
+
+                        <div className="mx_FanoosDashboard_divider" />
+
                         {/* Depth group */}
                         <div className="mx_FanoosDashboard_btnGroup">
                             <span className="mx_FanoosDashboard_ctrlLabel">{_t("fanoos_dashboard|depth")}</span>
@@ -3578,9 +6002,17 @@ const FanoosDashboard: React.FC = () => {
                         />
                     )}
                 </>
+            </div>
+
+            {isAdmin && (
+                <div style={{ display: activeTab === "admin" ? "contents" : "none" }}>
+                    <AdminPanel client={client} tree={tree} isDayMode={isDayMode} onRefresh={rebuildTree} />
+                </div>
             )}
 
-            {activeTab === "admin" && isAdmin && <AdminPanel client={client} tree={tree} isDayMode={isDayMode} />}
+            <div style={{ display: activeTab === "draw" ? "contents" : "none" }}>
+                <FanoosDrawTab isDayMode={isDayMode} client={client} />
+            </div>
 
             {/* ── Send window (unified single/multi-channel compose) ── */}
             {sendWindow &&
