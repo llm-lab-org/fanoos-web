@@ -259,11 +259,11 @@ export default (env: string, argv: Record<string, any>): webpack.Configuration =
                 "roughjs/bin/rough": path.resolve(__dirname, "../../node_modules/roughjs/bin/rough.js"),
                 "roughjs/bin/generator": path.resolve(__dirname, "../../node_modules/roughjs/bin/generator.js"),
 
-                // excalidraw depends on nanoid v3 (which has index.cjs); pin to its nested copy
+                // excalidraw depends on nanoid v3 (which has index.cjs); alias the exact file
                 // so webpack doesn't resolve to the top-level nanoid v4 which lacks index.cjs
-                "nanoid/non-secure": path.resolve(
+                "nanoid/non-secure/index.cjs": path.resolve(
                     __dirname,
-                    "../../node_modules/@excalidraw/excalidraw/node_modules/nanoid/non-secure",
+                    "../../node_modules/@excalidraw/excalidraw/node_modules/nanoid/non-secure/index.cjs",
                 ),
             },
             fallback: {
