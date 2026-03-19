@@ -1,4 +1,9 @@
 /*
+Copyright 2026 LLM-LAB (Fanoos fork)
+SPDX-License-Identifier: AGPL-3.0-only OR GPL-3.0-only OR LicenseRef-Element-Commercial
+*/
+
+/*
  * Fanoos appearance overrides — chat background, panel colors, message colors,
  * and color palettes. All injected as CSS custom property overrides.
  */
@@ -324,12 +329,11 @@ export interface BgPattern {
     key: string;
     label: string;
     labelFa: string;
-    svgTile: string;   // raw SVG string for the tile
-    tileSize: string;  // CSS background-size value
+    svgTile: string; // raw SVG string for the tile
+    tileSize: string; // CSS background-size value
 }
 
-const p = (svg: string): string =>
-    `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+const p = (svg: string): string => `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 
 export const BG_PATTERNS: BgPattern[] = [
     {
@@ -343,56 +347,72 @@ export const BG_PATTERNS: BgPattern[] = [
         key: "dots",
         label: "Dots",
         labelFa: "نقاط",
-        svgTile: p(`<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"><circle cx="10" cy="10" r="1.8" fill="rgba(0,0,0,0.07)"/></svg>`),
+        svgTile: p(
+            `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"><circle cx="10" cy="10" r="1.8" fill="rgba(0,0,0,0.07)"/></svg>`,
+        ),
         tileSize: "20px 20px",
     },
     {
         key: "lines",
         label: "Diagonal Lines",
         labelFa: "خطوط مورب",
-        svgTile: p(`<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"><line x1="0" y1="0" x2="16" y2="16" stroke="rgba(0,0,0,0.06)" stroke-width="1.5"/><line x1="-8" y1="0" x2="8" y2="16" stroke="rgba(0,0,0,0.06)" stroke-width="1.5"/><line x1="8" y1="0" x2="24" y2="16" stroke="rgba(0,0,0,0.06)" stroke-width="1.5"/></svg>`),
+        svgTile: p(
+            `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"><line x1="0" y1="0" x2="16" y2="16" stroke="rgba(0,0,0,0.06)" stroke-width="1.5"/><line x1="-8" y1="0" x2="8" y2="16" stroke="rgba(0,0,0,0.06)" stroke-width="1.5"/><line x1="8" y1="0" x2="24" y2="16" stroke="rgba(0,0,0,0.06)" stroke-width="1.5"/></svg>`,
+        ),
         tileSize: "16px 16px",
     },
     {
         key: "crosses",
         label: "Crosses",
         labelFa: "علامت‌های ضربدر",
-        svgTile: p(`<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><line x1="12" y1="7" x2="12" y2="17" stroke="rgba(0,0,0,0.07)" stroke-width="1.3" stroke-linecap="round"/><line x1="7" y1="12" x2="17" y2="12" stroke="rgba(0,0,0,0.07)" stroke-width="1.3" stroke-linecap="round"/></svg>`),
+        svgTile: p(
+            `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><line x1="12" y1="7" x2="12" y2="17" stroke="rgba(0,0,0,0.07)" stroke-width="1.3" stroke-linecap="round"/><line x1="7" y1="12" x2="17" y2="12" stroke="rgba(0,0,0,0.07)" stroke-width="1.3" stroke-linecap="round"/></svg>`,
+        ),
         tileSize: "24px 24px",
     },
     {
         key: "hexagons",
         label: "Hexagons",
         labelFa: "لانه زنبوری",
-        svgTile: p(`<svg xmlns="http://www.w3.org/2000/svg" width="40" height="46"><polygon points="20,2 38,12 38,34 20,44 2,34 2,12" fill="none" stroke="rgba(0,0,0,0.07)" stroke-width="1"/></svg>`),
+        svgTile: p(
+            `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="46"><polygon points="20,2 38,12 38,34 20,44 2,34 2,12" fill="none" stroke="rgba(0,0,0,0.07)" stroke-width="1"/></svg>`,
+        ),
         tileSize: "40px 46px",
     },
     {
         key: "waves",
         label: "Waves",
         labelFa: "امواج",
-        svgTile: p(`<svg xmlns="http://www.w3.org/2000/svg" width="60" height="20"><path d="M0 10 C15 2 45 18 60 10" fill="none" stroke="rgba(0,0,0,0.06)" stroke-width="1.3"/></svg>`),
+        svgTile: p(
+            `<svg xmlns="http://www.w3.org/2000/svg" width="60" height="20"><path d="M0 10 C15 2 45 18 60 10" fill="none" stroke="rgba(0,0,0,0.06)" stroke-width="1.3"/></svg>`,
+        ),
         tileSize: "60px 20px",
     },
     {
         key: "flowers",
         label: "Flowers",
         labelFa: "گل‌ها",
-        svgTile: p(`<svg xmlns="http://www.w3.org/2000/svg" width="44" height="44"><circle cx="22" cy="22" r="3" fill="rgba(0,0,0,0.06)"/><ellipse cx="22" cy="14" rx="2.2" ry="6" fill="rgba(0,0,0,0.05)"/><ellipse cx="29" cy="17" rx="2.2" ry="6" fill="rgba(0,0,0,0.05)" transform="rotate(60 29 17)"/><ellipse cx="29" cy="27" rx="2.2" ry="6" fill="rgba(0,0,0,0.05)" transform="rotate(120 29 27)"/><ellipse cx="22" cy="30" rx="2.2" ry="6" fill="rgba(0,0,0,0.05)" transform="rotate(180 22 30)"/><ellipse cx="15" cy="27" rx="2.2" ry="6" fill="rgba(0,0,0,0.05)" transform="rotate(240 15 27)"/><ellipse cx="15" cy="17" rx="2.2" ry="6" fill="rgba(0,0,0,0.05)" transform="rotate(300 15 17)"/></svg>`),
+        svgTile: p(
+            `<svg xmlns="http://www.w3.org/2000/svg" width="44" height="44"><circle cx="22" cy="22" r="3" fill="rgba(0,0,0,0.06)"/><ellipse cx="22" cy="14" rx="2.2" ry="6" fill="rgba(0,0,0,0.05)"/><ellipse cx="29" cy="17" rx="2.2" ry="6" fill="rgba(0,0,0,0.05)" transform="rotate(60 29 17)"/><ellipse cx="29" cy="27" rx="2.2" ry="6" fill="rgba(0,0,0,0.05)" transform="rotate(120 29 27)"/><ellipse cx="22" cy="30" rx="2.2" ry="6" fill="rgba(0,0,0,0.05)" transform="rotate(180 22 30)"/><ellipse cx="15" cy="27" rx="2.2" ry="6" fill="rgba(0,0,0,0.05)" transform="rotate(240 15 27)"/><ellipse cx="15" cy="17" rx="2.2" ry="6" fill="rgba(0,0,0,0.05)" transform="rotate(300 15 17)"/></svg>`,
+        ),
         tileSize: "44px 44px",
     },
     {
         key: "diamonds",
         label: "Diamonds",
         labelFa: "لوزی",
-        svgTile: p(`<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30"><polygon points="15,2 28,15 15,28 2,15" fill="none" stroke="rgba(0,0,0,0.06)" stroke-width="1"/></svg>`),
+        svgTile: p(
+            `<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30"><polygon points="15,2 28,15 15,28 2,15" fill="none" stroke="rgba(0,0,0,0.06)" stroke-width="1"/></svg>`,
+        ),
         tileSize: "30px 30px",
     },
     {
         key: "stars",
         label: "Stars",
         labelFa: "ستاره‌ها",
-        svgTile: p(`<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36"><polygon points="18,3 21,13 31,13 23,19 26,29 18,23 10,29 13,19 5,13 15,13" fill="rgba(0,0,0,0.05)" stroke="rgba(0,0,0,0.04)" stroke-width="0.5"/></svg>`),
+        svgTile: p(
+            `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36"><polygon points="18,3 21,13 31,13 23,19 26,29 18,23 10,29 13,19 5,13 15,13" fill="rgba(0,0,0,0.05)" stroke="rgba(0,0,0,0.04)" stroke-width="0.5"/></svg>`,
+        ),
         tileSize: "36px 36px",
     },
     {
@@ -453,9 +473,7 @@ export function applyFanoosAppearance(): void {
         paletteVars["--fanoos-composer-bg"] ??
         null;
     const sentMsgColor =
-        (SettingsStore.getValue("fanoos.sentMsgColor") as string | null) ??
-        paletteVars["--fanoos-sent-msg-bg"] ??
-        null;
+        (SettingsStore.getValue("fanoos.sentMsgColor") as string | null) ?? paletteVars["--fanoos-sent-msg-bg"] ?? null;
     const receivedMsgColor =
         (SettingsStore.getValue("fanoos.receivedMsgColor") as string | null) ??
         paletteVars["--fanoos-received-msg-bg"] ??
@@ -625,14 +643,26 @@ export function applyFanoosAppearance(): void {
 .mx_EventTile[data-layout="bubble"] .mx_EventTile_body a { color: #168acd; }
 `);
     if (sentMsgColor) {
-        rules.push(`.mx_EventTile[data-layout="bubble"][data-self="true"] { --backgroundColor: ${sentMsgColor} !important; }`);
-        rules.push(`.mx_EventTile[data-layout="bubble"][data-self="true"] .mx_EventTile_line { background: ${sentMsgColor} !important; }`);
-        rules.push(`.mx_EventTile[data-layout="bubble"][data-self="true"] .mx_MediaBody { background: ${sentMsgColor} !important; }`);
+        rules.push(
+            `.mx_EventTile[data-layout="bubble"][data-self="true"] { --backgroundColor: ${sentMsgColor} !important; }`,
+        );
+        rules.push(
+            `.mx_EventTile[data-layout="bubble"][data-self="true"] .mx_EventTile_line { background: ${sentMsgColor} !important; }`,
+        );
+        rules.push(
+            `.mx_EventTile[data-layout="bubble"][data-self="true"] .mx_MediaBody { background: ${sentMsgColor} !important; }`,
+        );
     }
     if (receivedMsgColor) {
-        rules.push(`.mx_EventTile[data-layout="bubble"][data-self="false"] { --backgroundColor: ${receivedMsgColor} !important; }`);
-        rules.push(`.mx_EventTile[data-layout="bubble"][data-self="false"] .mx_EventTile_line { background: ${receivedMsgColor} !important; }`);
-        rules.push(`.mx_EventTile[data-layout="bubble"][data-self="false"] .mx_MediaBody { background: ${receivedMsgColor} !important; }`);
+        rules.push(
+            `.mx_EventTile[data-layout="bubble"][data-self="false"] { --backgroundColor: ${receivedMsgColor} !important; }`,
+        );
+        rules.push(
+            `.mx_EventTile[data-layout="bubble"][data-self="false"] .mx_EventTile_line { background: ${receivedMsgColor} !important; }`,
+        );
+        rules.push(
+            `.mx_EventTile[data-layout="bubble"][data-self="false"] .mx_MediaBody { background: ${receivedMsgColor} !important; }`,
+        );
     }
 
     // ── Info/system events: always transparent, override msg color rules ─────
@@ -652,12 +682,20 @@ export function applyFanoosAppearance(): void {
 
     // ── Message text & link colors ────────────────────────────────────────────
     if (sentMsgTextColor) {
-        rules.push(`.mx_EventTile[data-layout="bubble"][data-self="true"] .mx_EventTile_body { color: ${sentMsgTextColor} !important; }`);
-        rules.push(`.mx_EventTile[data-layout="bubble"][data-self="true"] .mx_EventTile_body a { color: ${sentMsgTextColor} !important; opacity: 0.85; }`);
+        rules.push(
+            `.mx_EventTile[data-layout="bubble"][data-self="true"] .mx_EventTile_body { color: ${sentMsgTextColor} !important; }`,
+        );
+        rules.push(
+            `.mx_EventTile[data-layout="bubble"][data-self="true"] .mx_EventTile_body a { color: ${sentMsgTextColor} !important; opacity: 0.85; }`,
+        );
     }
     if (receivedMsgTextColor) {
-        rules.push(`.mx_EventTile[data-layout="bubble"][data-self="false"] .mx_EventTile_body { color: ${receivedMsgTextColor} !important; }`);
-        rules.push(`.mx_EventTile[data-layout="bubble"][data-self="false"] .mx_EventTile_body a { color: ${receivedMsgTextColor} !important; opacity: 0.85; }`);
+        rules.push(
+            `.mx_EventTile[data-layout="bubble"][data-self="false"] .mx_EventTile_body { color: ${receivedMsgTextColor} !important; }`,
+        );
+        rules.push(
+            `.mx_EventTile[data-layout="bubble"][data-self="false"] .mx_EventTile_body a { color: ${receivedMsgTextColor} !important; opacity: 0.85; }`,
+        );
     }
 
     // ── Properties / right panel text colors ─────────────────────────────────

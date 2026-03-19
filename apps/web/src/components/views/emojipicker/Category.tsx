@@ -17,7 +17,15 @@ import { type ButtonEvent } from "../elements/AccessibleButton";
 
 const OVERFLOW_ROWS = 3;
 
-export type CategoryKey = keyof typeof DATA_BY_CATEGORY | "recent" | "flowers" | "stars_sky" | "happy_friends" | "work_task" | "empathy" | "surprise_dissatisfaction";
+export type CategoryKey =
+    | keyof typeof DATA_BY_CATEGORY
+    | "recent"
+    | "flowers"
+    | "stars_sky"
+    | "happy_friends"
+    | "work_task"
+    | "empathy"
+    | "surprise_dissatisfaction";
 
 export interface ICategory {
     id: CategoryKey;

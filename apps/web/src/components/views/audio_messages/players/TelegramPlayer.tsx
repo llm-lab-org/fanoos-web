@@ -1,7 +1,13 @@
+/*
+Copyright 2026 LLM-LAB (Fanoos fork)
+SPDX-License-Identifier: AGPL-3.0-only OR GPL-3.0-only OR LicenseRef-Element-Commercial
+*/
+
 /**
  * Telegram-style player — circular play button, animated waveform bars, time + speed badge.
  */
 import React, { useMemo } from "react";
+
 import { useNativeAudio, formatTime } from "../hooks/useNativeAudio";
 
 interface Props {
@@ -33,19 +39,26 @@ export function TelegramPlayer({ src }: Props): React.ReactElement {
             <audio {...audioProps} />
 
             {/* circular play/pause */}
-            <button className="mx_FanoosPlayer_tgCircle" onClick={togglePlay} disabled={!ready} type="button"
-                aria-label={playing ? "Pause" : "Play"}>
+            <button
+                className="mx_FanoosPlayer_tgCircle"
+                onClick={togglePlay}
+                disabled={!ready}
+                type="button"
+                aria-label={playing ? "Pause" : "Play"}
+            >
                 <span className="mx_FanoosPlayer_tgIcon">{playing ? "⏸" : "▶"}</span>
             </button>
 
             <div className="mx_FanoosPlayer_tgRight">
                 {/* waveform bars — clickable seek */}
-                <div className="mx_FanoosPlayer_tgWave"
+                <div
+                    className="mx_FanoosPlayer_tgWave"
                     onClick={(e) => {
                         if (!ready || duration === 0) return;
                         const rect = e.currentTarget.getBoundingClientRect();
                         seekTo(((e.clientX - rect.left) / rect.width) * duration);
-                    }}>
+                    }}
+                >
                     {bars.map((h, i) => (
                         <div
                             key={i}
@@ -56,8 +69,12 @@ export function TelegramPlayer({ src }: Props): React.ReactElement {
                 </div>
                 {/* bottom row: time + speed */}
                 <div className="mx_FanoosPlayer_tgMeta">
-                    <span className="mx_FanoosPlayer_clock">{formatTime(currentTime)} / {formatTime(duration)}</span>
-                    <button className="mx_FanoosPlayer_speedBtn" onClick={cycleSpeed} type="button">{speed}x</button>
+                    <span className="mx_FanoosPlayer_clock">
+                        {formatTime(currentTime)} / {formatTime(duration)}
+                    </span>
+                    <button className="mx_FanoosPlayer_speedBtn" onClick={cycleSpeed} type="button">
+                        {speed}x
+                    </button>
                 </div>
             </div>
         </div>

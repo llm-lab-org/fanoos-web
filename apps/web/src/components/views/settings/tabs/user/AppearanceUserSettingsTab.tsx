@@ -153,9 +153,27 @@ export default class AppearanceUserSettingsTab extends React.Component<EmptyObje
                     }}
                     label={_t("settings|appearance|app_font")}
                 >
-                    {(<div key="IRANSansX" style={{ fontFamily: FONT_OPTIONS[0].stack }}>{FONT_OPTIONS[0].label}</div>) as ReactElement & { key: string }}
-                    {(<div key="Inter" style={{ fontFamily: FONT_OPTIONS[1].stack }}>{FONT_OPTIONS[1].label}</div>) as ReactElement & { key: string }}
-                    {(<div key="System" style={{ fontFamily: FONT_OPTIONS[2].stack }}>{FONT_OPTIONS[2].label}</div>) as ReactElement & { key: string }}
+                    {
+                        (
+                            <div key="IRANSansX" style={{ fontFamily: FONT_OPTIONS[0].stack }}>
+                                {FONT_OPTIONS[0].label}
+                            </div>
+                        ) as ReactElement & { key: string }
+                    }
+                    {
+                        (
+                            <div key="Inter" style={{ fontFamily: FONT_OPTIONS[1].stack }}>
+                                {FONT_OPTIONS[1].label}
+                            </div>
+                        ) as ReactElement & { key: string }
+                    }
+                    {
+                        (
+                            <div key="System" style={{ fontFamily: FONT_OPTIONS[2].stack }}>
+                                {FONT_OPTIONS[2].label}
+                            </div>
+                        ) as ReactElement & { key: string }
+                    }
                 </Dropdown>
             </SettingsSubsection>
         );
@@ -176,9 +194,21 @@ export default class AppearanceUserSettingsTab extends React.Component<EmptyObje
                     }}
                     label={_t("settings|appearance|interface_direction")}
                 >
-                    {(<div key="auto">{_t("settings|appearance|direction_auto")}</div>) as ReactElement & { key: string }}
-                    {(<div key="rtl">{_t("settings|appearance|direction_rtl")} ← راست به چپ</div>) as ReactElement & { key: string }}
-                    {(<div key="ltr">{_t("settings|appearance|direction_ltr")} → Left to Right</div>) as ReactElement & { key: string }}
+                    {
+                        (<div key="auto">{_t("settings|appearance|direction_auto")}</div>) as ReactElement & {
+                            key: string;
+                        }
+                    }
+                    {
+                        (
+                            <div key="rtl">{_t("settings|appearance|direction_rtl")} ← راست به چپ</div>
+                        ) as ReactElement & { key: string }
+                    }
+                    {
+                        (
+                            <div key="ltr">{_t("settings|appearance|direction_ltr")} → Left to Right</div>
+                        ) as ReactElement & { key: string }
+                    }
                 </Dropdown>
             </SettingsSubsection>
         );
@@ -195,9 +225,11 @@ export default class AppearanceUserSettingsTab extends React.Component<EmptyObje
             >
                 <div className="mx_FanoosAppearance_paletteGrid">
                     {COLOR_PALETTES.map((p) => {
-                        const label = currentLang.startsWith("fa") ? p.labelFa
-                            : currentLang.startsWith("ar") ? p.labelAr
-                            : p.label;
+                        const label = currentLang.startsWith("fa")
+                            ? p.labelFa
+                            : currentLang.startsWith("ar")
+                              ? p.labelAr
+                              : p.label;
                         const isActive = this.state.palette === p.key;
                         const previewVars = p.vars;
                         return (
@@ -249,10 +281,13 @@ export default class AppearanceUserSettingsTab extends React.Component<EmptyObje
                 <div className="mx_FanoosAppearance_row">
                     <label className="mx_FanoosAppearance_label">
                         {_t("settings|appearance|fanoos_sent_msg_color")}
-                        <span className="mx_FanoosAppearance_previewSwatch"
-                            style={{ background: this.state.sentMsgColor || "var(--cpd-color-green-300)" }} />
+                        <span
+                            className="mx_FanoosAppearance_previewSwatch"
+                            style={{ background: this.state.sentMsgColor || "var(--cpd-color-green-300)" }}
+                        />
                     </label>
-                    <input type="color"
+                    <input
+                        type="color"
                         value={this.state.sentMsgColor || "#c3f0d4"}
                         onChange={(e) => {
                             this.setState({ sentMsgColor: e.target.value });
@@ -261,31 +296,49 @@ export default class AppearanceUserSettingsTab extends React.Component<EmptyObje
                         className="mx_FanoosAppearance_colorPicker"
                     />
                     {this.state.sentMsgColor && (
-                        <AccessibleButton kind="link" onClick={() => {
-                            this.setState({ sentMsgColor: "" });
-                            SettingsStore.setValue("fanoos.sentMsgColor", null, SettingLevel.DEVICE, null);
-                        }}>{_t("action|reset")}</AccessibleButton>
+                        <AccessibleButton
+                            kind="link"
+                            onClick={() => {
+                                this.setState({ sentMsgColor: "" });
+                                SettingsStore.setValue("fanoos.sentMsgColor", null, SettingLevel.DEVICE, null);
+                            }}
+                        >
+                            {_t("action|reset")}
+                        </AccessibleButton>
                     )}
                 </div>
                 <div className="mx_FanoosAppearance_row">
                     <label className="mx_FanoosAppearance_label">
                         {_t("settings|appearance|fanoos_received_msg_color")}
-                        <span className="mx_FanoosAppearance_previewSwatch"
-                            style={{ background: this.state.receivedMsgColor || "var(--cpd-color-gray-300)" }} />
+                        <span
+                            className="mx_FanoosAppearance_previewSwatch"
+                            style={{ background: this.state.receivedMsgColor || "var(--cpd-color-gray-300)" }}
+                        />
                     </label>
-                    <input type="color"
+                    <input
+                        type="color"
                         value={this.state.receivedMsgColor || "#e8e8e8"}
                         onChange={(e) => {
                             this.setState({ receivedMsgColor: e.target.value });
-                            SettingsStore.setValue("fanoos.receivedMsgColor", null, SettingLevel.DEVICE, e.target.value);
+                            SettingsStore.setValue(
+                                "fanoos.receivedMsgColor",
+                                null,
+                                SettingLevel.DEVICE,
+                                e.target.value,
+                            );
                         }}
                         className="mx_FanoosAppearance_colorPicker"
                     />
                     {this.state.receivedMsgColor && (
-                        <AccessibleButton kind="link" onClick={() => {
-                            this.setState({ receivedMsgColor: "" });
-                            SettingsStore.setValue("fanoos.receivedMsgColor", null, SettingLevel.DEVICE, null);
-                        }}>{_t("action|reset")}</AccessibleButton>
+                        <AccessibleButton
+                            kind="link"
+                            onClick={() => {
+                                this.setState({ receivedMsgColor: "" });
+                                SettingsStore.setValue("fanoos.receivedMsgColor", null, SettingLevel.DEVICE, null);
+                            }}
+                        >
+                            {_t("action|reset")}
+                        </AccessibleButton>
                     )}
                 </div>
             </SettingsSubsection>
@@ -314,11 +367,15 @@ export default class AppearanceUserSettingsTab extends React.Component<EmptyObje
                                     SettingsStore.setValue("fanoos.chatBgPattern", null, SettingLevel.DEVICE, pt.key);
                                     this.setState({ chatBgPattern: pt.key });
                                 }}
-                                style={pt.key !== "none" ? {
-                                    backgroundImage: `url("${pt.svgTile}")`,
-                                    backgroundSize: pt.tileSize,
-                                    backgroundRepeat: "repeat",
-                                } : {}}
+                                style={
+                                    pt.key !== "none"
+                                        ? {
+                                              backgroundImage: `url("${pt.svgTile}")`,
+                                              backgroundSize: pt.tileSize,
+                                              backgroundRepeat: "repeat",
+                                          }
+                                        : {}
+                                }
                             >
                                 <span className="mx_FanoosAppearance_patternLabel">{label}</span>
                             </button>
@@ -353,7 +410,11 @@ export default class AppearanceUserSettingsTab extends React.Component<EmptyObje
                         {_t("settings|appearance|fanoos_chat_bg_opacity")}
                         <span className="mx_FanoosAppearance_value">{Math.round(this.state.chatBgOpacity * 100)}%</span>
                     </label>
-                    <input type="range" min="0" max="1" step="0.05"
+                    <input
+                        type="range"
+                        min="0"
+                        max="1"
+                        step="0.05"
                         value={this.state.chatBgOpacity}
                         onChange={(e) => {
                             const val = parseFloat(e.target.value);
@@ -364,8 +425,11 @@ export default class AppearanceUserSettingsTab extends React.Component<EmptyObje
                     />
                 </div>
                 <div className="mx_FanoosAppearance_row">
-                    <label className="mx_FanoosAppearance_label">{_t("settings|appearance|fanoos_chat_bg_color")}</label>
-                    <input type="color"
+                    <label className="mx_FanoosAppearance_label">
+                        {_t("settings|appearance|fanoos_chat_bg_color")}
+                    </label>
+                    <input
+                        type="color"
                         value={this.state.chatBgColor || "#ffffff"}
                         onChange={(e) => {
                             this.setState({ chatBgColor: e.target.value });
@@ -374,10 +438,15 @@ export default class AppearanceUserSettingsTab extends React.Component<EmptyObje
                         className="mx_FanoosAppearance_colorPicker"
                     />
                     {this.state.chatBgColor && (
-                        <AccessibleButton kind="link" onClick={() => {
-                            this.setState({ chatBgColor: "" });
-                            SettingsStore.setValue("fanoos.chatBgColor", null, SettingLevel.DEVICE, null);
-                        }}>{_t("action|reset")}</AccessibleButton>
+                        <AccessibleButton
+                            kind="link"
+                            onClick={() => {
+                                this.setState({ chatBgColor: "" });
+                                SettingsStore.setValue("fanoos.chatBgColor", null, SettingLevel.DEVICE, null);
+                            }}
+                        >
+                            {_t("action|reset")}
+                        </AccessibleButton>
                     )}
                 </div>
             </SettingsSubsection>
@@ -407,11 +476,14 @@ export default class AppearanceUserSettingsTab extends React.Component<EmptyObje
                             <label className="mx_FanoosAppearance_label">
                                 {_t(`settings|appearance|${i18nKey}` as any)}
                                 {current && (
-                                    <span className="mx_FanoosAppearance_previewSwatch"
-                                        style={{ background: current }} />
+                                    <span
+                                        className="mx_FanoosAppearance_previewSwatch"
+                                        style={{ background: current }}
+                                    />
                                 )}
                             </label>
-                            <input type="color"
+                            <input
+                                type="color"
                                 value={current || "#4a9ede"}
                                 onChange={(e) => {
                                     this.setState({ [stateKey]: e.target.value } as any);
@@ -420,19 +492,30 @@ export default class AppearanceUserSettingsTab extends React.Component<EmptyObje
                                 className="mx_FanoosAppearance_colorPicker"
                             />
                             {current && (
-                                <AccessibleButton kind="link" onClick={() => {
-                                    this.setState({ [stateKey]: "" } as any);
-                                    SettingsStore.setValue(sk, null, SettingLevel.DEVICE, null);
-                                }}>{_t("action|reset")}</AccessibleButton>
+                                <AccessibleButton
+                                    kind="link"
+                                    onClick={() => {
+                                        this.setState({ [stateKey]: "" } as any);
+                                        SettingsStore.setValue(sk, null, SettingLevel.DEVICE, null);
+                                    }}
+                                >
+                                    {_t("action|reset")}
+                                </AccessibleButton>
                             )}
                         </div>
                     );
                 })}
-                <AccessibleButton kind="secondary"
+                <AccessibleButton
+                    kind="secondary"
                     onClick={() => {
-                        (["fanoos.leftPanelColor", "fanoos.headerColor", "fanoos.composerColor", "fanoos.accentColor"] as Parameters<typeof SettingsStore.setValue>[0][]).forEach((k) =>
-                            SettingsStore.setValue(k, null, SettingLevel.DEVICE, null),
-                        );
+                        (
+                            [
+                                "fanoos.leftPanelColor",
+                                "fanoos.headerColor",
+                                "fanoos.composerColor",
+                                "fanoos.accentColor",
+                            ] as Parameters<typeof SettingsStore.setValue>[0][]
+                        ).forEach((k) => SettingsStore.setValue(k, null, SettingLevel.DEVICE, null));
                         this.setState({ leftPanelColor: "", headerColor: "", composerColor: "", accentColor: "" });
                     }}
                     className="mx_FanoosAppearance_resetAll"

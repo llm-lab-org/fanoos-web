@@ -1,4 +1,9 @@
 /*
+Copyright 2026 LLM-LAB (Fanoos fork)
+SPDX-License-Identifier: AGPL-3.0-only OR GPL-3.0-only OR LicenseRef-Element-Commercial
+*/
+
+/*
  * Shared hook for all Fanoos native audio players.
  * Handles playback state so each player only renders UI.
  */
@@ -75,7 +80,10 @@ export function useNativeAudio(src: string): NativeAudioState {
         preload: "metadata" as const,
         onPlay: () => setPlaying(true),
         onPause: () => setPlaying(false),
-        onEnded: () => { setPlaying(false); setCurrentTime(0); },
+        onEnded: () => {
+            setPlaying(false);
+            setCurrentTime(0);
+        },
         onTimeUpdate: () => setCurrentTime(audioRef.current?.currentTime ?? 0),
         onDurationChange: () => {
             const d = audioRef.current?.duration;
@@ -93,5 +101,18 @@ export function useNativeAudio(src: string): NativeAudioState {
         onError: () => setError(true),
     };
 
-    return { audioRef, audioProps, playing, currentTime, duration, speed, error, ready, togglePlay, seekTo, cycleSpeed, setSpeed };
+    return {
+        audioRef,
+        audioProps,
+        playing,
+        currentTime,
+        duration,
+        speed,
+        error,
+        ready,
+        togglePlay,
+        seekTo,
+        cycleSpeed,
+        setSpeed,
+    };
 }

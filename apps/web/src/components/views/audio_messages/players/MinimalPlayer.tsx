@@ -1,7 +1,13 @@
+/*
+Copyright 2026 LLM-LAB (Fanoos fork)
+SPDX-License-Identifier: AGPL-3.0-only OR GPL-3.0-only OR LicenseRef-Element-Commercial
+*/
+
 /**
  * Minimal player — slim horizontal bar with seek, time, and speed cycle button.
  */
 import React from "react";
+
 import { useNativeAudio, formatTime } from "../hooks/useNativeAudio";
 
 interface Props {
@@ -20,8 +26,13 @@ export function MinimalPlayer({ src }: Props): React.ReactElement {
         <div className="mx_FanoosPlayer mx_FanoosPlayer_minimal">
             <audio {...audioProps} />
 
-            <button className="mx_FanoosPlayer_playBtn" onClick={togglePlay} disabled={!ready} type="button"
-                aria-label={playing ? "Pause" : "Play"}>
+            <button
+                className="mx_FanoosPlayer_playBtn"
+                onClick={togglePlay}
+                disabled={!ready}
+                type="button"
+                aria-label={playing ? "Pause" : "Play"}
+            >
                 {playing ? "⏸" : "▶"}
             </button>
 
@@ -29,17 +40,27 @@ export function MinimalPlayer({ src }: Props): React.ReactElement {
                 <div className="mx_FanoosPlayer_progressTrack">
                     <div className="mx_FanoosPlayer_progressFill" style={{ width: `${progress}%` }} />
                 </div>
-                <input type="range" className="mx_FanoosPlayer_seekInput"
-                    min={0} max={duration || 0} step={0.1} value={currentTime}
+                <input
+                    type="range"
+                    className="mx_FanoosPlayer_seekInput"
+                    min={0}
+                    max={duration || 0}
+                    step={0.1}
+                    value={currentTime}
                     disabled={!ready || duration === 0}
-                    onChange={(e) => seekTo(Number(e.target.value))} />
+                    onChange={(e) => seekTo(Number(e.target.value))}
+                />
             </div>
 
             <span className="mx_FanoosPlayer_clock">
-                {formatTime(currentTime)}<span className="mx_FanoosPlayer_clockSep"> / </span>{formatTime(duration)}
+                {formatTime(currentTime)}
+                <span className="mx_FanoosPlayer_clockSep"> / </span>
+                {formatTime(duration)}
             </span>
 
-            <button className="mx_FanoosPlayer_speedBtn" onClick={cycleSpeed} type="button">{speed}x</button>
+            <button className="mx_FanoosPlayer_speedBtn" onClick={cycleSpeed} type="button">
+                {speed}x
+            </button>
         </div>
     );
 }

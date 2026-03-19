@@ -41,8 +41,7 @@ export default function LanguageSelector({ disabled }: IProps): JSX.Element {
                     lang={code}
                     disabled={disabled}
                     className={
-                        "mx_LanguageSelector_btn" +
-                        (current.startsWith(code) ? " mx_LanguageSelector_btn_active" : "")
+                        "mx_LanguageSelector_btn" + (current.startsWith(code) ? " mx_LanguageSelector_btn_active" : "")
                     }
                     onClick={() => onChange(code)}
                 >

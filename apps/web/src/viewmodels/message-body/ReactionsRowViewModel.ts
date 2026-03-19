@@ -55,7 +55,11 @@ export class ReactionsRowViewModel
         props: InternalProps,
     ): Pick<
         ReactionsRowViewSnapshot,
-        "isVisible" | "showAllButtonVisible" | "showAddReactionButton" | "addReactionButtonActive" | "addReactionButtonVisible"
+        | "isVisible"
+        | "showAllButtonVisible"
+        | "showAddReactionButton"
+        | "addReactionButtonActive"
+        | "addReactionButtonVisible"
     > => ({
         isVisible: props.isActionable && (props.reactionGroupCount > 0 || props.canReact),
         showAllButtonVisible: props.reactionGroupCount > MAX_ITEMS_WHEN_LIMITED + 1 && !props.showAll,

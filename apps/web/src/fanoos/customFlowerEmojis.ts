@@ -17,17 +17,16 @@ const U_CORNFLOWER = "\uE005";
 const U_MAGNOLIA = "\uE006";
 const U_JASMINE = "\uE007";
 // Combined / new flowers (E008–E00F)
-const U_ANEMONE = "\uE008";      // Poppy silhouette + Cornflower dark centre
-const U_CAMELLIA = "\uE009";     // Peony layers + Magnolia palette
-const U_IRIS = "\uE00A";         // Orchid shape + Cornflower blue
-const U_PANSY = "\uE00B";        // Peony petal count + two-tone Lavender colours
+const U_ANEMONE = "\uE008"; // Poppy silhouette + Cornflower dark centre
+const U_CAMELLIA = "\uE009"; // Peony layers + Magnolia palette
+const U_IRIS = "\uE00A"; // Orchid shape + Cornflower blue
+const U_PANSY = "\uE00B"; // Peony petal count + two-tone Lavender colours
 const U_CHRYSANTHEMUM = "\uE00C"; // Cornflower radial + Daffodil gold
-const U_FREESIA = "\uE00D";      // Jasmine trumpet + Daffodil yellow-orange
-const U_HIBISCUS = "\uE00E";     // Poppy broad petals + Orchid stamen tube
-const U_DAHLIA = "\uE00F";       // Cornflower dense radial + Peony deep red
+const U_FREESIA = "\uE00D"; // Jasmine trumpet + Daffodil yellow-orange
+const U_HIBISCUS = "\uE00E"; // Poppy broad petals + Orchid stamen tube
+const U_DAHLIA = "\uE00F"; // Cornflower dense radial + Peony deep red
 
-const svgToDataUrl = (svg: string): string =>
-    `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+const svgToDataUrl = (svg: string): string => `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 
 const LAVENDER_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
   <rect x="15" y="18" width="2" height="12" rx="1" fill="#4a7c3f"/>
@@ -220,17 +219,17 @@ const PANSY_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 // Chrysanthemum: cornflower dense radial petals in daffodil gold, layered
 const CHRYSANTHEMUM_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
   <rect x="15" y="24" width="2" height="7" rx="1" fill="#4a7c3f"/>
-  ${Array.from({length: 16}, (_, i) => {
-    const a = (i * 22.5) * Math.PI / 180;
-    const cx = (16 + Math.cos(a) * 7.5).toFixed(1);
-    const cy = (15 + Math.sin(a) * 7.5).toFixed(1);
-    return `<ellipse cx="${cx}" cy="${cy}" rx="1.4" ry="4.5" fill="#fdd835" transform="rotate(${i * 22.5} ${cx} ${cy})"/>`;
+  ${Array.from({ length: 16 }, (_, i) => {
+      const a = (i * 22.5 * Math.PI) / 180;
+      const cx = (16 + Math.cos(a) * 7.5).toFixed(1);
+      const cy = (15 + Math.sin(a) * 7.5).toFixed(1);
+      return `<ellipse cx="${cx}" cy="${cy}" rx="1.4" ry="4.5" fill="#fdd835" transform="rotate(${i * 22.5} ${cx} ${cy})"/>`;
   }).join("")}
-  ${Array.from({length: 12}, (_, i) => {
-    const a = (i * 30 + 15) * Math.PI / 180;
-    const cx = (16 + Math.cos(a) * 4.5).toFixed(1);
-    const cy = (15 + Math.sin(a) * 4.5).toFixed(1);
-    return `<ellipse cx="${cx}" cy="${cy}" rx="1.2" ry="3" fill="#f9a825" transform="rotate(${i * 30 + 15} ${cx} ${cy})"/>`;
+  ${Array.from({ length: 12 }, (_, i) => {
+      const a = ((i * 30 + 15) * Math.PI) / 180;
+      const cx = (16 + Math.cos(a) * 4.5).toFixed(1);
+      const cy = (15 + Math.sin(a) * 4.5).toFixed(1);
+      return `<ellipse cx="${cx}" cy="${cy}" rx="1.2" ry="3" fill="#f9a825" transform="rotate(${i * 30 + 15} ${cx} ${cy})"/>`;
   }).join("")}
   <circle cx="16" cy="15" r="3" fill="#f57f17"/>
   <circle cx="16" cy="15" r="1.8" fill="#e65100"/>
@@ -271,17 +270,17 @@ const HIBISCUS_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32
 // Dahlia: dense cornflower-style radial in peony deep red, double-layered
 const DAHLIA_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
   <rect x="15" y="25" width="2" height="6" rx="1" fill="#4a7c3f"/>
-  ${Array.from({length: 14}, (_, i) => {
-    const a = (i * (360/14)) * Math.PI / 180;
-    const cx = (16 + Math.cos(a) * 8).toFixed(1);
-    const cy = (15 + Math.sin(a) * 8).toFixed(1);
-    return `<ellipse cx="${cx}" cy="${cy}" rx="1.6" ry="4.8" fill="#b71c1c" transform="rotate(${(i*(360/14)).toFixed(1)} ${cx} ${cy})"/>`;
+  ${Array.from({ length: 14 }, (_, i) => {
+      const a = (i * (360 / 14) * Math.PI) / 180;
+      const cx = (16 + Math.cos(a) * 8).toFixed(1);
+      const cy = (15 + Math.sin(a) * 8).toFixed(1);
+      return `<ellipse cx="${cx}" cy="${cy}" rx="1.6" ry="4.8" fill="#b71c1c" transform="rotate(${(i * (360 / 14)).toFixed(1)} ${cx} ${cy})"/>`;
   }).join("")}
-  ${Array.from({length: 10}, (_, i) => {
-    const a = (i * 36 + 18) * Math.PI / 180;
-    const cx = (16 + Math.cos(a) * 5).toFixed(1);
-    const cy = (15 + Math.sin(a) * 5).toFixed(1);
-    return `<ellipse cx="${cx}" cy="${cy}" rx="1.4" ry="3.2" fill="#c62828" transform="rotate(${(i * 36 + 18).toFixed(1)} ${cx} ${cy})"/>`;
+  ${Array.from({ length: 10 }, (_, i) => {
+      const a = ((i * 36 + 18) * Math.PI) / 180;
+      const cx = (16 + Math.cos(a) * 5).toFixed(1);
+      const cy = (15 + Math.sin(a) * 5).toFixed(1);
+      return `<ellipse cx="${cx}" cy="${cy}" rx="1.4" ry="3.2" fill="#c62828" transform="rotate(${(i * 36 + 18).toFixed(1)} ${cx} ${cy})"/>`;
   }).join("")}
   <circle cx="16" cy="15" r="3.2" fill="#4a0000"/>
   <circle cx="16" cy="15" r="1.8" fill="#7f0000"/>
@@ -308,7 +307,7 @@ export const CUSTOM_EMOJI_IMAGES: Record<string, string> = {
 };
 
 const makeCustomEmoji = (unicode: string, hexcode: string, label: string, shortcodes: string[]): IEmoji =>
-    ({ unicode, hexcode, label, shortcodes } as IEmoji);
+    ({ unicode, hexcode, label, shortcodes }) as IEmoji;
 
 export const CUSTOM_FLOWER_EMOJIS: IEmoji[] = [
     makeCustomEmoji(U_LAVENDER, "E000", "Lavender", ["lavender"]),

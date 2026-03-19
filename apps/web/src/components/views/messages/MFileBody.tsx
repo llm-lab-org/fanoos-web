@@ -16,8 +16,8 @@ import {
     VideoCallSolidIcon,
     VolumeOnSolidIcon,
 } from "@vector-im/compound-design-tokens/assets/web/icons";
-import { FileTypeIcon } from "./FileTypeIcon";
 
+import { FileTypeIcon } from "./FileTypeIcon";
 import { _t } from "../../../languageHandler";
 import Modal from "../../../Modal";
 import AccessibleButton from "../elements/AccessibleButton";
@@ -217,9 +217,8 @@ export default class MFileBody extends React.Component<IProps, IState> {
                 // Telegram-style file bubble
                 const sizeBytes = this.content.info?.size;
                 const sizeStr = sizeBytes != null ? fileSize(sizeBytes) : null;
-                const mimeLabel = fileType !== "application/octet-stream"
-                    ? fileType.split("/").pop()?.toUpperCase()
-                    : null;
+                const mimeLabel =
+                    fileType !== "application/octet-stream" ? fileType.split("/").pop()?.toUpperCase() : null;
                 const meta = [sizeStr, mimeLabel].filter(Boolean).join(" · ");
 
                 // Display filename without extension in the text area
@@ -241,7 +240,10 @@ export default class MFileBody extends React.Component<IProps, IState> {
                                 className="mx_MFileBody_tg_dl"
                                 type="button"
                                 aria-label={_t("action|download")}
-                                onClick={(e) => { e.stopPropagation(); this.onPlaceholderClick(); }}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    this.onPlaceholderClick();
+                                }}
                             >
                                 <DownloadIcon width={18} height={18} />
                             </button>

@@ -16,15 +16,19 @@ Please see LICENSE files in the repository root for full details.
     border-radius: 8px;
     margin-bottom: 12px;
     cursor: pointer;
-    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    transition:
+        border-color 0.15s ease,
+        box-shadow 0.15s ease;
     background: $background;
 
     &:hover {
         border-color: $accent;
-        box-shadow: 0 0 0 2px rgba(0, 122, 204, 0.12);
+        box-shadow: 0 0 0 2px rgb(0, 122, 204, 0.12);
     }
 
-    h2 { display: none; }
+    h2 {
+        display: none;
+    }
 
     .mx_ServerPicker_fieldIcon {
         color: $secondary-content;
@@ -64,9 +68,6 @@ Please see LICENSE files in the repository root for full details.
         opacity: 0.6;
     }
 }
-
-/* hide the login-type switcher (email/phone/username toggle) */
-.mx_Login_type_container { display: none; }
 
 /* Dark pill sign-in button */
 .mx_Login_submit {
@@ -119,8 +120,9 @@ Please see LICENSE files in the repository root for full details.
     color: #ff8d13; /* Only used here */
 }
 
+/* hide the login-type switcher (email/phone/username toggle) */
 .mx_Login_type_container {
-    display: flex;
+    display: none;
     align-items: center;
     color: $authpage-primary-color;
 

@@ -1,4 +1,9 @@
 /*
+Copyright 2026 LLM-LAB (Fanoos fork)
+SPDX-License-Identifier: AGPL-3.0-only OR GPL-3.0-only OR LicenseRef-Element-Commercial
+*/
+
+/*
  * Fanoos — file type icons for file messages.
  * "doc" variant: document page SVG (for small inline use).
  * "circle" variant: filled circle with extension badge (Telegram-style).
@@ -18,18 +23,27 @@ type IconDef = { color: string; badge?: string };
 
 function iconFor(mime: string): IconDef {
     const m = mime.toLowerCase();
-    if (m === "application/pdf")
-        return { color: "#e53935", badge: "PDF" };
+    if (m === "application/pdf") return { color: "#e53935", badge: "PDF" };
     if (m.includes("wordprocessingml") || m === "application/msword" || m === "application/vnd.oasis.opendocument.text")
         return { color: "#1565c0", badge: "DOC" };
     if (m.includes("spreadsheetml") || m === "application/vnd.ms-excel" || m.includes("opendocument.spreadsheet"))
         return { color: "#2e7d32", badge: "XLS" };
-    if (m.includes("presentationml") || m === "application/vnd.ms-powerpoint" || m.includes("opendocument.presentation"))
+    if (
+        m.includes("presentationml") ||
+        m === "application/vnd.ms-powerpoint" ||
+        m.includes("opendocument.presentation")
+    )
         return { color: "#e65100", badge: "PPT" };
-    if (m === "application/zip" || m === "application/x-zip-compressed" || m === "application/x-rar-compressed" || m.includes("zip") || m.includes("tar") || m.includes("gzip"))
+    if (
+        m === "application/zip" ||
+        m === "application/x-zip-compressed" ||
+        m === "application/x-rar-compressed" ||
+        m.includes("zip") ||
+        m.includes("tar") ||
+        m.includes("gzip")
+    )
         return { color: "#f9a825", badge: "ZIP" };
-    if (m.startsWith("text/"))
-        return { color: "#546e7a", badge: "TXT" };
+    if (m.startsWith("text/")) return { color: "#546e7a", badge: "TXT" };
     if (m.includes("javascript") || m.includes("json") || m.includes("xml") || m.includes("html"))
         return { color: "#6a1b9a", badge: "CODE" };
     return { color: "#607d8b" };
@@ -68,19 +82,20 @@ function DocIcon({ mimeType = "", size = 36 }: { mimeType?: string; size?: numbe
                 strokeWidth="1.2"
                 opacity="0.6"
             />
-            {!badge && lineY.map((y, i) => (
-                <line
-                    key={i}
-                    x1={lineX1}
-                    y1={y}
-                    x2={i === 2 ? Math.round(w * 0.55) : lineX2}
-                    y2={y}
-                    stroke={color}
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    opacity="0.6"
-                />
-            ))}
+            {!badge &&
+                lineY.map((y, i) => (
+                    <line
+                        key={i}
+                        x1={lineX1}
+                        y1={y}
+                        x2={i === 2 ? Math.round(w * 0.55) : lineX2}
+                        y2={y}
+                        stroke={color}
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        opacity="0.6"
+                    />
+                ))}
             {badge && (
                 <>
                     <rect
@@ -109,14 +124,20 @@ function DocIcon({ mimeType = "", size = 36 }: { mimeType?: string; size?: numbe
     );
 }
 
-function CircleIcon({ mimeType = "", size = 48, label }: { mimeType?: string; size?: number; label?: string }): React.ReactElement {
+function CircleIcon({
+    mimeType = "",
+    size = 48,
+    label,
+}: {
+    mimeType?: string;
+    size?: number;
+    label?: string;
+}): React.ReactElement {
     const { color, badge } = iconFor(mimeType);
     const r = size / 2;
     // Use provided label (filename initials), falling back to mime badge
     const text = label ?? badge;
-    const fontSize = text
-        ? Math.round(size * (text.length > 2 ? 0.22 : 0.28))
-        : Math.round(size * 0.4);
+    const fontSize = text ? Math.round(size * (text.length > 2 ? 0.22 : 0.28)) : Math.round(size * 0.4);
 
     return (
         <svg

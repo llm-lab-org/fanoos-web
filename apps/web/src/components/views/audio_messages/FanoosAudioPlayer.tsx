@@ -1,7 +1,13 @@
+/*
+Copyright 2026 LLM-LAB (Fanoos fork)
+SPDX-License-Identifier: AGPL-3.0-only OR GPL-3.0-only OR LicenseRef-Element-Commercial
+*/
+
 /**
  * Routes to the correct Fanoos audio player based on the user's setting.
  */
 import React from "react";
+
 import { type MediaEventHelper } from "../../../utils/MediaEventHelper";
 import { useAudioBlobUrl } from "./hooks/useAudioBlobUrl";
 import { MinimalPlayer } from "./players/MinimalPlayer";
@@ -17,9 +23,12 @@ interface Props {
 
 function PlayerFromSrc({ src, style }: { src: string; style: AudioPlayerStyle }): React.ReactElement {
     switch (style) {
-        case "telegram": return <TelegramPlayer src={src} />;
-        case "modern":   return <ModernPlayer   src={src} />;
-        default:         return <MinimalPlayer  src={src} />;
+        case "telegram":
+            return <TelegramPlayer src={src} />;
+        case "modern":
+            return <ModernPlayer src={src} />;
+        default:
+            return <MinimalPlayer src={src} />;
     }
 }
 
@@ -28,7 +37,7 @@ export function FanoosAudioPlayer({ mediaEventHelper }: Props): React.ReactEleme
     const style = (SettingsStore.getValue("fanoos.audioPlayerStyle") as AudioPlayerStyle) ?? "minimal";
 
     if (error) return <div className="mx_FanoosPlayer mx_FanoosPlayer_error">⚠ خطا در پخش صدا</div>;
-    if (!src)  return <div className="mx_FanoosPlayer mx_FanoosPlayer_loading">…</div>;
+    if (!src) return <div className="mx_FanoosPlayer mx_FanoosPlayer_loading">…</div>;
 
     return <PlayerFromSrc src={src} style={style} />;
 }

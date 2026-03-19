@@ -1595,9 +1595,16 @@ function SentReceipt({ messageState }: ISentReceiptProps): JSX.Element {
         label = _t("timeline|send_state_encrypting");
         tickContent = (
             <span className="mx_DeliveryStatus mx_DeliveryStatus_sending" aria-label={label}>
-                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                    <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.5"/>
-                    <path d="M6 3V6L8 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                <svg
+                    width="12"
+                    height="12"
+                    viewBox="0 0 12 12"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                    aria-hidden="true"
+                >
+                    <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.5" />
+                    <path d="M6 3V6L8 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
                 </svg>
             </span>
         );
@@ -1606,8 +1613,21 @@ function SentReceipt({ messageState }: ISentReceiptProps): JSX.Element {
         label = _t("timeline|send_state_sent");
         tickContent = (
             <span className="mx_DeliveryStatus mx_DeliveryStatus_sent" aria-label={label}>
-                <svg width="14" height="10" viewBox="0 0 14 10" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                    <path d="M1 5L5 9L13 1" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                <svg
+                    width="14"
+                    height="10"
+                    viewBox="0 0 14 10"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                    aria-hidden="true"
+                >
+                    <path
+                        d="M1 5L5 9L13 1"
+                        stroke="currentColor"
+                        strokeWidth="1.8"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                    />
                 </svg>
             </span>
         );

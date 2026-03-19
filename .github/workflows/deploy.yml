@@ -1,37 +1,37 @@
 name: Deploy
 
 on:
-  push:
-    branches: [develop]
-  workflow_dispatch:
+    push:
+        branches: [develop]
+    workflow_dispatch:
 
 jobs:
-  deploy-quranic:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Deploy fanoos.quranic.network
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.DEPLOY_HOST_QURANIC }}
-          username: root
-          key: ${{ secrets.DEPLOY_SSH_KEY_QURANIC }}
-          script: |
-            cd /opt/fanoos
-            GIT_SSH_COMMAND="ssh -i /root/.ssh/github_fanoos_deploy" git pull
-            docker compose --env-file /opt/fanoos-quranic.env up --build -d
-            docker image prune -f
+    deploy-quranic:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Deploy fanoos.quranic.network
+              uses: appleboy/ssh-action@v1
+              with:
+                  host: ${{ secrets.DEPLOY_HOST_QURANIC }}
+                  username: root
+                  key: ${{ secrets.DEPLOY_SSH_KEY_QURANIC }}
+                  script: |
+                      cd /opt/fanoos
+                      GIT_SSH_COMMAND="ssh -i /root/.ssh/github_fanoos_deploy" git pull
+                      docker compose --env-file /opt/fanoos-quranic.env up --build -d
+                      docker image prune -f
 
-  deploy-llmlab:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Deploy fanoos.llm-lab.org
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.DEPLOY_HOST_LLMLAB }}
-          username: root
-          key: ${{ secrets.DEPLOY_SSH_KEY_LLMLAB }}
-          script: |
-            cd /opt/fanoos
-            GIT_SSH_COMMAND="ssh -i /root/.ssh/github_fanoos_deploy" git pull
-            docker compose --env-file /opt/fanoos-llmlab.env up --build -d
-            docker image prune -f
+    deploy-llmlab:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Deploy fanoos.llm-lab.org
+              uses: appleboy/ssh-action@v1
+              with:
+                  host: ${{ secrets.DEPLOY_HOST_LLMLAB }}
+                  username: root
+                  key: ${{ secrets.DEPLOY_SSH_KEY_LLMLAB }}
+                  script: |
+                      cd /opt/fanoos
+                      GIT_SSH_COMMAND="ssh -i /root/.ssh/github_fanoos_deploy" git pull
+                      docker compose --env-file /opt/fanoos-llmlab.env up --build -d
+                      docker image prune -f

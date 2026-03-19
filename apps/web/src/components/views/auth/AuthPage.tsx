@@ -113,7 +113,9 @@ export default class AuthPage extends React.PureComponent<React.PropsWithChildre
         return (
             <div className="mx_AuthPage" style={pageStyle}>
                 <div className={`mx_AuthPage_poem${poemKey === "en" ? " mx_AuthPage_poem_en" : ""}`} dir={poem.dir}>
-                    <p className="mx_AuthPage_poem_main" style={{ fontFamily: poem.font }}>{poem.main}</p>
+                    <p className="mx_AuthPage_poem_main" style={{ fontFamily: poem.font }}>
+                        {poem.main}
+                    </p>
                     {poem.sub && <p className="mx_AuthPage_poem_sub">{poem.sub}</p>}
                 </div>
                 <div className={modalClasses} style={modalStyle}>

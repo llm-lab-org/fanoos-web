@@ -1,8 +1,14 @@
+/*
+Copyright 2026 LLM-LAB (Fanoos fork)
+SPDX-License-Identifier: AGPL-3.0-only OR GPL-3.0-only OR LicenseRef-Element-Commercial
+*/
+
 /**
  * Modern player — card with large play button, seek bar, elapsed/total time,
  * and a row of speed buttons so all options are visible at once.
  */
 import React from "react";
+
 import { useNativeAudio, formatTime, SPEEDS } from "../hooks/useNativeAudio";
 
 interface Props {
@@ -23,8 +29,13 @@ export function ModernPlayer({ src }: Props): React.ReactElement {
 
             {/* top row: play + time */}
             <div className="mx_FanoosPlayer_modernTop">
-                <button className="mx_FanoosPlayer_modernPlay" onClick={togglePlay} disabled={!ready} type="button"
-                    aria-label={playing ? "Pause" : "Play"}>
+                <button
+                    className="mx_FanoosPlayer_modernPlay"
+                    onClick={togglePlay}
+                    disabled={!ready}
+                    type="button"
+                    aria-label={playing ? "Pause" : "Play"}
+                >
                     {playing ? "⏸" : "▶"}
                 </button>
                 <div className="mx_FanoosPlayer_modernSeekArea">
@@ -32,10 +43,16 @@ export function ModernPlayer({ src }: Props): React.ReactElement {
                         <div className="mx_FanoosPlayer_progressTrack">
                             <div className="mx_FanoosPlayer_progressFill" style={{ width: `${progress}%` }} />
                         </div>
-                        <input type="range" className="mx_FanoosPlayer_seekInput"
-                            min={0} max={duration || 0} step={0.1} value={currentTime}
+                        <input
+                            type="range"
+                            className="mx_FanoosPlayer_seekInput"
+                            min={0}
+                            max={duration || 0}
+                            step={0.1}
+                            value={currentTime}
                             disabled={!ready || duration === 0}
-                            onChange={(e) => seekTo(Number(e.target.value))} />
+                            onChange={(e) => seekTo(Number(e.target.value))}
+                        />
                     </div>
                     <div className="mx_FanoosPlayer_modernTimes">
                         <span className="mx_FanoosPlayer_clock">{formatTime(currentTime)}</span>

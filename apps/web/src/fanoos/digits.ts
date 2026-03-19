@@ -16,7 +16,7 @@ Please see LICENSE files in the repository root for full details.
  */
 
 const PERSIAN_DIGITS = ["۰", "۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸", "۹"];
-const ARABIC_DIGITS  = ["٠", "١", "٢", "٣", "٤", "٥", "٦", "٧", "٨", "٩"];
+const ARABIC_DIGITS = ["٠", "١", "٢", "٣", "٤", "٥", "٦", "٧", "٨", "٩"];
 
 type DigitSet = typeof PERSIAN_DIGITS;
 
@@ -38,14 +38,6 @@ export function toLocaleDigits(value: string | number, locale?: string): string 
     if (lang.startsWith("fa")) return replaceDigits(str, PERSIAN_DIGITS);
     if (lang.startsWith("ar")) return replaceDigits(str, ARABIC_DIGITS);
     return str;
-}
-
-/**
- * Convert a plain number to a locale-aware string.
- * Convenience wrapper around `toLocaleDigits`.
- */
-export function formatNumber(n: number, locale?: string): string {
-    return toLocaleDigits(n, locale);
 }
 
 /**

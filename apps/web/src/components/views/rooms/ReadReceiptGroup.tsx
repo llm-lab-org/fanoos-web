@@ -94,8 +94,21 @@ export function ReadReceiptGroup({
                     <div className="mx_ReadReceiptGroup_button">
                         {/* Single tick: message sent to server */}
                         <span className="mx_DeliveryStatus mx_DeliveryStatus_sent" aria-label="Sent">
-                            <svg width="14" height="10" viewBox="0 0 14 10" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                                <path d="M1 5L5 9L13 1" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                            <svg
+                                width="14"
+                                height="10"
+                                viewBox="0 0 14 10"
+                                fill="none"
+                                xmlns="http://www.w3.org/2000/svg"
+                                aria-hidden="true"
+                            >
+                                <path
+                                    d="M1 5L5 9L13 1"
+                                    stroke="currentColor"
+                                    strokeWidth="1.8"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                />
                             </svg>
                         </span>
                         <span className="mx_ReadReceiptGroup_container" />
@@ -151,7 +164,10 @@ export function ReadReceiptGroup({
         contextMenu = (
             <ContextMenu
                 menuClassName="mx_ReadReceiptGroup_popup"
-                onFinished={() => { setSearchQuery(""); closeMenu(); }}
+                onFinished={() => {
+                    setSearchQuery("");
+                    closeMenu();
+                }}
                 {...aboveLeftOf(buttonRect)}
             >
                 <SectionHeader className="mx_ReadReceiptGroup_title">
@@ -175,7 +191,10 @@ export function ReadReceiptGroup({
                             key={receipt.userId}
                             {...receipt}
                             isTwelveHour={isTwelveHour}
-                            onAfterClick={() => { setSearchQuery(""); closeMenu(); }}
+                            onAfterClick={() => {
+                                setSearchQuery("");
+                                closeMenu();
+                            }}
                         />
                     ))}
                     {filteredReceipts.length === 0 && (
@@ -203,9 +222,28 @@ export function ReadReceiptGroup({
                     >
                         {/* Double tick: message seen — click to see who */}
                         <span className="mx_DeliveryStatus mx_DeliveryStatus_seen" aria-label="Seen">
-                            <svg width="18" height="10" viewBox="0 0 18 10" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                                <path d="M1 5L5 9L13 1" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                                <path d="M5 5L9 9L17 1" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                            <svg
+                                width="18"
+                                height="10"
+                                viewBox="0 0 18 10"
+                                fill="none"
+                                xmlns="http://www.w3.org/2000/svg"
+                                aria-hidden="true"
+                            >
+                                <path
+                                    d="M1 5L5 9L13 1"
+                                    stroke="currentColor"
+                                    strokeWidth="1.8"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                />
+                                <path
+                                    d="M5 5L9 9L17 1"
+                                    stroke="currentColor"
+                                    strokeWidth="1.8"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                />
                             </svg>
                         </span>
                         {/* Keep avatars in DOM for animation anchoring, but visually hidden */}

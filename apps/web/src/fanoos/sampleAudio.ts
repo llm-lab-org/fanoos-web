@@ -1,3 +1,8 @@
+/*
+Copyright 2026 LLM-LAB (Fanoos fork)
+SPDX-License-Identifier: AGPL-3.0-only OR GPL-3.0-only OR LicenseRef-Element-Commercial
+*/
+
 /**
  * Generates a short WAV sample audio clip for player previews in settings.
  * Produces a simple 4-note melody (C-E-G-E) at 22050 Hz, ~4 seconds.
@@ -27,13 +32,13 @@ export function getSampleAudioUrl(): string {
     view.setUint32(4, 36 + numSamples * 2, true);
     writeString(view, 8, "WAVE");
     writeString(view, 12, "fmt ");
-    view.setUint32(16, 16, true);      // PCM chunk size
-    view.setUint16(20, 1, true);       // PCM format
-    view.setUint16(22, 1, true);       // mono
+    view.setUint32(16, 16, true); // PCM chunk size
+    view.setUint16(20, 1, true); // PCM format
+    view.setUint16(22, 1, true); // mono
     view.setUint32(24, sampleRate, true);
     view.setUint32(28, sampleRate * 2, true);
-    view.setUint16(32, 2, true);       // block align
-    view.setUint16(34, 16, true);      // bits per sample
+    view.setUint16(32, 2, true); // block align
+    view.setUint16(34, 16, true); // bits per sample
     writeString(view, 36, "data");
     view.setUint32(40, numSamples * 2, true);
 

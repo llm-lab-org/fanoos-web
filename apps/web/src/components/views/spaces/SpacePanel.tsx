@@ -31,6 +31,7 @@ import {
     PlusIcon,
     ChevronRightIcon,
 } from "@vector-im/compound-design-tokens/assets/web/icons";
+import { IconButton, Tooltip } from "@vector-im/compound-web";
 
 import { _t } from "../../../languageHandler";
 import { toRightOf, useContextMenu } from "../../structures/ContextMenu";
@@ -75,7 +76,6 @@ import { shouldShowComponent } from "../../../customisations/helpers/UIComponent
 import { UIComponent } from "../../../settings/UIFeature";
 import { ThreadsActivityCentre } from "./threads-activity-centre/";
 import AccessibleButton from "../elements/AccessibleButton";
-import { IconButton, Tooltip } from "@vector-im/compound-web";
 import { Landmark, LandmarkNavigation } from "../../../accessibility/LandmarkNavigation";
 import { KeyboardShortcut } from "../settings/KeyboardShortcut";
 import { ModuleApi } from "../../../modules/Api.ts";
@@ -245,10 +245,7 @@ const CreateSpaceButton: React.FC<Pick<IInnerSpacePanelProps, "isPanelCollapsed"
     let contextMenu: JSX.Element | undefined;
     if (menuDisplayed && handle.current) {
         contextMenu = (
-            <SpaceCreateMenu
-                {...toRightOf(handle.current.getBoundingClientRect(), 0)}
-                onFinished={closeMenu}
-            />
+            <SpaceCreateMenu {...toRightOf(handle.current.getBoundingClientRect(), 0)} onFinished={closeMenu} />
         );
     }
 
