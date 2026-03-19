@@ -258,6 +258,13 @@ export default (env: string, argv: Record<string, any>): webpack.Configuration =
                 // excalidraw's pre-built bundle imports roughjs/bin/rough without .js extension
                 "roughjs/bin/rough": path.resolve(__dirname, "../../node_modules/roughjs/bin/rough.js"),
                 "roughjs/bin/generator": path.resolve(__dirname, "../../node_modules/roughjs/bin/generator.js"),
+
+                // excalidraw depends on nanoid v3 (which has index.cjs); pin to its nested copy
+                // so webpack doesn't resolve to the top-level nanoid v4 which lacks index.cjs
+                "nanoid/non-secure": path.resolve(
+                    __dirname,
+                    "../../node_modules/@excalidraw/excalidraw/node_modules/nanoid/non-secure",
+                ),
             },
             fallback: {
                 // Mock out the NodeFS module: The opus decoder imports this wrongly.
