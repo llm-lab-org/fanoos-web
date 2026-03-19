@@ -1,4 +1,9 @@
 /*
+Copyright 2026 LLM-LAB (Fanoos fork)
+SPDX-License-Identifier: AGPL-3.0-only OR GPL-3.0-only OR LicenseRef-Element-Commercial
+*/
+
+/*
  * Fanoos font management — applies the user's chosen app font by overriding
  * the --cpd-font-family-sans CSS custom property on the document root.
  */

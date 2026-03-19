@@ -1,4 +1,10 @@
+/*
+Copyright 2026 LLM-LAB (Fanoos fork)
+SPDX-License-Identifier: AGPL-3.0-only OR GPL-3.0-only OR LicenseRef-Element-Commercial
+*/
+
 import { useEffect, useState } from "react";
+
 import { type MediaEventHelper } from "../../../../utils/MediaEventHelper";
 
 export function useAudioBlobUrl(mediaEventHelper?: MediaEventHelper): { src: string; error: boolean } {

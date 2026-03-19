@@ -5,7 +5,6 @@
  * Please see LICENSE files in the repository root for full details.
  */
 
-import React from "react";
 import { logger } from "matrix-js-sdk/src/logger";
 import { MapWithDefault } from "matrix-js-sdk/src/utils";
 import { type TranslationStringsObject } from "@matrix-org/react-sdk-module-api";
@@ -23,8 +22,9 @@ import {
     getLocale,
     setMissingEntryGenerator as setMissingEntryGeneratorSharedComponents,
 } from "@element-hq/web-shared-components";
-import { localizeDigits } from "./fanoos/digits";
 
+import type React from "react";
+import { localizeDigits } from "./fanoos/digits";
 import SettingsStore from "./settings/SettingsStore";
 import PlatformPeg from "./PlatformPeg";
 import { SettingLevel } from "./settings/SettingLevel";
