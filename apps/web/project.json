@@ -26,7 +26,7 @@
             "options": { "cwd": "apps/web" }
         },
         "start": {
-            "command": "webpack-dev-server --disable-interpret --output-path webapp --output-filename=bundles/_dev_/[name].js --output-chunk-filename=bundles/_dev_/[name].js --mode development",
+            "command": "webpack-dev-server --disable-interpret --output-path webapp --output-filename=bundles/_dev_/[name].js --output-chunk-filename=bundles/_dev_/[name].js --mode development --port 8080",
             "dependsOn": ["prebuild:module_system", "prebuild:rethemendex", "^start"],
             "continuous": true,
             "options": { "cwd": "apps/web" }
