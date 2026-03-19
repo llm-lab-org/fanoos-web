@@ -57,10 +57,6 @@ export default class ServerPickerDialog extends React.PureComponent<IProps, ISta
         };
     }
 
-    private onDefaultChosen = (): void => {
-        this.setState({ defaultChosen: true });
-    };
-
     private onOtherChosen = (): void => {
         this.setState({ defaultChosen: false });
     };
