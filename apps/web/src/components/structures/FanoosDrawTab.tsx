@@ -300,6 +300,7 @@ export const FanoosDrawTab = ({ isDayMode, client }: Props): React.ReactElement 
                     }
                 >
                     <ExcalidrawWithMenu
+                        key={langCode}
                         excalidrawAPI={(api: any) => {
                             apiRef.current = api;
                         }}
