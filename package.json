@@ -72,7 +72,8 @@
             "jest-fixed-jsdom": "patches/jest-fixed-jsdom.patch",
             "jsdom": "patches/jsdom.patch",
             "rollup": "patches/rollup.patch",
-            "knip": "patches/knip.patch"
+            "knip": "patches/knip.patch",
+            "@excalidraw/excalidraw@0.18.0": "patches/@excalidraw__excalidraw@0.18.0.patch"
         },
         "peerDependencyRules": {
             "allowedVersions": {
