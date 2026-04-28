@@ -155,6 +155,7 @@ export const FanoosDrawTab = ({ isDayMode, client }: Props): React.ReactElement 
     const [filename, setFilename] = useState("drawing");
     const apiRef = useRef<any>(null);
     const filenameInputRef = useRef<HTMLInputElement>(null);
+    const canvasRef = useRef<HTMLDivElement>(null);
     const [langCode, setLangCode] = useState(() => toExcalidrawLang(getUserLanguage()));
 
     // Re-sync Excalidraw language if the app language changes while the tab is open
@@ -174,6 +175,43 @@ export const FanoosDrawTab = ({ isDayMode, client }: Props): React.ReactElement 
             setTimeout(() => filenameInputRef.current?.select(), 50);
         }
     }, [showDialog]);
+
+    // Make Excalidraw's properties panel collapsible
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+
+        let collapsed = false;
+
+        const setup = (): void => {
+            const island = canvas.querySelector<HTMLElement>(".selected-shape-actions .Island");
+            if (!island || island.querySelector(".fanoos-collapse-toggle")) return;
+
+            const btn = document.createElement("button");
+            btn.className = "fanoos-collapse-toggle";
+            btn.setAttribute("aria-label", "Toggle properties panel");
+            btn.type = "button";
+            btn.innerHTML =
+                '<svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">' +
+                '<path d="M2 10l6-6 6 6" stroke="currentColor" stroke-width="2" ' +
+                'fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+            if (collapsed) island.classList.add("fanoos-panel-collapsed");
+
+            btn.addEventListener("click", (e: MouseEvent) => {
+                collapsed = !collapsed;
+                island.classList.toggle("fanoos-panel-collapsed", collapsed);
+                e.stopPropagation();
+            });
+
+            island.prepend(btn);
+        };
+
+        setup();
+        const observer = new MutationObserver(setup);
+        observer.observe(canvas, { childList: true, subtree: true });
+        return () => observer.disconnect();
+    }, []);
 
     const handleSaveConfirm = useCallback(async () => {
         if (!apiRef.current) return;
@@ -291,7 +329,7 @@ export const FanoosDrawTab = ({ isDayMode, client }: Props): React.ReactElement 
                 </div>
             )}
 
-            <div className="mx_FanoosDashboard_drawCanvas">
+            <div className="mx_FanoosDashboard_drawCanvas" ref={canvasRef}>
                 <Suspense
                     fallback={
                         <div className={`mx_FanoosDashboard_drawLoading${day ? " day" : ""}`}>

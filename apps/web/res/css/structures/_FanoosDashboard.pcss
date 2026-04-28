@@ -4533,6 +4533,37 @@ $userCols: 1fr 68px 90px 86px 86px 138px;
     .excalidraw .publish-library-note {
         display: none !important;
     }
+
+    /* ── Collapsible properties panel ─────────────────────────────────── */
+    .excalidraw .selected-shape-actions .Island .fanoos-collapse-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        height: 20px;
+        border: none;
+        background: transparent;
+        cursor: pointer;
+        padding: 0;
+        color: var(--icon-fill-color, #888);
+        opacity: 0.4;
+        pointer-events: auto !important;
+        transition: opacity 0.15s;
+    }
+    .excalidraw .selected-shape-actions .Island .fanoos-collapse-toggle:hover {
+        opacity: 1;
+    }
+    .excalidraw .selected-shape-actions .Island .fanoos-collapse-toggle svg {
+        width: 14px;
+        height: 14px;
+        transition: transform 0.2s;
+    }
+    .excalidraw .selected-shape-actions .Island.fanoos-panel-collapsed .fanoos-collapse-toggle svg {
+        transform: rotate(180deg);
+    }
+    .excalidraw .selected-shape-actions .Island.fanoos-panel-collapsed > *:not(.fanoos-collapse-toggle) {
+        display: none;
+    }
 }
 /* Filename save dialog */
 .mx_FanoosDashboard_drawDialog {
