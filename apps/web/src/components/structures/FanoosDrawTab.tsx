@@ -105,6 +105,7 @@ interface ExcalidrawWrapperProps {
     initialData: any;
     theme: "light" | "dark";
     langCode: string;
+    onChange?: (elements: readonly any[], appState: any, files: any) => void;
 }
 
 /**
@@ -117,12 +118,19 @@ const ExcalidrawWithMenu = lazy(async () => {
     const { Excalidraw, MainMenu } = await import("@excalidraw/excalidraw");
     const D = MainMenu.DefaultItems;
 
-    const Wrapper = ({ excalidrawAPI, initialData, theme, langCode }: ExcalidrawWrapperProps): React.ReactElement => (
+    const Wrapper = ({
+        excalidrawAPI,
+        initialData,
+        theme,
+        langCode,
+        onChange,
+    }: ExcalidrawWrapperProps): React.ReactElement => (
         <Excalidraw
             excalidrawAPI={excalidrawAPI}
             initialData={initialData}
             theme={theme}
             langCode={langCode}
+            onChange={onChange}
             UIOptions={{ canvasActions: { saveToActiveFile: false } }}
         >
             <MainMenu>
@@ -156,7 +164,23 @@ export const FanoosDrawTab = ({ isDayMode, client }: Props): React.ReactElement 
     const apiRef = useRef<any>(null);
     const filenameInputRef = useRef<HTMLInputElement>(null);
     const canvasRef = useRef<HTMLDivElement>(null);
+    const autoSaveTimer = useRef<number>(0);
     const [langCode, setLangCode] = useState(() => toExcalidrawLang(getUserLanguage()));
+
+    // Auto-save drawing to localStorage on every change (debounced)
+    const handleChange = useCallback((elements: readonly any[], appState: any) => {
+        clearTimeout(autoSaveTimer.current);
+        autoSaveTimer.current = window.setTimeout(() => {
+            if (elements.length) {
+                localStorage.setItem(
+                    STORAGE_KEY,
+                    JSON.stringify({ elements, appState: { ...appState, collaborators: [] } }),
+                );
+            }
+        }, 800);
+    }, []);
+
+    useEffect(() => () => clearTimeout(autoSaveTimer.current), []);
 
     // Re-sync Excalidraw language if the app language changes while the tab is open
     useEffect(() => {
@@ -345,6 +369,7 @@ export const FanoosDrawTab = ({ isDayMode, client }: Props): React.ReactElement 
                         initialData={savedData ?? undefined}
                         theme={day ? "light" : "dark"}
                         langCode={langCode}
+                        onChange={handleChange}
                     />
                 </Suspense>
             </div>
