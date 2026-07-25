@@ -1,3 +1,16 @@
+diff --git a/dist/dev/chunk-MFAYKRVR.js b/dist/dev/chunk-MFAYKRVR.js
+index e0333f19fc9ef1ff5f5791d78d431a14ad8f53b6..ebb9fa28ea6483fdc2f184b91dcfc6e515d9099f 100644
+--- a/dist/dev/chunk-MFAYKRVR.js
++++ b/dist/dev/chunk-MFAYKRVR.js
+@@ -14,7 +14,7 @@ var percentages_default = {
+   en,
+   "es-ES": 96,
+   "eu-ES": 97,
+-  "fa-IR": 84,
++  "fa-IR": 94,
+   "fi-FI": 76,
+   "fr-FR": 99,
+   "gl-ES": 86,
 diff --git a/dist/dev/locales/ar-SA-XORAP2EK.js b/dist/dev/locales/ar-SA-XORAP2EK.js
 index e56c6e7f7c54745d29c8dd413335e66b1b26462e..ab22b41e04804989db7ac07e53fbfe50b114e80c 100644
 --- a/dist/dev/locales/ar-SA-XORAP2EK.js
@@ -407,6 +420,13 @@ index e584ef41d938c1ca3f5d85c9a56f444b44b4fe30..830f7602d94bc1c8ada8a35891818501
    preview: "\u067E\u06CC\u0634\u200C\u0646\u0645\u0627\u06CC\u0634"
  };
  var fa_IR_default = {
+diff --git a/dist/prod/chunk-Z3N5DIM6.js b/dist/prod/chunk-Z3N5DIM6.js
+index 2d639469d3fe88c26a8121e9307cca5b6688ca3f..1928389da2c22950ebae25f7d0ca1b0c89e48ffc 100644
+--- a/dist/prod/chunk-Z3N5DIM6.js
++++ b/dist/prod/chunk-Z3N5DIM6.js
+@@ -1 +1 @@
+-var R=100,k=36,N={"ar-SA":94,"az-AZ":17,"bg-BG":71,"bn-BD":52,"ca-ES":83,"cs-CZ":86,"da-DK":61,"de-DE":100,"el-GR":80,en:R,"es-ES":96,"eu-ES":97,"fa-IR":84,"fi-FI":76,"fr-FR":99,"gl-ES":86,"he-IL":77,"hi-IN":76,"hu-HU":76,"id-ID":91,"it-IT":98,"ja-JP":90,kaa:k,"kab-KAB":76,"kk-KZ":18,"km-KH":83,"ko-KR":100,"ku-TR":87,"lt-LT":48,"lv-LV":77,"mr-IN":98,"my-MM":35,"nb-NO":93,"nl-NL":75,"nn-NO":67,"oc-FR":92,"pa-IN":78,"pl-PL":99,"pt-BR":91,"pt-PT":83,"ro-RO":99,"ru-RU":92,"si-LK":7,"sk-SK":100,"sl-SI":100,"sv-SE":100,"ta-IN":81,"th-TH":44,"tr-TR":87,"uk-UA":93,"vi-VN":49,"zh-CN":100,"zh-HK":22,"zh-TW":100};export{R as a,k as b,N as c};
++var R=100,k=36,N={"ar-SA":94,"az-AZ":17,"bg-BG":71,"bn-BD":52,"ca-ES":83,"cs-CZ":86,"da-DK":61,"de-DE":100,"el-GR":80,en:R,"es-ES":96,"eu-ES":97,"fa-IR":94,"fi-FI":76,"fr-FR":99,"gl-ES":86,"he-IL":77,"hi-IN":76,"hu-HU":76,"id-ID":91,"it-IT":98,"ja-JP":90,kaa:k,"kab-KAB":76,"kk-KZ":18,"km-KH":83,"ko-KR":100,"ku-TR":87,"lt-LT":48,"lv-LV":77,"mr-IN":98,"my-MM":35,"nb-NO":93,"nl-NL":75,"nn-NO":67,"oc-FR":92,"pa-IN":78,"pl-PL":99,"pt-BR":91,"pt-PT":83,"ro-RO":99,"ru-RU":92,"si-LK":7,"sk-SK":100,"sl-SI":100,"sv-SE":100,"ta-IN":81,"th-TH":44,"tr-TR":87,"uk-UA":93,"vi-VN":49,"zh-CN":100,"zh-HK":22,"zh-TW":100};export{R as a,k as b,N as c};
 diff --git a/dist/prod/locales/ar-SA-G6X2FPQ2.js b/dist/prod/locales/ar-SA-G6X2FPQ2.js
 index 18b25b947f032e92da306e8a3387275074bf3744..7e0474afbb15d5e8dcd53cb052401deaeb8f6ba0 100644
 --- a/dist/prod/locales/ar-SA-G6X2FPQ2.js

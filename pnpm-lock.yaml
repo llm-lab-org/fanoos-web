@@ -59,7 +59,7 @@ packageExtensionsChecksum: sha256-OFePh8Fn8A1ZEWgJF51vTMPT/HEVyXQyj6YGIztPb0w=
 
 patchedDependencies:
   '@excalidraw/excalidraw@0.18.0':
-    hash: da92c9ef4335d86449db397196a5354f400fea95c6475295ab42133b46a3a4b1
+    hash: bb99a56cb341cee6e67593676fa014189caa6d71dd967750d7c1f9e1384fb594
     path: patches/@excalidraw__excalidraw@0.18.0.patch
   '@matrix-org/react-sdk-module-api':
     hash: 016146c9cc96e6363609d2b2ac0896ccef567882eb1d73b75a77b8a30929de96
@@ -158,7 +158,7 @@ importers:
         version: link:../../packages/shared-components
       '@excalidraw/excalidraw':
         specifier: ^0.18.0
-        version: 0.18.0(patch_hash=da92c9ef4335d86449db397196a5354f400fea95c6475295ab42133b46a3a4b1)(@types/react-dom@19.2.3(@types/react@19.2.10))(@types/react@19.2.10)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        version: 0.18.0(patch_hash=bb99a56cb341cee6e67593676fa014189caa6d71dd967750d7c1f9e1384fb594)(@types/react-dom@19.2.3(@types/react@19.2.10))(@types/react@19.2.10)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@fontsource/fira-code':
         specifier: ^5
         version: 5.2.7
@@ -12889,7 +12889,7 @@ snapshots:
 
   '@eslint/js@8.57.1': {}
 
-  '@excalidraw/excalidraw@0.18.0(patch_hash=da92c9ef4335d86449db397196a5354f400fea95c6475295ab42133b46a3a4b1)(@types/react-dom@19.2.3(@types/react@19.2.10))(@types/react@19.2.10)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
+  '@excalidraw/excalidraw@0.18.0(patch_hash=bb99a56cb341cee6e67593676fa014189caa6d71dd967750d7c1f9e1384fb594)(@types/react-dom@19.2.3(@types/react@19.2.10))(@types/react@19.2.10)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
     dependencies:
       '@braintree/sanitize-url': 6.0.2
       '@excalidraw/laser-pointer': 1.3.1
