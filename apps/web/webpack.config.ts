@@ -826,6 +826,18 @@ export default (env: string, argv: Record<string, any>): webpack.Configuration =
 
             // Disable host check
             allowedHosts: "all",
+
+            // Proxy the hadith.ai sentiment/emotion API through same-origin so the browser
+            // isn't blocked by CORS during local development.
+            proxy: [
+                {
+                    context: ["/hadith-api"],
+                    target: "https://api.hadith.ai",
+                    changeOrigin: true,
+                    pathRewrite: { "^/hadith-api": "/api" },
+                    secure: true,
+                },
+            ],
         },
     };
 };

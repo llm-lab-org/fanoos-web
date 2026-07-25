@@ -22,6 +22,16 @@ import { mediaFromMxc } from "../../customisations/Media";
 import EmojiPicker from "../views/emojipicker/EmojiPicker";
 import { uploadFile } from "../../ContentMessages";
 import { CUSTOM_EMOJI_IMAGES } from "../../fanoos/customFlowerEmojis";
+import {
+    aggregate as aggregateSentimentEmotion,
+    classifyTexts,
+    EMOTION_EMOJI,
+    EMOTION_LABELS,
+    type EmotionDist,
+    type EmotionLabel,
+    type SentimentDist,
+    type SentimentLabel,
+} from "../../fanoos/sentimentEmotion";
 import { exportDrawingAsPng, FanoosDrawTab } from "./FanoosDrawTab";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -57,7 +67,14 @@ interface SentDetail {
     pos: string[];
     neg: string[];
     msgCount: number;
+    /** Populated only when the AI model is active. */
+    sentiment3?: SentimentDist;
+    emotion?: EmotionDist;
+    topSentiment?: SentimentLabel;
+    topEmotion?: EmotionLabel;
 }
+
+type SentimentModel = "keyword" | "ai";
 
 interface HoverInfo {
     nodeId: string;
@@ -616,6 +633,7 @@ function renderSVG(
     tree: TreeNode[],
     unread: Record<string, number>,
     sentiment: Record<string, number | null>,
+    sentDetail: Record<string, SentDetail>,
     searchQuery: string,
     searchIdx: number,
     level: number,
@@ -839,6 +857,20 @@ function renderSVG(
                           : "rgba(255,255,255,0.92)";
                 parts.push(
                     `<text x="${tx.toFixed(1)}" y="${ty.toFixed(1)}" text-anchor="middle" dominant-baseline="middle" transform="rotate(${rotDeg.toFixed(1)},${tx.toFixed(1)},${ty.toFixed(1)})" fill="${tColor}" font-size="${fontSize}" font-weight="${isVirtual ? 700 : 500}" font-family="system-ui,sans-serif" pointer-events="none">${escHtml(label)}</text>`,
+                );
+            }
+        }
+
+        // ── Dominant emotion badge (AI mode only) — small emoji near inner edge ─
+        const topEmo = n.matrixRoomId ? sentDetail[n.matrixRoomId]?.topEmotion : undefined;
+        if (topEmo && !dim && !isVirtual) {
+            const emoR = seg.r1 + Math.min(12, (seg.r2 - seg.r1) * 0.28);
+            const arcLen = (seg.a2 - seg.a1) * emoR;
+            if (arcLen > 14 && seg.r2 - seg.r1 > 22) {
+                const ex = CX + emoR * Math.cos(seg.mid);
+                const ey = CY - emoR * Math.sin(seg.mid);
+                parts.push(
+                    `<text x="${ex.toFixed(1)}" y="${ey.toFixed(1)}" text-anchor="middle" dominant-baseline="middle" font-size="12" pointer-events="none" opacity="0.95">${EMOTION_EMOJI[topEmo]}</text>`,
                 );
             }
         }
@@ -1069,6 +1101,22 @@ const HoverTooltip: React.FC<HoverTooltipProps> = ({
                             ))}
                         </div>
                     )}
+                </div>
+            )}
+            {det?.emotion && (
+                <div className="mx_FanoosDashboard_htEmotions">
+                    {(Object.entries(det.emotion) as [EmotionLabel, number][])
+                        .sort((a, b) => b[1] - a[1])
+                        .slice(0, 3)
+                        .map(([k, v]) => (
+                            <span key={k} className="mx_FanoosDashboard_htEmo">
+                                <span className="mx_FanoosDashboard_htEmoIcon">{EMOTION_EMOJI[k]}</span>
+                                <span className="mx_FanoosDashboard_htEmoLabel">
+                                    {_t(`fanoos_dashboard|emotion_${k}`)}
+                                </span>
+                                <span className="mx_FanoosDashboard_htEmoPct">{Math.round(v * 100)}%</span>
+                            </span>
+                        ))}
                 </div>
             )}
             {un > 0 && (
@@ -1541,6 +1589,37 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
                                 {k}
                             </span>
                         ))}
+                    </div>
+                </div>
+            )}
+            {det.emotion && (
+                <div className="mx_FanoosDashboard_apEmotions">
+                    <div className="mx_FanoosDashboard_apEmotionsHdr">{_t("fanoos_dashboard|emotions_title")}</div>
+                    <div className="mx_FanoosDashboard_apEmotionsList">
+                        {EMOTION_LABELS.map((k) => {
+                            const v = det.emotion?.[k] ?? 0;
+                            const pct = Math.round(v * 100);
+                            const isTop = det.topEmotion === k;
+                            return (
+                                <div
+                                    key={k}
+                                    className={`mx_FanoosDashboard_apEmoRow${isTop ? " top" : ""}`}
+                                    title={`${_t(`fanoos_dashboard|emotion_${k}`)} ${pct}%`}
+                                >
+                                    <span className="mx_FanoosDashboard_apEmoIcon">{EMOTION_EMOJI[k]}</span>
+                                    <span className="mx_FanoosDashboard_apEmoLabel">
+                                        {_t(`fanoos_dashboard|emotion_${k}`)}
+                                    </span>
+                                    <div className="mx_FanoosDashboard_apEmoTrack">
+                                        <div
+                                            className={`mx_FanoosDashboard_apEmoFill emo_${k}`}
+                                            style={{ width: `${pct}%` }}
+                                        />
+                                    </div>
+                                    <span className="mx_FanoosDashboard_apEmoPct">{pct}%</span>
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
             )}
@@ -5362,6 +5441,16 @@ const FanoosDashboard: React.FC = () => {
             return "24h";
         }
     });
+    const [model, setModel] = useState<SentimentModel>(() => {
+        try {
+            const s = JSON.parse(localStorage.getItem(DASH_SETTINGS_KEY) ?? "{}") as Record<string, unknown>;
+            return s.model === "ai" ? "ai" : "keyword";
+        } catch {
+            return "keyword";
+        }
+    });
+    const [analyzing, setAnalyzing] = useState(false);
+    const enrichReqRef = useRef(0);
     const [lastReloaded, setLastReloaded] = useState(new Date());
     const [reloadAgeStr, setReloadAgeStr] = useState(_t("fanoos_dashboard|just_now"));
     const [hoverInfo, setHoverInfo] = useState<HoverInfo | null>(null);
@@ -5383,8 +5472,8 @@ const FanoosDashboard: React.FC = () => {
 
     // Persist settings on change
     useEffect(() => {
-        localStorage.setItem(DASH_SETTINGS_KEY, JSON.stringify({ level, showNames, isDayMode, intervalVal }));
-    }, [level, showNames, isDayMode, intervalVal]);
+        localStorage.setItem(DASH_SETTINGS_KEY, JSON.stringify({ level, showNames, isDayMode, intervalVal, model }));
+    }, [level, showNames, isDayMode, intervalVal, model]);
 
     const layoutRef = useRef<Map<string, Segment>>(new Map());
     const dimsRef = useRef({ W: 800, H: 500, CX: 400, CY: 496 });
@@ -5410,6 +5499,8 @@ const FanoosDashboard: React.FC = () => {
         const m: Record<string, number> = {};
         const sent: Record<string, number | null> = {};
         const det: Record<string, SentDetail> = {};
+        // Bodies per room, kept for the AI enrichment pass below.
+        const bodiesByRoom: Record<string, string[]> = {};
         for (const n of tree) {
             if (!n.matrixRoomId) continue;
             const r = client.getRoom(n.matrixRoomId);
@@ -5430,6 +5521,7 @@ const FanoosDashboard: React.FC = () => {
                 const { score, detail } = analyzeMessages(msgs, reactions);
                 sent[n.matrixRoomId] = score;
                 det[n.matrixRoomId] = detail;
+                bodiesByRoom[n.matrixRoomId] = msgs.map((mm) => mm.body).filter((b) => b.trim().length > 0);
             }
         }
         setUnread(m);
@@ -5443,7 +5535,65 @@ const FanoosDashboard: React.FC = () => {
         } catch {
             /* ignore */
         }
-    }, [tree, client, intervalVal]);
+
+        // AI enrichment — async, augments the keyword pass with API-based sentiment + emotions.
+        // The request ref guards against stale updates when refreshStats fires again while a
+        // previous call is still in-flight.
+        if (model !== "ai") return;
+        const req = ++enrichReqRef.current;
+        // Normalise the same way the API client does so per-text lookups line up.
+        const normalize = (s: string): string => (s.length > 600 ? s.slice(0, 600) : s);
+        const normBodies: Record<string, string[]> = {};
+        for (const [roomId, bs] of Object.entries(bodiesByRoom)) normBodies[roomId] = bs.map(normalize);
+        const uniqueTexts = Array.from(new Set(Object.values(normBodies).flat()));
+        if (uniqueTexts.length === 0) return;
+        setAnalyzing(true);
+        const applyPartial = (
+            textMap: Map<
+                string,
+                {
+                    sentiment: SentimentDist;
+                    emotion: EmotionDist;
+                    topSentiment: SentimentLabel;
+                    topEmotion: EmotionLabel;
+                }
+            >,
+        ): void => {
+            if (req !== enrichReqRef.current) return;
+            const nextSent: Record<string, number | null> = { ...sent };
+            const nextDet: Record<string, SentDetail> = { ...det };
+            for (const [roomId, bodies] of Object.entries(normBodies)) {
+                const perText = bodies.map((b) => textMap.get(b)).filter((r): r is NonNullable<typeof r> => !!r);
+                const agg = aggregateSentimentEmotion(perText);
+                if (!agg) continue;
+                nextSent[roomId] = agg.score;
+                nextDet[roomId] = {
+                    ...(nextDet[roomId] ?? { pos: [], neg: [], msgCount: bodies.length }),
+                    sentiment3: agg.sentiment,
+                    emotion: agg.emotion,
+                    topSentiment: agg.topSentiment,
+                    topEmotion: agg.topEmotion,
+                };
+            }
+            setSentiment(nextSent);
+            setSentDetail(nextDet);
+            try {
+                sessionStorage.setItem(
+                    SCORES_SESSION_KEY,
+                    JSON.stringify({ unread: m, sentiment: nextSent, sentDetail: nextDet, intervalVal }),
+                );
+            } catch {
+                /* ignore */
+            }
+        };
+        void classifyTexts(uniqueTexts, applyPartial)
+            .catch((err) => {
+                console.error("[fanoos] classifyTexts failed", err);
+            })
+            .finally(() => {
+                if (req === enrichReqRef.current) setAnalyzing(false);
+            });
+    }, [tree, client, intervalVal, model]);
 
     useEffect(refreshStats, [refreshStats]);
 
@@ -5499,6 +5649,7 @@ const FanoosDashboard: React.FC = () => {
             tree,
             unread,
             sentiment,
+            sentDetail,
             search,
             searchIdx,
             level,
@@ -5509,7 +5660,20 @@ const FanoosDashboard: React.FC = () => {
             selectedIds,
             isDayMode,
         );
-    }, [tree, unread, sentiment, search, searchIdx, level, showNames, dims, activeRoomId, selectedIds, isDayMode]);
+    }, [
+        tree,
+        unread,
+        sentiment,
+        sentDetail,
+        search,
+        searchIdx,
+        level,
+        showNames,
+        dims,
+        activeRoomId,
+        selectedIds,
+        isDayMode,
+    ]);
 
     useEffect(() => {
         if (!rendered || !svgWrapRef.current) return;
@@ -5799,9 +5963,19 @@ const FanoosDashboard: React.FC = () => {
                         {/* Model */}
                         <label className="mx_FanoosDashboard_ctrlGroup">
                             <span className="mx_FanoosDashboard_ctrlLabel">{_t("fanoos_dashboard|model")}</span>
-                            <select className="mx_FanoosDashboard_select" value="keyword" onChange={() => {}}>
+                            <select
+                                className="mx_FanoosDashboard_select"
+                                value={model}
+                                onChange={(e) => setModel(e.target.value as SentimentModel)}
+                            >
                                 <option value="keyword">{_t("fanoos_dashboard|keyword_model")}</option>
+                                <option value="ai">{_t("fanoos_dashboard|ai_model")}</option>
                             </select>
+                            {analyzing && (
+                                <span className="mx_FanoosDashboard_analyzing" title={_t("fanoos_dashboard|analyzing")}>
+                                    …
+                                </span>
+                            )}
                         </label>
 
                         <div className="mx_FanoosDashboard_divider" />

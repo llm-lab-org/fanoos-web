@@ -20,5 +20,6 @@ FROM nginx:alpine
 
 COPY --from=builder /app/apps/web/webapp /usr/share/nginx/html
 COPY --from=builder /app/apps/web/config.json /usr/share/nginx/html/config.json
+COPY --from=builder /app/apps/web/nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80

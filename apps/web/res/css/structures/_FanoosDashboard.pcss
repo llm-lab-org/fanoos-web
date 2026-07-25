@@ -1505,6 +1505,157 @@ Please see LICENSE files in the repository root for full details.
     }
 }
 
+/* ── AI emotion panel (AnalysisPanel) ─────────────────────────────────────── */
+
+.mx_FanoosDashboard_apEmotions {
+    padding: 8px 12px;
+    border-top: 1px solid rgb(255 255 255 / 5%);
+    margin-top: 4px;
+}
+
+.mx_FanoosDashboard_apEmotionsHdr {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #475569;
+    margin-bottom: 6px;
+}
+
+.mx_FanoosDashboard_apEmotionsList {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.mx_FanoosDashboard_apEmoRow {
+    display: grid;
+    grid-template-columns: 16px 68px 1fr 34px;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--cpd-color-text-secondary);
+
+    &.top {
+        color: var(--cpd-color-text-primary);
+        font-weight: 600;
+    }
+}
+
+.mx_FanoosDashboard_apEmoIcon {
+    font-size: 13px;
+    line-height: 1;
+    text-align: center;
+}
+
+.mx_FanoosDashboard_apEmoLabel {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.mx_FanoosDashboard_apEmoTrack {
+    height: 6px;
+    background: rgb(148 163 184 / 20%);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.mx_FanoosDashboard_apEmoFill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.24s ease;
+
+    &.emo_joy {
+        background: #f59e0b;
+    }
+    &.emo_trust {
+        background: #22c55e;
+    }
+    &.emo_fear {
+        background: #8b5cf6;
+    }
+    &.emo_surprise {
+        background: #06b6d4;
+    }
+    &.emo_sadness {
+        background: #3b82f6;
+    }
+    &.emo_disgust {
+        background: #84cc16;
+    }
+    &.emo_anger {
+        background: #ef4444;
+    }
+    &.emo_anticipation {
+        background: #ec4899;
+    }
+}
+
+.mx_FanoosDashboard_apEmoPct {
+    font-variant-numeric: tabular-nums;
+    text-align: end;
+    font-size: 10px;
+}
+
+/* ── Hover tooltip emotion strip ───────────────────────────────────────────── */
+
+.mx_FanoosDashboard_htEmotions {
+    padding: 4px 12px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.mx_FanoosDashboard_htEmo {
+    display: grid;
+    grid-template-columns: 14px 1fr auto;
+    align-items: center;
+    gap: 6px;
+    font-size: 10px;
+    color: var(--cpd-color-text-secondary);
+}
+
+.mx_FanoosDashboard_htEmoIcon {
+    font-size: 12px;
+    line-height: 1;
+    text-align: center;
+}
+
+.mx_FanoosDashboard_htEmoLabel {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.mx_FanoosDashboard_htEmoPct {
+    font-variant-numeric: tabular-nums;
+    font-size: 9.5px;
+    opacity: 0.85;
+}
+
+/* ── AI "analyzing…" indicator in toolbar ─────────────────────────────────── */
+
+.mx_FanoosDashboard_analyzing {
+    display: inline-block;
+    margin-inline-start: 6px;
+    font-weight: 700;
+    color: #6366f1;
+    animation: mx_FanoosDashboard_dots 1s steps(3, end) infinite;
+}
+
+@keyframes mx_FanoosDashboard_dots {
+    0% {
+        opacity: 0.3;
+    }
+    50% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0.3;
+    }
+}
+
 .mx_FanoosDashboard_apMembers {
     padding: 8px 12px;
     border-top: 1px solid rgb(255 255 255 / 5%);
