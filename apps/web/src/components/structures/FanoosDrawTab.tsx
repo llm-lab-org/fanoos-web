@@ -167,16 +167,16 @@ export const FanoosDrawTab = ({ isDayMode, client }: Props): React.ReactElement 
     const autoSaveTimer = useRef<number>(0);
     const [langCode, setLangCode] = useState(() => toExcalidrawLang(getUserLanguage()));
 
-    // Auto-save drawing to localStorage on every change (debounced)
+    // Auto-save drawing to localStorage on every change (debounced).
+    // Persist cleared state too, otherwise send-drawing re-sends the pre-clear content.
     const handleChange = useCallback((elements: readonly any[], appState: any) => {
         clearTimeout(autoSaveTimer.current);
         autoSaveTimer.current = window.setTimeout(() => {
-            if (elements.length) {
-                localStorage.setItem(
-                    STORAGE_KEY,
-                    JSON.stringify({ elements, appState: { ...appState, collaborators: [] } }),
-                );
-            }
+            const live = elements.filter((el) => !el.isDeleted);
+            localStorage.setItem(
+                STORAGE_KEY,
+                JSON.stringify({ elements: live, appState: { ...appState, collaborators: [] } }),
+            );
         }, 800);
     }, []);
 

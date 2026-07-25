@@ -224,8 +224,8 @@ export default class MFileBody extends React.Component<IProps, IState> {
                 // Display filename without extension in the text area
                 const baseName = this.fileName.replace(/\.[^.]+$/, "") || this.fileName;
 
-                placeholder = (
-                    <div className="mx_MFileBody_tg">
+                const bubbleInner = (
+                    <>
                         <div className="mx_MFileBody_tg_icon">
                             <FileTypeIcon mimeType={fileType} size={46} variant="circle" />
                         </div>
@@ -236,19 +236,24 @@ export default class MFileBody extends React.Component<IProps, IState> {
                             {meta && <span className="mx_MFileBody_tg_meta">{meta}</span>}
                         </div>
                         {!this.props.forExport && (
-                            <button
-                                className="mx_MFileBody_tg_dl"
-                                type="button"
-                                aria-label={_t("action|download")}
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    this.onPlaceholderClick();
-                                }}
-                            >
-                                <DownloadIcon width={18} height={18} />
-                            </button>
+                            <span className="mx_MFileBody_tg_dl" aria-hidden>
+                                <DownloadIcon width={20} height={20} />
+                            </span>
                         )}
-                    </div>
+                    </>
+                );
+
+                placeholder = this.props.forExport ? (
+                    <div className="mx_MFileBody_tg">{bubbleInner}</div>
+                ) : (
+                    <AccessibleButton
+                        className="mx_MFileBody_tg"
+                        onClick={this.onPlaceholderClick}
+                        title={_t("action|download")}
+                        aria-label={`${_t("action|download")} ${this.fileName}`}
+                    >
+                        {bubbleInner}
+                    </AccessibleButton>
                 );
             }
             showDownloadLink = false;
