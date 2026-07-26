@@ -4429,13 +4429,17 @@ function AdminPanel({
     const [addServerBusy, setAddServerBusy] = useState(false);
     const [addServerError, setAddServerError] = useState<string | null>(null);
 
-    // Spaces panel only makes sense against the local admin. Silently snap
-    // back to Users if switching to an external server while on Spaces.
+    // Spaces panel only makes sense against local admin. Users sub-tab is
+    // admin-only. Silently snap views when the selected server can't support
+    // the current view.
     useEffect(() => {
         if (selectedServerId !== "local" && view === "spaces") {
-            setView("users");
+            setView("teams");
         }
-    }, [selectedServerId, view]);
+        if (view === "users" && activeServer && activeServer.isAdmin === false) {
+            setView("teams");
+        }
+    }, [selectedServerId, view, activeServer]);
 
     // Resolve the currently-selected server's baseUrl + token + domain.
     // In "servers-only" mode there is no "local" fallback — if nothing is
@@ -4856,8 +4860,9 @@ function AdminPanel({
                         <button
                             className={`${cls("ServerChip")}${selectedServerId === s.id ? " active" : ""}`}
                             onClick={() => setSelectedServerId(s.id)}
-                            title={`${s.adminMxid} @ ${s.homeserverUrl}`}
+                            title={`${s.adminMxid} @ ${s.homeserverUrl}${s.isAdmin ? " · admin" : ""}`}
                         >
+                            {s.isAdmin ? "🛡 " : ""}
                             {s.label}
                         </button>
                         <button
@@ -4923,12 +4928,16 @@ function AdminPanel({
 
             {/* Sub-tab bar */}
             <div className={cls("SubTabs")}>
-                <button
-                    className={`${cls("SubTab")}${view === "users" ? " active" : ""}`}
-                    onClick={() => setView("users")}
-                >
-                    👤 {_t("fanoos_dashboard|admin_tab_users")}
-                </button>
+                {/* Users management is admin-only. For non-admin external
+                    entries we hide it (Synapse admin API would return 403). */}
+                {(selectedServerId === "local" || activeServer?.isAdmin !== false) && (
+                    <button
+                        className={`${cls("SubTab")}${view === "users" ? " active" : ""}`}
+                        onClick={() => setView("users")}
+                    >
+                        👤 {_t("fanoos_dashboard|admin_tab_users")}
+                    </button>
+                )}
                 {selectedServerId === "local" && (
                     <button
                         className={`${cls("SubTab")}${view === "spaces" ? " active" : ""}`}

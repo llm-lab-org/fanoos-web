@@ -4352,7 +4352,7 @@
         "send_to_channels": "Send to %(count)s channels…",
         "stop_recording": "Stop recording",
         "tab_admin": "User Management",
-        "tab_servers": "Admin servers",
+        "tab_servers": "Servers",
         "tab_teams": "Teams Dashboard",
         "time_hours": "%(h)sh ago",
         "time_mins": "%(m)sm ago",

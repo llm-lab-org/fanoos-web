@@ -23,6 +23,10 @@ export interface AdminServer {
     adminMxid: string;
     accessToken: string;
     addedAt: number;
+    /** True when the account has admin flag on the target Synapse.
+     *  Non-admin entries can still be added — they get a Teams-only view
+     *  (User Management sub-tab is hidden). */
+    isAdmin?: boolean;
 }
 
 // ─── Read / write ────────────────────────────────────────────────────────────
@@ -116,17 +120,20 @@ export async function addAdminServer(input: {
     }
     const login = (await loginResp.json()) as LoginResponse;
 
-    // 2) admin flag check
-    const adminResp = await fetch(
-        `${homeserverUrl.replace(/\/$/, "")}/_synapse/admin/v2/users/${encodeURIComponent(login.user_id)}`,
-        { headers: { Authorization: `Bearer ${login.access_token}` } },
-    );
-    if (!adminResp.ok) {
-        throw new Error(`admin check failed (HTTP ${adminResp.status}) — user may not be admin`);
-    }
-    const adminBody = (await adminResp.json()) as { admin?: boolean };
-    if (!adminBody.admin) {
-        throw new Error("This user is not a Synapse admin on that homeserver");
+    // 2) Best-effort admin flag check. Non-admins are still accepted;
+    //    they get a Teams-only view without User Management.
+    let isAdmin = false;
+    try {
+        const adminResp = await fetch(
+            `${homeserverUrl.replace(/\/$/, "")}/_synapse/admin/v2/users/${encodeURIComponent(login.user_id)}`,
+            { headers: { Authorization: `Bearer ${login.access_token}` } },
+        );
+        if (adminResp.ok) {
+            const adminBody = (await adminResp.json()) as { admin?: boolean };
+            isAdmin = !!adminBody.admin;
+        }
+    } catch {
+        /* treat as non-admin */
     }
 
     const server: AdminServer = {
@@ -136,6 +143,7 @@ export async function addAdminServer(input: {
         adminMxid: login.user_id,
         accessToken: login.access_token,
         addedAt: Date.now(),
+        isAdmin,
     };
     upsert(server);
     return server;
