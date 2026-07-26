@@ -32,7 +32,150 @@ import {
     type SentimentDist,
     type SentimentLabel,
 } from "../../fanoos/sentimentEmotion";
+import {
+    addAdminServer,
+    type AdminServer,
+    readAll as readAdminServers,
+    remove as removeAdminServer,
+} from "../../fanoos/adminServers";
+import {
+    fetchAuthMedia,
+    fetchLatestEventIds,
+    fetchRoomMembers,
+    fetchRoomMessages,
+    fetchServerHierarchy,
+    fetchSpaceRooms,
+    fetchUnreadCounts,
+    joinRoom as joinServerRoom,
+    redactEvent,
+    type RoomMember,
+    type RoomMessage,
+    sendReaction,
+    sendRoomMedia,
+    sendRoomMessage,
+    type ServerHierarchy,
+    type ServerRoom,
+    uploadMedia,
+    uploadMediaBlob,
+} from "../../fanoos/adminServersRooms";
+import { formatTime as formatJalaliTime } from "../../fanoos/jalali";
 import { exportDrawingAsPng, FanoosDrawTab } from "./FanoosDrawTab";
+
+/**
+ * Loads a media resource with the admin's Bearer token (needed for modern
+ * Synapse authenticated media), holds the resulting blob URL in state, and
+ * revokes it on unmount. Renders whatever the caller passes as `render`
+ * (typically <img>, <audio>, <video>, or an <a>).
+ */
+type AuthMediaKind = "img" | "audio" | "video" | "file";
+function AuthMedia({
+    server,
+    mxc,
+    kind,
+    alt,
+    filename,
+}: {
+    server: AdminServer;
+    mxc: string;
+    kind: AuthMediaKind;
+    alt?: string;
+    filename?: string;
+}): React.ReactElement {
+    const [url, setUrl] = useState<string | null>(null);
+    const [error, setError] = useState<string | null>(null);
+    useEffect(() => {
+        let objUrl: string | null = null;
+        let cancelled = false;
+        void fetchAuthMedia(server, mxc)
+            .then((u) => {
+                if (cancelled) {
+                    URL.revokeObjectURL(u);
+                    return;
+                }
+                objUrl = u;
+                setUrl(u);
+            })
+            .catch((e) => setError(e instanceof Error ? e.message : String(e)));
+        return () => {
+            cancelled = true;
+            if (objUrl) URL.revokeObjectURL(objUrl);
+        };
+    }, [server, mxc]);
+    if (error) return <span className="mx_FanoosDashboard_chMedia">⚠️ {alt ?? filename ?? "media"}</span>;
+    if (!url) return <span className="mx_FanoosDashboard_chMedia">⏳</span>;
+    if (kind === "img") {
+        return (
+            <a href={url} target="_blank" rel="noreferrer noopener">
+                <img
+                    src={url}
+                    alt={alt ?? ""}
+                    style={{ maxWidth: 260, maxHeight: 260, borderRadius: 8, display: "block" }}
+                />
+            </a>
+        );
+    }
+    if (kind === "audio") return <audio controls src={url} style={{ maxWidth: 260 }} />;
+    if (kind === "video")
+        return <video controls src={url} style={{ maxWidth: 260, maxHeight: 260, borderRadius: 8 }} />;
+    return (
+        <a href={url} target="_blank" rel="noreferrer noopener" download={filename}>
+            📎 {filename ?? alt ?? "file"}
+        </a>
+    );
+}
+
+/**
+ * Build the tree Teams Dashboard's renderSVG expects, from a fetched
+ * ServerHierarchy. Spaces become depth-1 nodes; their child rooms are
+ * depth-2 room nodes. Anything not linked to a space goes into a virtual
+ * "Other" bucket at depth 1.
+ */
+function buildTreeFromHierarchy(h: ServerHierarchy, accountLabel: string): TreeNode[] {
+    const nodes: TreeNode[] = [{ id: "__root__", name: accountLabel, type: "account", parentId: null }];
+    const assignedRoomIds = new Set<string>();
+
+    // Spaces + their children.
+    for (const space of h.spaces) {
+        nodes.push({
+            id: space.roomId,
+            name: space.name,
+            type: "space",
+            parentId: "__root__",
+            matrixRoomId: space.roomId,
+        });
+        const kids = h.spaceChildren[space.roomId] ?? [];
+        for (const childId of kids) {
+            if (assignedRoomIds.has(childId)) continue;
+            const child = h.rooms.find((r) => r.roomId === childId);
+            if (!child) continue; // child may be a room we don't see (private / unjoined)
+            assignedRoomIds.add(childId);
+            nodes.push({
+                id: child.roomId,
+                name: child.name,
+                type: "room",
+                parentId: space.roomId,
+                matrixRoomId: child.roomId,
+            });
+        }
+    }
+
+    // Orphans — rooms not in any space's children.
+    const orphans = h.rooms.filter((r) => !assignedRoomIds.has(r.roomId));
+    if (orphans.length) {
+        nodes.push({ id: "__other__", name: "Other", type: "virtual", parentId: "__root__" });
+        for (const r of orphans) {
+            nodes.push({
+                id: r.roomId,
+                name: r.name,
+                type: "room",
+                parentId: "__other__",
+                matrixRoomId: r.roomId,
+            });
+        }
+    }
+
+    return nodes;
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -4212,13 +4355,20 @@ function AdminPanel({
     tree,
     isDayMode,
     onRefresh,
+    mode = "full",
 }: {
     client: ReturnType<typeof useMatrixClientContext>;
     tree: TreeNode[];
     isDayMode: boolean;
     onRefresh?: () => void;
+    /**
+     * "full"          — current behavior. Local server chip visible, Users/Spaces/Bots sub-tabs.
+     * "servers-only"  — external-servers-only. Local chip hidden; Spaces/Bots sub-tabs hidden.
+     *                    Used by the top-level "Admin servers" tab that any user can open.
+     */
+    mode?: "full" | "servers-only";
 }): React.ReactElement {
-    const [view, setView] = useState<"users" | "spaces">("users");
+    const [view, setView] = useState<"users" | "spaces" | "teams">("users");
     const [search, setSearch] = useState("");
     const [users, setUsers] = useState<SynapseUser[]>([]);
     const [loading, setLoading] = useState(true);
@@ -4262,9 +4412,47 @@ function AdminPanel({
     const [roomAddSearch, setRoomAddSearch] = useState("");
     const roomSearchInputRef = useRef<HTMLInputElement>(null);
 
-    const token = client.getAccessToken() ?? "";
-    const baseUrl = client.getHomeserverUrl();
-    const serverDomain = client.getDomain() ?? "";
+    // ─── Multi-server admin scope ───────────────────────────────────────────
+    // "local" = the current Matrix session. Any other id refers to an
+    // AdminServer stored in localStorage (see fanoos/adminServers.ts).
+    // In "servers-only" mode we skip "local" so a non-admin of the current
+    // homeserver can still use this panel against servers they have admin on.
+    const [externalServers, setExternalServers] = useState<AdminServer[]>(() => readAdminServers());
+    const [selectedServerId, setSelectedServerId] = useState<string>(() => {
+        if (mode === "servers-only") {
+            return externalServers[0]?.id ?? "";
+        }
+        return "local";
+    });
+    const [showAddServer, setShowAddServer] = useState(false);
+    const [addServerForm, setAddServerForm] = useState({ label: "", mxid: "", password: "" });
+    const [addServerBusy, setAddServerBusy] = useState(false);
+    const [addServerError, setAddServerError] = useState<string | null>(null);
+
+    // Spaces panel only makes sense against the local admin. Silently snap
+    // back to Users if switching to an external server while on Spaces.
+    useEffect(() => {
+        if (selectedServerId !== "local" && view === "spaces") {
+            setView("users");
+        }
+    }, [selectedServerId, view]);
+
+    // Resolve the currently-selected server's baseUrl + token + domain.
+    // In "servers-only" mode there is no "local" fallback — if nothing is
+    // selected we fall back to empty strings and adminFetch will simply
+    // return 404s (surface handles the empty state visually).
+    const activeServer =
+        selectedServerId && selectedServerId !== "local"
+            ? externalServers.find((s) => s.id === selectedServerId)
+            : null;
+    const hasLocal = mode === "full" && selectedServerId === "local";
+    const token = activeServer ? activeServer.accessToken : hasLocal ? (client.getAccessToken() ?? "") : "";
+    const baseUrl = activeServer ? activeServer.homeserverUrl : hasLocal ? client.getHomeserverUrl() : "";
+    const serverDomain = activeServer
+        ? (activeServer.adminMxid.split(":")[1] ?? "")
+        : hasLocal
+          ? (client.getDomain() ?? "")
+          : "";
 
     const adminFetch = useCallback(
         (path: string, opts?: RequestInit) =>
@@ -4279,7 +4467,49 @@ function AdminPanel({
         [baseUrl, token],
     );
 
+    const submitAddServer = useCallback(async () => {
+        setAddServerBusy(true);
+        setAddServerError(null);
+        try {
+            const s = await addAdminServer({
+                label: addServerForm.label,
+                mxid: addServerForm.mxid,
+                password: addServerForm.password,
+            });
+            setExternalServers(readAdminServers());
+            setSelectedServerId(s.id);
+            setAddServerForm({ label: "", mxid: "", password: "" });
+            setShowAddServer(false);
+        } catch (e) {
+            setAddServerError(e instanceof Error ? e.message : String(e));
+        } finally {
+            setAddServerBusy(false);
+        }
+    }, [addServerForm]);
+
+    const deleteExternalServer = useCallback(
+        (id: string) => {
+            removeAdminServer(id);
+            const remaining = readAdminServers();
+            setExternalServers(remaining);
+            setSelectedServerId((cur) => {
+                if (cur !== id) return cur;
+                if (mode === "full") return "local";
+                return remaining[0]?.id ?? "";
+            });
+        },
+        [mode],
+    );
+
     const loadUsers = useCallback(async () => {
+        // No server selected (servers-only mode with empty list) → skip fetch,
+        // leave users empty. The render layer shows an empty state.
+        if (!baseUrl || !token) {
+            setUsers([]);
+            setLoading(false);
+            setError(null);
+            return;
+        }
         setLoading(true);
         setError(null);
         try {
@@ -4292,7 +4522,7 @@ function AdminPanel({
         } finally {
             setLoading(false);
         }
-    }, [adminFetch]);
+    }, [adminFetch, baseUrl, token]);
 
     useEffect(() => {
         if (view === "users") void loadUsers();
@@ -4609,6 +4839,88 @@ function AdminPanel({
 
     return (
         <div className={cls("Panel")}>
+            {/* Server selector — pick which homeserver's admin API to use */}
+            <div className={cls("ServerBar")}>
+                <span className={cls("ServerBarLabel")}>{_t("fanoos_dashboard|admin_server")}</span>
+                {mode === "full" && (
+                    <button
+                        className={`${cls("ServerChip")}${selectedServerId === "local" ? " active" : ""}`}
+                        onClick={() => setSelectedServerId("local")}
+                        title={client.getDomain() ?? ""}
+                    >
+                        {client.getDomain() ?? "local"}
+                    </button>
+                )}
+                {externalServers.map((s) => (
+                    <span key={s.id} className={cls("ServerChipWrap")}>
+                        <button
+                            className={`${cls("ServerChip")}${selectedServerId === s.id ? " active" : ""}`}
+                            onClick={() => setSelectedServerId(s.id)}
+                            title={`${s.adminMxid} @ ${s.homeserverUrl}`}
+                        >
+                            {s.label}
+                        </button>
+                        <button
+                            className={cls("ServerChipDel")}
+                            onClick={() => deleteExternalServer(s.id)}
+                            title={_t("fanoos_dashboard|admin_server_remove")}
+                        >
+                            ✕
+                        </button>
+                    </span>
+                ))}
+                <button className={cls("ServerAdd")} onClick={() => setShowAddServer((v) => !v)}>
+                    {_t("fanoos_dashboard|admin_server_add")}
+                </button>
+            </div>
+
+            {showAddServer && (
+                <div className={cls("AddServerForm")}>
+                    <input
+                        className={cls("AddServerInput")}
+                        placeholder={_t("fanoos_dashboard|admin_server_label_ph")}
+                        value={addServerForm.label}
+                        onChange={(e) => setAddServerForm((f) => ({ ...f, label: e.target.value }))}
+                        disabled={addServerBusy}
+                    />
+                    <input
+                        className={cls("AddServerInput")}
+                        placeholder="@admin:server.example"
+                        value={addServerForm.mxid}
+                        onChange={(e) => setAddServerForm((f) => ({ ...f, mxid: e.target.value }))}
+                        disabled={addServerBusy}
+                    />
+                    <input
+                        className={cls("AddServerInput")}
+                        type="password"
+                        placeholder={_t("fanoos_dashboard|admin_server_password_ph")}
+                        value={addServerForm.password}
+                        onChange={(e) => setAddServerForm((f) => ({ ...f, password: e.target.value }))}
+                        disabled={addServerBusy}
+                        onKeyDown={(e) => {
+                            if (e.key === "Enter") void submitAddServer();
+                        }}
+                    />
+                    {addServerError && <div className={cls("AddServerError")}>{addServerError}</div>}
+                    <div className={cls("AddServerActions")}>
+                        <button
+                            className={cls("AddServerBtnPrimary")}
+                            disabled={addServerBusy}
+                            onClick={() => void submitAddServer()}
+                        >
+                            {addServerBusy ? "…" : _t("fanoos_dashboard|admin_server_add_submit")}
+                        </button>
+                        <button
+                            className={cls("AddServerBtnGhost")}
+                            onClick={() => setShowAddServer(false)}
+                            disabled={addServerBusy}
+                        >
+                            {_t("fanoos_dashboard|admin_cancel")}
+                        </button>
+                    </div>
+                </div>
+            )}
+
             {/* Sub-tab bar */}
             <div className={cls("SubTabs")}>
                 <button
@@ -4617,36 +4929,51 @@ function AdminPanel({
                 >
                     👤 {_t("fanoos_dashboard|admin_tab_users")}
                 </button>
-                <button
-                    className={`${cls("SubTab")}${view === "spaces" ? " active" : ""}`}
-                    onClick={() => setView("spaces")}
-                >
-                    🏢 {_t("fanoos_dashboard|admin_tab_spaces")}
-                </button>
-            </div>
-
-            {/* Search + reload + add button */}
-            <div className={cls("SearchRow")}>
-                <input
-                    className={cls("Search")}
-                    type="search"
-                    placeholder={
-                        view === "users"
-                            ? _t("fanoos_dashboard|admin_search_users")
-                            : _t("fanoos_dashboard|admin_search_spaces")
-                    }
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                />
-                <button className={cls("Reload")} onClick={() => void (view === "users" ? loadUsers() : onRefresh?.())}>
-                    ↺
-                </button>
-                {view === "users" && (
-                    <button className={cls("BtnAdd")} onClick={() => setShowAddUser((v) => !v)}>
-                        {_t("fanoos_dashboard|admin_add_user")}
+                {selectedServerId === "local" && (
+                    <button
+                        className={`${cls("SubTab")}${view === "spaces" ? " active" : ""}`}
+                        onClick={() => setView("spaces")}
+                    >
+                        🏢 {_t("fanoos_dashboard|admin_tab_spaces")}
+                    </button>
+                )}
+                {mode === "servers-only" && !!activeServer && (
+                    <button
+                        className={`${cls("SubTab")}${view === "teams" ? " active" : ""}`}
+                        onClick={() => setView("teams")}
+                    >
+                        🌐 {_t("fanoos_dashboard|admin_tab_teams")}
                     </button>
                 )}
             </div>
+
+            {/* Search + reload + add button — hidden in Teams view */}
+            {view !== "teams" && (
+                <div className={cls("SearchRow")}>
+                    <input
+                        className={cls("Search")}
+                        type="search"
+                        placeholder={
+                            view === "users"
+                                ? _t("fanoos_dashboard|admin_search_users")
+                                : _t("fanoos_dashboard|admin_search_spaces")
+                        }
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                    />
+                    <button
+                        className={cls("Reload")}
+                        onClick={() => void (view === "users" ? loadUsers() : onRefresh?.())}
+                    >
+                        ↺
+                    </button>
+                    {view === "users" && (
+                        <button className={cls("BtnAdd")} onClick={() => setShowAddUser((v) => !v)}>
+                            {_t("fanoos_dashboard|admin_add_user")}
+                        </button>
+                    )}
+                </div>
+            )}
 
             {/* Filter / sort bar (users only) */}
             {view === "users" && (
@@ -5356,7 +5683,1560 @@ function AdminPanel({
                         document.body,
                     );
                 })()}
+
+            {view === "teams" && activeServer && <ServerTeamsView server={activeServer} isDayMode={isDayMode} />}
         </div>
+    );
+}
+
+// ─── Server Teams view + message pane (Admin servers tab) ──────────────────
+
+function ServerTeamsView({ server, isDayMode }: { server: AdminServer; isDayMode: boolean }): React.ReactElement {
+    const [hierarchy, setHierarchy] = useState<ServerHierarchy>({ rooms: [], spaces: [], spaceChildren: {} });
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [openRoomId, setOpenRoomId] = useState<string | null>(null);
+    // Recipients live here (not inside the pane) so radial shift-click can
+    // add/remove multiple channels without the pane being open first.
+    const [recipients, setRecipients] = useState<Array<{ roomId: string; name: string }>>([]);
+    const [search, setSearch] = useState("");
+    const [level, setLevel] = useState(2);
+    const [showNames, setShowNames] = useState(true);
+    const [intervalVal, setIntervalVal] = useState<string>("24h");
+    const [model, setModel] = useState<SentimentModel>("keyword");
+    const [analyzing, setAnalyzing] = useState(false);
+    const [dims, setDims] = useState({ w: 800, h: 500 });
+    const [unread, setUnread] = useState<Record<string, number>>({});
+    const [hoverInfo, setHoverInfo] = useState<HoverInfo | null>(null);
+    // Cache of members per room for hover tooltip.
+    const [members, setMembers] = useState<Record<string, RoomMember[]>>({});
+    // Sentiment maps — same shape renderSVG + HoverTooltip already expect.
+    const [sentiment, setSentiment] = useState<Record<string, number | null>>({});
+    const [sentDetail, setSentDetail] = useState<Record<string, SentDetail>>({});
+
+    // Refs for the SVG surface + resize observer.
+    const containerRef = useRef<HTMLDivElement>(null);
+    const svgWrapRef = useRef<HTMLDivElement>(null);
+    // Stores latest event_id per room across polls — a change = new activity.
+    const lastEventIdsRef = useRef<Record<string, string>>({});
+    // Layout emitted by renderSVG — used by click/hover to map coords → node.
+    const layoutRef = useRef<Map<string, Segment>>(new Map());
+    const dimsRef = useRef({ W: 800, H: 500, CX: 400, CY: 496 });
+    // Track in-flight member fetches to avoid dupes.
+    const memberFetchingRef = useRef<Set<string>>(new Set());
+
+    const allRoomIds = useMemo(() => hierarchy.rooms.map((r) => r.roomId), [hierarchy]);
+
+    const reload = useCallback(async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            const h = await fetchServerHierarchy(server);
+            setHierarchy(h);
+            // Pick up the homeserver's *own* unread bookkeeping (same signal
+            // Element uses to draw badges) so pre-existing unread messages
+            // appear immediately, not just those that arrive after mount.
+            const [seed, unreadMap] = await Promise.all([
+                fetchLatestEventIds(
+                    server,
+                    h.rooms.map((r) => r.roomId),
+                ),
+                fetchUnreadCounts(server),
+            ]);
+            lastEventIdsRef.current = seed;
+            setUnread(unreadMap);
+        } catch (e) {
+            setError(e instanceof Error ? e.message : String(e));
+        } finally {
+            setLoading(false);
+        }
+    }, [server]);
+
+    useEffect(() => {
+        void reload();
+    }, [reload]);
+
+    // Fetch messages per joined room and run keyword sentiment analysis (the
+    // same function the local Teams Dashboard uses). If model === "ai", also
+    // enrich via the hadith.ai sentiment_emotion API. Interval filters out
+    // messages older than the cutoff.
+    useEffect(() => {
+        if (!allRoomIds.length) return;
+        let cancelled = false;
+        const cutoff = Date.now() - intervalMs(intervalVal);
+        void (async () => {
+            const chunkSize = 8;
+            const bodiesByRoom: Record<string, string[]> = {};
+            for (let i = 0; i < allRoomIds.length; i += chunkSize) {
+                if (cancelled) return;
+                const batch = allRoomIds.slice(i, i + chunkSize);
+                const results = await Promise.all(batch.map((id) => fetchRoomMessages(server, id, 50).catch(() => [])));
+                if (cancelled) return;
+                const batchSent: Record<string, number | null> = {};
+                const batchDet: Record<string, SentDetail> = {};
+                for (let j = 0; j < batch.length; j++) {
+                    const roomId = batch[j];
+                    const filtered = results[j].filter((m) => m.ts >= cutoff);
+                    const msgs = filtered.map((m) => ({ body: m.body }));
+                    const { score, detail } = analyzeMessages(msgs, []);
+                    batchSent[roomId] = score;
+                    batchDet[roomId] = detail;
+                    bodiesByRoom[roomId] = filtered.map((m) => m.body).filter((b) => b.trim().length > 0);
+                }
+                setSentiment((prev) => ({ ...prev, ...batchSent }));
+                setSentDetail((prev) => ({ ...prev, ...batchDet }));
+            }
+
+            // Optional AI enrichment via /api/v1/embed/sentiment_emotion.
+            if (model === "ai" && !cancelled) {
+                const uniqueTexts = Array.from(new Set(Object.values(bodiesByRoom).flat()));
+                if (uniqueTexts.length === 0) return;
+                setAnalyzing(true);
+                try {
+                    await classifyTexts(uniqueTexts, (textMap) => {
+                        if (cancelled) return;
+                        setSentiment((prevSent) => {
+                            setSentDetail((prevDet) => {
+                                const nextDet = { ...prevDet };
+                                const nextSent = { ...prevSent };
+                                for (const [roomId, bodies] of Object.entries(bodiesByRoom)) {
+                                    const perText = bodies
+                                        .map((b) => textMap.get(b))
+                                        .filter((r): r is NonNullable<typeof r> => !!r);
+                                    const agg = aggregateSentimentEmotion(perText);
+                                    if (!agg) continue;
+                                    nextSent[roomId] = agg.score;
+                                    nextDet[roomId] = {
+                                        ...(nextDet[roomId] ?? { pos: [], neg: [], msgCount: bodies.length }),
+                                        sentiment3: agg.sentiment,
+                                        emotion: agg.emotion,
+                                        topSentiment: agg.topSentiment,
+                                        topEmotion: agg.topEmotion,
+                                    };
+                                }
+                                Object.assign(prevSent, nextSent);
+                                return nextDet;
+                            });
+                            return prevSent;
+                        });
+                    });
+                } catch (err) {
+                    console.warn("[fanoos] external AI enrichment failed:", err);
+                } finally {
+                    if (!cancelled) setAnalyzing(false);
+                }
+            }
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, [server, allRoomIds, intervalVal, model]);
+
+    // Poll every 30s. Pull fresh unread counts from /sync — the same signal
+    // Element uses for its own badges.
+    useEffect(() => {
+        if (!allRoomIds.length) return;
+        const tick = async (): Promise<void> => {
+            try {
+                const unreadMap = await fetchUnreadCounts(server);
+                setUnread(unreadMap);
+            } catch {
+                /* ignore transient errors */
+            }
+        };
+        const id = window.setInterval(tick, 30_000);
+        return () => window.clearInterval(id);
+    }, [server, allRoomIds]);
+
+    // Observe the SVG container size so renderSVG can fit it.
+    useEffect(() => {
+        const el = containerRef.current;
+        if (!el) return;
+        const ro = new ResizeObserver((entries) => {
+            const e = entries[0];
+            setDims({ w: e.contentRect.width, h: e.contentRect.height });
+        });
+        ro.observe(el);
+        setDims({ w: el.clientWidth, h: el.clientHeight });
+        return () => ro.disconnect();
+    }, []);
+
+    // Build the tree from the hierarchy fetched via /hierarchy.
+    const tree = useMemo(() => buildTreeFromHierarchy(hierarchy, server.label), [hierarchy, server.label]);
+
+    // Selected recipient ids → passed to renderSVG so shift-selected rooms
+    // get the "selected" fill/border treatment on the radial.
+    const selectedIds = useMemo(() => {
+        const set = new Set<string>();
+        for (const r of recipients) {
+            const node = tree.find((n) => n.matrixRoomId === r.roomId);
+            if (node) set.add(node.id);
+        }
+        return set;
+    }, [recipients, tree]);
+
+    // Reuse the same renderSVG the local Teams Dashboard uses.
+    const rendered = useMemo(() => {
+        if (!tree.length || dims.w < 100) return null;
+        return renderSVG(
+            tree,
+            unread,
+            sentiment,
+            sentDetail,
+            search,
+            -1, // searchIdx
+            level,
+            showNames,
+            dims.w,
+            dims.h,
+            openRoomId,
+            selectedIds,
+            isDayMode,
+        );
+    }, [tree, unread, sentiment, sentDetail, search, dims, openRoomId, isDayMode, level, showNames, selectedIds]);
+
+    // Inject SVG into the DOM (renderSVG returns an SVG string).
+    useEffect(() => {
+        if (!rendered || !svgWrapRef.current) return;
+        svgWrapRef.current.innerHTML = rendered.svg;
+        layoutRef.current = rendered.layout;
+        dimsRef.current = rendered.dims;
+    }, [rendered]);
+
+    // Click on a radial segment: same multi-select semantics as the local
+    // Teams Dashboard.
+    //   Plain click on a room   → open pane, single recipient.
+    //   Shift-click on a room   → add/remove that room to the recipients
+    //                             (open pane if not already open).
+    //   Shift-click on a space  → bulk-add every room in the space's hierarchy.
+    //   Ctrl/Cmd-click on root  → add every room on the server.
+    const handleClick = useCallback(
+        async (ev: React.MouseEvent) => {
+            const el = (ev.target as HTMLElement).closest("[data-nodeid]");
+            const nodeId = el?.getAttribute("data-nodeid");
+            if (!nodeId) return;
+            const n = tree.find((x) => x.id === nodeId);
+            if (!n) return;
+
+            // Ctrl/Cmd-click on root → send to all rooms.
+            if ((ev.ctrlKey || ev.metaKey) && n.type === "account") {
+                const all = hierarchy.rooms.map((r) => ({ roomId: r.roomId, name: r.name }));
+                if (all.length === 0) return;
+                setRecipients(all);
+                setOpenRoomId(all[0].roomId);
+                return;
+            }
+
+            // Shift-click on a space → bulk-add all its rooms.
+            if (ev.shiftKey && n.type === "space" && n.matrixRoomId) {
+                const kids = await fetchSpaceRooms(server, n.matrixRoomId);
+                if (!kids.length) return;
+                setRecipients((prev) => {
+                    const set = new Set(prev.map((r) => r.roomId));
+                    const additions = kids
+                        .filter((k) => !set.has(k.roomId))
+                        .map((k) => ({ roomId: k.roomId, name: k.name }));
+                    return additions.length ? [...prev, ...additions] : prev;
+                });
+                if (!openRoomId) setOpenRoomId(kids[0].roomId);
+                return;
+            }
+
+            // Shift-click on a room → toggle in the recipients list.
+            if (ev.shiftKey && n.matrixRoomId && n.type !== "space" && n.type !== "virtual") {
+                const rid = n.matrixRoomId;
+                setRecipients((prev) => {
+                    if (prev.some((r) => r.roomId === rid)) {
+                        return prev.length > 1 ? prev.filter((r) => r.roomId !== rid) : prev;
+                    }
+                    return [...prev, { roomId: rid, name: n.name }];
+                });
+                if (!openRoomId) setOpenRoomId(rid);
+                return;
+            }
+
+            // Plain click on a room → open (or replace with) single-recipient view.
+            if (n.matrixRoomId && n.type !== "space" && n.type !== "virtual") {
+                const rid = n.matrixRoomId;
+                setUnread((prev) => (prev[rid] ? { ...prev, [rid]: 0 } : prev));
+                setRecipients([{ roomId: rid, name: n.name }]);
+                setOpenRoomId(rid);
+                if (!members[rid] && !memberFetchingRef.current.has(rid)) {
+                    memberFetchingRef.current.add(rid);
+                    void fetchRoomMembers(server, rid).then((ms) => {
+                        memberFetchingRef.current.delete(rid);
+                        setMembers((prev) => ({ ...prev, [rid]: ms }));
+                    });
+                }
+            }
+        },
+        [tree, members, server, openRoomId, hierarchy.rooms],
+    );
+
+    const handleMouseMove = useCallback(
+        (ev: React.MouseEvent) => {
+            const el = (ev.target as HTMLElement).closest("[data-nodeid]");
+            const nodeId = el?.getAttribute("data-nodeid");
+            if (nodeId) {
+                setHoverInfo({ nodeId, clientX: ev.clientX, clientY: ev.clientY });
+                // Lazily fetch members for the hovered room so the tooltip can show them.
+                const n = tree.find((x) => x.id === nodeId);
+                const roomId = n?.matrixRoomId;
+                if (roomId && !members[roomId] && !memberFetchingRef.current.has(roomId)) {
+                    memberFetchingRef.current.add(roomId);
+                    void fetchRoomMembers(server, roomId).then((ms) => {
+                        memberFetchingRef.current.delete(roomId);
+                        setMembers((prev) => ({ ...prev, [roomId]: ms }));
+                    });
+                }
+            } else if (hoverInfo) {
+                setHoverInfo(null);
+            }
+        },
+        [hoverInfo, tree, members, server],
+    );
+
+    const totalRooms = hierarchy.rooms.length + hierarchy.spaces.length;
+
+    return (
+        <div className={`mx_FanoosDashboard_stv${isDayMode ? " day" : ""}`}>
+            {/* Control bar — same shape as the local Teams Dashboard's ctrlBar */}
+            <div className={`mx_FanoosDashboard_ctrlBar${isDayMode ? " day" : ""}`}>
+                <label className="mx_FanoosDashboard_ctrlGroup">
+                    <span className="mx_FanoosDashboard_ctrlLabel">{_t("fanoos_dashboard|model")}</span>
+                    <select
+                        className="mx_FanoosDashboard_select"
+                        value={model}
+                        onChange={(e) => setModel(e.target.value as SentimentModel)}
+                    >
+                        <option value="keyword">{_t("fanoos_dashboard|keyword_model")}</option>
+                        <option value="ai">{_t("fanoos_dashboard|ai_model")}</option>
+                    </select>
+                    {analyzing && (
+                        <span className="mx_FanoosDashboard_analyzing" title={_t("fanoos_dashboard|analyzing")}>
+                            …
+                        </span>
+                    )}
+                </label>
+                <div className="mx_FanoosDashboard_divider" />
+                <label className="mx_FanoosDashboard_ctrlGroup">
+                    <span className="mx_FanoosDashboard_ctrlLabel">{_t("fanoos_dashboard|interval")}</span>
+                    <select
+                        className="mx_FanoosDashboard_select"
+                        value={intervalVal}
+                        onChange={(e) => setIntervalVal(e.target.value)}
+                    >
+                        <option value="24h">{_t("fanoos_dashboard|interval_24h")}</option>
+                        <option value="7d">{_t("fanoos_dashboard|interval_7d")}</option>
+                        <option value="30d">{_t("fanoos_dashboard|interval_30d")}</option>
+                        <option value="all">{_t("fanoos_dashboard|interval_all")}</option>
+                    </select>
+                </label>
+                <div className="mx_FanoosDashboard_divider" />
+                <div className="mx_FanoosDashboard_btnGroup">
+                    <span className="mx_FanoosDashboard_ctrlLabel">{_t("fanoos_dashboard|depth")}</span>
+                    <button
+                        className={`mx_FanoosDashboard_lvlBtn${level === 1 ? " active" : ""}${isDayMode ? " day" : ""}`}
+                        onClick={() => setLevel(1)}
+                    >
+                        1
+                    </button>
+                    <button
+                        className={`mx_FanoosDashboard_lvlBtn${level === 2 ? " active" : ""}${isDayMode ? " day" : ""}`}
+                        onClick={() => setLevel(2)}
+                    >
+                        2
+                    </button>
+                </div>
+                <div className="mx_FanoosDashboard_divider" />
+                <button
+                    className={`mx_FanoosDashboard_lvlBtn${showNames ? " active" : ""}${isDayMode ? " day" : ""}`}
+                    onClick={() => setShowNames((v) => !v)}
+                    title={_t("fanoos_dashboard|names")}
+                >
+                    {_t("fanoos_dashboard|names")}
+                </button>
+                <div className="mx_FanoosDashboard_divider" />
+                <div className="mx_FanoosDashboard_searchWrap">
+                    <input
+                        className={`mx_FanoosDashboard_searchInput${isDayMode ? " day" : ""}`}
+                        type="search"
+                        placeholder={_t("fanoos_dashboard|search_placeholder")}
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                    />
+                </div>
+                <div className="mx_FanoosDashboard_divider" />
+                <button
+                    className={`mx_FanoosDashboard_reloadBtn${isDayMode ? " day" : ""}`}
+                    onClick={() => void reload()}
+                    disabled={loading}
+                    title={_t("fanoos_dashboard|reload")}
+                >
+                    ↺
+                </button>
+                <div className="mx_FanoosDashboard_spacer" />
+                <span className="mx_FanoosDashboard_stvCount">
+                    {loading ? "…" : `${totalRooms} 💬 · ${hierarchy.spaces.length} ⬡`}
+                </span>
+            </div>
+            {error && <div className="mx_FanoosDashboard_stvError">{error}</div>}
+            <div className="mx_FanoosDashboard_stvCanvas" ref={containerRef}>
+                {!loading && totalRooms === 0 && (
+                    <div className="mx_FanoosDashboard_stvEmpty">{_t("fanoos_dashboard|admin_stv_empty")}</div>
+                )}
+                <div
+                    ref={svgWrapRef}
+                    className="mx_FanoosDashboard_svgWrap"
+                    onClick={handleClick}
+                    onMouseMove={handleMouseMove}
+                    onMouseLeave={() => setHoverInfo(null)}
+                />
+                {hoverInfo && (
+                    <ServerHoverTooltip
+                        info={hoverInfo}
+                        tree={tree}
+                        unread={unread}
+                        sentiment={sentiment}
+                        sentDetail={sentDetail}
+                        members={members}
+                        isDayMode={isDayMode}
+                    />
+                )}
+            </div>
+            {openRoomId && (
+                <ServerMessagePane
+                    server={server}
+                    roomId={openRoomId}
+                    roomName={hierarchy.rooms.find((r) => r.roomId === openRoomId)?.name}
+                    allRooms={hierarchy.rooms}
+                    spaces={hierarchy.spaces}
+                    spaceChildren={hierarchy.spaceChildren}
+                    recipients={recipients}
+                    setRecipients={setRecipients}
+                    onClose={() => {
+                        setOpenRoomId(null);
+                        setRecipients([]);
+                    }}
+                    isDayMode={isDayMode}
+                    sentiment={sentiment[openRoomId] ?? null}
+                    sentDetail={sentDetail[openRoomId]}
+                    members={members[openRoomId]}
+                />
+            )}
+        </div>
+    );
+}
+
+/** Hover tooltip for the external Teams view — same shape as the local
+ *  HoverTooltip: title, sentiment band + percentage bar, message-count,
+ *  keyword chips, unread, members. Members come from a cache populated
+ *  on hover in the parent.
+ */
+function ServerHoverTooltip({
+    info,
+    tree,
+    unread,
+    sentiment,
+    sentDetail,
+    members,
+    isDayMode,
+}: {
+    info: HoverInfo;
+    tree: TreeNode[];
+    unread: Record<string, number>;
+    sentiment: Record<string, number | null>;
+    sentDetail: Record<string, SentDetail>;
+    members: Record<string, RoomMember[]>;
+    isDayMode: boolean;
+}): React.ReactElement | null {
+    const n = tree.find((x) => x.id === info.nodeId);
+    if (!n) return null;
+
+    // Compute the same fields the local HoverTooltip uses.
+    const score =
+        n.type === "space" || n.type === "virtual"
+            ? avgChildSentiment(n.id, tree, sentiment)
+            : n.matrixRoomId
+              ? (sentiment[n.matrixRoomId] ?? null)
+              : null;
+    const pct = score !== null ? Math.round(score * 100) : null;
+    const band = sentimentBand(score);
+    const color = sentimentColor(score, isDayMode);
+    const un = n.matrixRoomId ? unread[n.matrixRoomId] || 0 : 0;
+    const det = n.matrixRoomId ? sentDetail[n.matrixRoomId] : null;
+    const posKws = det?.pos.slice(0, 4) ?? [];
+    const negKws = det?.neg.slice(0, 4) ?? [];
+
+    const memberList = n.matrixRoomId ? (members[n.matrixRoomId] ?? []) : [];
+    const shownMembers = memberList.slice(0, 5).map((m) => m.displayName);
+    const extra = Math.max(0, memberList.length - 5);
+    const membersLine =
+        extra > 0
+            ? _t("fanoos_dashboard|members_and_more", { names: shownMembers.join(", "), more: extra })
+            : shownMembers.join(", ");
+    const bandLabel: Record<string, string> = {
+        "positive": _t("fanoos_dashboard|positive"),
+        "neutral": _t("fanoos_dashboard|neutral"),
+        "negative": _t("fanoos_dashboard|negative"),
+        "no-data": _t("fanoos_dashboard|no_data"),
+    };
+
+    const isRtl = document.documentElement.dir === "rtl";
+    const winW = UIStore.instance.windowWidth;
+    const TIP_W = 250;
+    const tipX = isRtl ? Math.max(0, info.clientX - TIP_W - 14) : Math.min(info.clientX + 14, winW - TIP_W - 4);
+    const tipY = Math.max(8, Math.min(info.clientY - 10, UIStore.instance.windowHeight - 200));
+    const tipStyle: React.CSSProperties = isRtl ? { right: winW - tipX - TIP_W, top: tipY } : { left: tipX, top: tipY };
+
+    return createPortal(
+        <div className={`mx_FanoosDashboard_hoverTip${isDayMode ? " day" : ""}`} style={tipStyle}>
+            <div className="mx_FanoosDashboard_htTitle">
+                {n.type === "dm" ? "👤" : n.type === "space" ? "⬡" : "💬"} {n.name}
+            </div>
+            {pct !== null && (
+                <div className="mx_FanoosDashboard_htScore" style={{ color }}>
+                    <span className="mx_FanoosDashboard_htBand">{bandLabel[band]}</span>
+                    <span className="mx_FanoosDashboard_htPct">{pct}%</span>
+                    <div className="mx_FanoosDashboard_htBar">
+                        <div className="mx_FanoosDashboard_htBarFill" style={{ width: `${pct}%`, background: color }} />
+                    </div>
+                </div>
+            )}
+            {det && det.msgCount > 0 && (
+                <div className="mx_FanoosDashboard_htMsgCount">
+                    {det.msgCount} {_t("fanoos_dashboard|messages_analysed")}
+                </div>
+            )}
+            {(posKws.length > 0 || negKws.length > 0) && (
+                <div className="mx_FanoosDashboard_htKeywords">
+                    {posKws.length > 0 && (
+                        <div className="mx_FanoosDashboard_htKwRow">
+                            {posKws.map((w) => (
+                                <span key={w} className="mx_FanoosDashboard_htKw pos">
+                                    {w}
+                                </span>
+                            ))}
+                        </div>
+                    )}
+                    {negKws.length > 0 && (
+                        <div className="mx_FanoosDashboard_htKwRow">
+                            {negKws.map((w) => (
+                                <span key={w} className="mx_FanoosDashboard_htKw neg">
+                                    {w}
+                                </span>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
+            {un > 0 && (
+                <div className="mx_FanoosDashboard_htUnread">{_t("fanoos_dashboard|unread_badge", { count: un })}</div>
+            )}
+            {memberList.length > 0 && <div className="mx_FanoosDashboard_htMembers">{membersLine}</div>}
+        </div>,
+        document.body,
+    );
+}
+
+function ServerMessagePane({
+    server,
+    roomId,
+    roomName,
+    allRooms,
+    spaces,
+    spaceChildren,
+    recipients,
+    setRecipients,
+    onClose,
+    isDayMode,
+    sentiment,
+    sentDetail,
+    members,
+}: {
+    server: AdminServer;
+    roomId: string;
+    roomName?: string;
+    allRooms: ServerRoom[];
+    spaces: ServerRoom[];
+    spaceChildren: Record<string, string[]>;
+    recipients: Array<{ roomId: string; name: string }>;
+    setRecipients: React.Dispatch<React.SetStateAction<Array<{ roomId: string; name: string }>>>;
+    onClose: () => void;
+    isDayMode: boolean;
+    sentiment?: number | null;
+    sentDetail?: SentDetail;
+    members?: RoomMember[];
+}): React.ReactElement {
+    const [messages, setMessages] = useState<RoomMessage[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [notMember, setNotMember] = useState(false);
+    const [draft, setDraft] = useState("");
+    const [sending, setSending] = useState(false);
+    const listRef = useRef<HTMLDivElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const editorRef = useRef<HTMLDivElement>(null);
+    const colorInputRef = useRef<HTMLInputElement>(null);
+    const savedRangeRef = useRef<Range | null>(null);
+    // Draggable window state — same shape as local SendWindow.
+    const [pos, setPos] = useState<{ x: number; y: number }>(() => {
+        const winW = UIStore.instance.windowWidth;
+        const winH = UIStore.instance.windowHeight;
+        return { x: Math.max(20, (winW - 560) / 2), y: Math.max(20, (winH - 640) / 2) };
+    });
+    const [size, setSize] = useState<{ w: number; h: number }>({ w: 560, h: 640 });
+    const [minimized, setMinimized] = useState(false);
+    const [showAnalysis, setShowAnalysis] = useState(false);
+    const [showEmoji, setShowEmoji] = useState(false);
+    const [recording, setRecording] = useState(false);
+    const mediaRecRef = useRef<MediaRecorder | null>(null);
+    const audioChunksRef = useRef<Blob[]>([]);
+    const recordStartRef = useRef(0);
+    // Which message's reaction picker is currently open (eventId), or null.
+    const [reactionFor, setReactionFor] = useState<string | null>(null);
+    // Multi-recipient broadcast state lives in the parent so radial shift-click
+    // can manipulate it before/while the pane is open. The parent (handleClick
+    // in ServerTeamsView) seeds recipients when a room is clicked, so we don't
+    // need to seed here.
+    const [showRecipients, setShowRecipients] = useState(false);
+    const [recipientSearch, setRecipientSearch] = useState("");
+    // Banner listing rooms just successfully sent to.
+    const [sent, setSent] = useState<string[]>([]);
+
+    const singleRecipient = recipients.length === 1 ? recipients[0] : null;
+    const activeRoomId = singleRecipient?.roomId ?? null;
+
+    const toggleRecipient = useCallback(
+        (r: ServerRoom): void => {
+            setRecipients((prev) => {
+                if (prev.some((x) => x.roomId === r.roomId)) {
+                    // Never let the list drop to empty.
+                    if (prev.length === 1) return prev;
+                    return prev.filter((x) => x.roomId !== r.roomId);
+                }
+                return [...prev, { roomId: r.roomId, name: r.name }];
+            });
+        },
+        [setRecipients],
+    );
+
+    const removeRecipient = useCallback(
+        (rid: string): void => {
+            setRecipients((prev) => (prev.length > 1 ? prev.filter((r) => r.roomId !== rid) : prev));
+        },
+        [setRecipients],
+    );
+
+    // Cache of space → resolved children, populated on first click of each space.
+    const [spaceKidsCache, setSpaceKidsCache] = useState<Record<string, ServerRoom[]>>({});
+    // Anchor for shift-click range selection in the room list.
+    const [rowAnchor, setRowAnchor] = useState<number | null>(null);
+
+    /**
+     * Toggle every child of a space at once. Fetches the space's rooms live
+     * via /hierarchy the first time (so it works even if the initial
+     * hierarchy didn't capture every child), then adds/removes them.
+     */
+    const toggleSpace = useCallback(
+        async (spaceId: string): Promise<void> => {
+            let kids = spaceKidsCache[spaceId];
+            if (!kids) {
+                // First click on this space — fetch its rooms live.
+                kids = await fetchSpaceRooms(server, spaceId);
+                // Fallback: merge with anything we already knew from the initial hierarchy.
+                const fallbackIds = spaceChildren[spaceId] ?? [];
+                for (const fid of fallbackIds) {
+                    if (kids.some((k) => k.roomId === fid)) continue;
+                    const r = allRooms.find((x) => x.roomId === fid);
+                    if (r) kids.push(r);
+                }
+                setSpaceKidsCache((prev) => ({ ...prev, [spaceId]: kids! }));
+            }
+            if (kids.length === 0) return;
+            setRecipients((prev) => {
+                const currentSet = new Set(prev.map((r) => r.roomId));
+                const allSelected = kids!.every((k) => currentSet.has(k.roomId));
+                if (allSelected) {
+                    const kidIds = new Set(kids!.map((k) => k.roomId));
+                    const filtered = prev.filter((r) => !kidIds.has(r.roomId));
+                    return filtered.length ? filtered : prev;
+                }
+                const additions = kids!
+                    .filter((k) => !currentSet.has(k.roomId))
+                    .map((k) => ({ roomId: k.roomId, name: k.name }));
+                return [...prev, ...additions];
+            });
+        },
+        [server, spaceChildren, allRooms, spaceKidsCache, setRecipients],
+    );
+
+    /** For a given space, compute selection state across its child rooms. */
+    const spaceSelectionState = useCallback(
+        (spaceId: string): "none" | "partial" | "all" => {
+            const kids = spaceChildren[spaceId] ?? [];
+            if (kids.length === 0) return "none";
+            const rset = new Set(recipients.map((r) => r.roomId));
+            const selectedCount = kids.filter((k) => rset.has(k)).length;
+            if (selectedCount === 0) return "none";
+            if (selectedCount === kids.length) return "all";
+            return "partial";
+        },
+        [recipients, spaceChildren],
+    );
+
+    const q = recipientSearch.trim().toLowerCase();
+    const filteredSpaces = q ? spaces.filter((s) => s.name.toLowerCase().includes(q)) : spaces;
+    const filteredRooms = q ? allRooms.filter((r) => r.name.toLowerCase().includes(q)) : allRooms;
+    const posRef = useRef(pos);
+    const sizeRef = useRef(size);
+    useEffect(() => {
+        posRef.current = pos;
+    }, [pos]);
+    useEffect(() => {
+        sizeRef.current = size;
+    }, [size]);
+
+    const handleDragStart = useCallback((e: React.MouseEvent<HTMLDivElement>): void => {
+        if (e.button !== 0) return;
+        e.preventDefault();
+        const ox = e.clientX - posRef.current.x;
+        const oy = e.clientY - posRef.current.y;
+        const onMove = (ev: MouseEvent): void => {
+            const x = Math.max(0, Math.min(ev.clientX - ox, UIStore.instance.windowWidth - sizeRef.current.w));
+            const y = Math.max(0, Math.min(ev.clientY - oy, UIStore.instance.windowHeight - 40));
+            setPos({ x, y });
+        };
+        const onUp = (): void => {
+            document.removeEventListener("mousemove", onMove);
+            document.removeEventListener("mouseup", onUp);
+        };
+        document.addEventListener("mousemove", onMove);
+        document.addEventListener("mouseup", onUp);
+    }, []);
+
+    const handleResizeStart = useCallback((e: React.MouseEvent<HTMLDivElement>): void => {
+        if (e.button !== 0) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const startX = e.clientX;
+        const startY = e.clientY;
+        const startW = sizeRef.current.w;
+        const startH = sizeRef.current.h;
+        const onMove = (ev: MouseEvent): void => {
+            const w = Math.max(320, startW + ev.clientX - startX);
+            const h = Math.max(300, startH + ev.clientY - startY);
+            setSize({ w, h });
+        };
+        const onUp = (): void => {
+            document.removeEventListener("mousemove", onMove);
+            document.removeEventListener("mouseup", onUp);
+        };
+        document.addEventListener("mousemove", onMove);
+        document.addEventListener("mouseup", onUp);
+    }, []);
+
+    const saveSelection = useCallback((): void => {
+        const sel = window.getSelection();
+        if (!sel || sel.rangeCount === 0) return;
+        const range = sel.getRangeAt(0);
+        // Only save selections that live inside our editor.
+        if (editorRef.current?.contains(range.commonAncestorContainer)) {
+            savedRangeRef.current = range.cloneRange();
+        }
+    }, []);
+
+    const restoreSelection = useCallback((): void => {
+        const range = savedRangeRef.current;
+        if (!range || !editorRef.current) return;
+        editorRef.current.focus();
+        const sel = window.getSelection();
+        sel?.removeAllRanges();
+        sel?.addRange(range);
+    }, []);
+
+    const insertAtCursor = useCallback(
+        (text: string): void => {
+            if (!editorRef.current) return;
+            restoreSelection();
+            document.execCommand("insertText", false, text);
+            setDraft(editorRef.current.innerText);
+        },
+        [restoreSelection],
+    );
+
+    const applyFormat = useCallback(
+        (cmd: string, value?: string): void => {
+            restoreSelection();
+            document.execCommand(cmd, false, value);
+            if (editorRef.current) setDraft(editorRef.current.innerText);
+        },
+        [restoreSelection],
+    );
+
+    /** Convert the contentEditable's rich HTML into the plaintext body Matrix expects. */
+    const plainFromHtml = useCallback((): string => {
+        return editorRef.current?.innerText.trim() ?? "";
+    }, []);
+
+    const reload = useCallback(async () => {
+        // Multi-recipient mode: no chat history to fetch — the compose surface
+        // takes over and we skip straight to "ready".
+        if (!activeRoomId) {
+            setMessages([]);
+            setLoading(false);
+            setNotMember(false);
+            setError(null);
+            return;
+        }
+        try {
+            const rows = await fetchRoomMessages(server, activeRoomId, 50);
+            setMessages(rows);
+            setNotMember(false);
+            setError(null);
+        } catch (e) {
+            const msg = e instanceof Error ? e.message : String(e);
+            if (/M_FORBIDDEN|not.*member|not in the room/i.test(msg)) {
+                setNotMember(true);
+                setError(null);
+            } else {
+                setError(msg);
+            }
+        } finally {
+            setLoading(false);
+        }
+    }, [server, activeRoomId]);
+
+    useEffect(() => {
+        void reload();
+        const id = window.setInterval(reload, 5000);
+        return () => window.clearInterval(id);
+    }, [reload]);
+
+    // Auto-scroll to bottom when new messages arrive.
+    useEffect(() => {
+        listRef.current?.scrollTo({ top: listRef.current.scrollHeight });
+    }, [messages]);
+
+    const join = useCallback(async () => {
+        if (!activeRoomId) return;
+        try {
+            await joinServerRoom(server, activeRoomId);
+            setNotMember(false);
+            await reload();
+        } catch (e) {
+            setError(e instanceof Error ? e.message : String(e));
+        }
+    }, [server, activeRoomId, reload]);
+
+    /**
+     * Broadcast helper: run `op(rid)` against every recipient in parallel,
+     * collect the room names that succeeded, and surface them in the
+     * "✓ sent to …" banner.
+     */
+    const broadcast = useCallback(
+        async (op: (rid: string) => Promise<unknown>): Promise<void> => {
+            setSending(true);
+            setError(null);
+            const results = await Promise.allSettled(recipients.map((r) => op(r.roomId)));
+            const okRooms: string[] = [];
+            const failures: string[] = [];
+            results.forEach((res, idx) => {
+                if (res.status === "fulfilled") okRooms.push(recipients[idx].name);
+                else failures.push(`${recipients[idx].name}: ${(res.reason as Error).message}`);
+            });
+            setSending(false);
+            if (okRooms.length) {
+                setSent(okRooms);
+                // Fade the banner after a moment.
+                window.setTimeout(() => setSent([]), 4000);
+            }
+            if (failures.length) setError(failures.join(" · "));
+        },
+        [recipients],
+    );
+
+    const send = useCallback(async () => {
+        if (!editorRef.current) return;
+        const html = editorRef.current.innerHTML.trim();
+        const plain = editorRef.current.innerText.trim();
+        if (!plain) return;
+        const hasFormatting = /<(b|i|u|s|strong|em|font|span|br|p|ul|ol|li)\b/i.test(html);
+        await broadcast((rid) => sendRoomMessage(server, rid, plain, hasFormatting ? html : undefined));
+        if (editorRef.current) editorRef.current.innerHTML = "";
+        setDraft("");
+        await reload();
+    }, [server, reload, broadcast]);
+
+    const onFilePick = useCallback(
+        async (e: React.ChangeEvent<HTMLInputElement>) => {
+            const file = e.target.files?.[0];
+            e.target.value = "";
+            if (!file) return;
+            try {
+                const mxc = await uploadMedia(server, file);
+                const msgtype = file.type.startsWith("image/")
+                    ? "m.image"
+                    : file.type.startsWith("audio/")
+                      ? "m.audio"
+                      : "m.file";
+                await broadcast((rid) => sendRoomMedia(server, rid, mxc, file, msgtype));
+                await reload();
+            } catch (err) {
+                setError(err instanceof Error ? err.message : String(err));
+            }
+        },
+        [server, reload, broadcast],
+    );
+
+    // Toggle a reaction on a message. If the admin has already reacted with
+    // this emoji, redact their previous m.reaction event; otherwise send a new one.
+    const toggleReaction = useCallback(
+        async (msg: RoomMessage, emoji: string) => {
+            setReactionFor(null);
+            const existing = msg.reactions?.[emoji];
+            try {
+                if (existing?.mine && existing.myEventId) {
+                    await redactEvent(server, roomId, existing.myEventId);
+                } else {
+                    await sendReaction(server, roomId, msg.eventId, emoji);
+                }
+                await reload();
+            } catch (e) {
+                setError(e instanceof Error ? e.message : String(e));
+            }
+        },
+        [server, roomId, reload],
+    );
+
+    const toggleRecording = useCallback(async () => {
+        if (recording) {
+            mediaRecRef.current?.stop();
+            return;
+        }
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            void broadcast; // keep dep-tracker happy for the closure below
+            const mr = new MediaRecorder(stream, { mimeType: "audio/webm" });
+            audioChunksRef.current = [];
+            recordStartRef.current = Date.now();
+            mr.ondataavailable = (ev: BlobEvent): void => {
+                if (ev.data.size > 0) audioChunksRef.current.push(ev.data);
+            };
+            mr.onstop = async (): Promise<void> => {
+                stream.getTracks().forEach((t) => t.stop());
+                const durationMs = Date.now() - recordStartRef.current;
+                const blob = new Blob(audioChunksRef.current, { type: "audio/ogg; codecs=opus" });
+                setRecording(false);
+                try {
+                    const mxc = await uploadMediaBlob(server, blob, "voice-message.ogg");
+                    await broadcast((rid) =>
+                        sendRoomMedia(server, rid, mxc, blob, "m.audio", {
+                            durationMs,
+                            body: "Voice message",
+                            voiceMessage: true,
+                        }),
+                    );
+                    await reload();
+                } catch (err) {
+                    setError(err instanceof Error ? err.message : String(err));
+                }
+            };
+            mr.start();
+            mediaRecRef.current = mr;
+            setRecording(true);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : String(err));
+        }
+    }, [recording, server, reload, broadcast]);
+
+    // Draggable window, same behaviour as the local SendWindow (chrome + drag/
+    // resize/minimize/analysis-toggle). Instead of a modal overlay we pin the
+    // pane at `pos` so multiple can coexist and be moved around.
+    const bandColors: Record<string, string> = {
+        "positive": "#22c55e",
+        "neutral": "#eab308",
+        "negative": "#ef4444",
+        "no-data": isDayMode ? "#94a3b8" : "#475569",
+    };
+    const pct = sentiment != null ? Math.round(sentiment * 100) : null;
+    const scoreColor = sentimentColor(sentiment ?? null, isDayMode);
+    const band = sentimentBand(sentiment ?? null);
+
+    const showSidePanel = showAnalysis || showRecipients;
+    return createPortal(
+        <div
+            className={`mx_FanoosDashboard_sendWindow${isDayMode ? " day" : ""}${minimized ? " minimized" : ""}${
+                showSidePanel ? " withPanel" : ""
+            }${!singleRecipient ? " noHistory" : ""}`}
+            style={{
+                left: pos.x,
+                top: pos.y,
+                width: size.w + (showSidePanel ? 220 : 0),
+                height: minimized ? undefined : size.h,
+            }}
+        >
+            {/* Header — drag handle + control buttons */}
+            <div className="mx_FanoosDashboard_cbHdr" onMouseDown={handleDragStart}>
+                <span className="mx_FanoosDashboard_cbDragHandle">⠿</span>
+                <span className="mx_FanoosDashboard_cbTitle">
+                    {recipients.length > 1 ? `📢 ${recipients.length}` : `💬 ${roomName || roomId}`}
+                </span>
+                <button
+                    className={`mx_FanoosDashboard_cbCtrl${showRecipients ? " active" : ""}`}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onClick={() => {
+                        setShowRecipients((v) => !v);
+                        if (!showRecipients) setShowAnalysis(false);
+                    }}
+                    title={_t("fanoos_dashboard|recipients")}
+                >
+                    👥
+                </button>
+                <button
+                    className={`mx_FanoosDashboard_cbCtrl${showAnalysis ? " active" : ""}`}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onClick={() => {
+                        setShowAnalysis((v) => !v);
+                        if (!showAnalysis) setShowRecipients(false);
+                    }}
+                    title={_t("fanoos_dashboard|analysis")}
+                    disabled={!singleRecipient}
+                >
+                    📊
+                </button>
+                <button
+                    className="mx_FanoosDashboard_cbCtrl"
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onClick={() => setMinimized((v) => !v)}
+                    title={minimized ? _t("fanoos_dashboard|expand") : _t("fanoos_dashboard|minimize")}
+                >
+                    {minimized ? "▲" : "▼"}
+                </button>
+                <button
+                    className="mx_FanoosDashboard_cbCtrl"
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onClick={onClose}
+                    title={_t("fanoos_dashboard|close")}
+                >
+                    ✕
+                </button>
+            </div>
+
+            {!minimized && (
+                <div className={`mx_FanoosDashboard_swBody${showSidePanel ? " withPanel" : ""}`}>
+                    {/* Recipients side panel — spaces (bulk toggle) + rooms (individual) */}
+                    {showRecipients && !showAnalysis && (
+                        <div className="mx_FanoosDashboard_swRecipientsPanel">
+                            <div className="mx_FanoosDashboard_swRpHdr">{_t("fanoos_dashboard|recipients")}</div>
+                            <input
+                                className="mx_FanoosDashboard_swRpSearch"
+                                type="search"
+                                placeholder={_t("fanoos_dashboard|search_placeholder")}
+                                value={recipientSearch}
+                                onChange={(e) => setRecipientSearch(e.target.value)}
+                            />
+                            <div className="mx_FanoosDashboard_swRpList">
+                                {filteredSpaces.length > 0 && (
+                                    <>
+                                        <div className="mx_FanoosDashboard_swRpHdr" style={{ padding: "6px 12px 2px" }}>
+                                            ⬡ {_t("fanoos_dashboard|admin_tab_spaces")}
+                                        </div>
+                                        {filteredSpaces.map((s) => {
+                                            const state = spaceSelectionState(s.roomId);
+                                            // Prefer the fetched cache count; fall back to the initial hierarchy.
+                                            const kidCount =
+                                                spaceKidsCache[s.roomId]?.length ??
+                                                (spaceChildren[s.roomId] ?? []).length;
+                                            const check = state === "all" ? "✓" : state === "partial" ? "◐" : "+";
+                                            return (
+                                                <div
+                                                    key={s.roomId}
+                                                    className={`mx_FanoosDashboard_swRpRow${
+                                                        state !== "none" ? " selected" : ""
+                                                    }`}
+                                                    onClick={() => void toggleSpace(s.roomId)}
+                                                >
+                                                    <span className="mx_FanoosDashboard_swRpCheck">{check}</span>
+                                                    <span className="mx_FanoosDashboard_swRpName">⬡ {s.name}</span>
+                                                    <span className="mx_FanoosDashboard_swRpBadge">{kidCount}</span>
+                                                </div>
+                                            );
+                                        })}
+                                    </>
+                                )}
+                                {filteredRooms.length > 0 && (
+                                    <>
+                                        <div className="mx_FanoosDashboard_swRpHdr" style={{ padding: "8px 12px 2px" }}>
+                                            💬 {_t("fanoos_dashboard|channels")}
+                                        </div>
+                                        {filteredRooms.map((r, idx) => {
+                                            const selected = recipients.some((x) => x.roomId === r.roomId);
+                                            return (
+                                                <div
+                                                    key={r.roomId}
+                                                    className={`mx_FanoosDashboard_swRpRow${
+                                                        selected ? " selected" : ""
+                                                    }`}
+                                                    onClick={(ev) => {
+                                                        // Shift-click: select range from anchor to this row.
+                                                        if (ev.shiftKey && rowAnchor !== null && rowAnchor !== idx) {
+                                                            const [from, to] =
+                                                                rowAnchor < idx ? [rowAnchor, idx] : [idx, rowAnchor];
+                                                            const range = filteredRooms.slice(from, to + 1);
+                                                            setRecipients((prev) => {
+                                                                const set = new Set(prev.map((x) => x.roomId));
+                                                                const add = range
+                                                                    .filter((x) => !set.has(x.roomId))
+                                                                    .map((x) => ({
+                                                                        roomId: x.roomId,
+                                                                        name: x.name,
+                                                                    }));
+                                                                return add.length ? [...prev, ...add] : prev;
+                                                            });
+                                                            // Preserve text selection cleanup — user was shift-selecting.
+                                                            window.getSelection()?.removeAllRanges();
+                                                        } else if (ev.ctrlKey || ev.metaKey) {
+                                                            // Ctrl / Cmd-click: toggle just this row (explicit non-range).
+                                                            toggleRecipient(r);
+                                                            setRowAnchor(idx);
+                                                        } else {
+                                                            toggleRecipient(r);
+                                                            setRowAnchor(idx);
+                                                        }
+                                                    }}
+                                                >
+                                                    <span className="mx_FanoosDashboard_swRpCheck">
+                                                        {selected ? "✓" : "+"}
+                                                    </span>
+                                                    <span className="mx_FanoosDashboard_swRpName">💬 {r.name}</span>
+                                                </div>
+                                            );
+                                        })}
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                    {/* Analysis side panel — sentiment + members, mirrors local AnalysisPanel */}
+                    {showAnalysis && !showRecipients && (
+                        <div className="mx_FanoosDashboard_analysisPanel">
+                            <div className="mx_FanoosDashboard_apHdr">
+                                <span>💬</span>
+                                <span className="mx_FanoosDashboard_apHdrName">{roomName || roomId}</span>
+                            </div>
+                            {pct !== null && (
+                                <div className="mx_FanoosDashboard_apScoreSection">
+                                    <div className="mx_FanoosDashboard_apBandRow">
+                                        <span className="mx_FanoosDashboard_apBand" style={{ color: bandColors[band] }}>
+                                            {band}
+                                        </span>
+                                        <span className="mx_FanoosDashboard_apPct" style={{ color: scoreColor }}>
+                                            {pct}%
+                                        </span>
+                                    </div>
+                                    <div className="mx_FanoosDashboard_apTrack">
+                                        <div
+                                            className="mx_FanoosDashboard_apFill"
+                                            style={{ width: `${pct}%`, background: scoreColor }}
+                                        />
+                                    </div>
+                                </div>
+                            )}
+                            {sentDetail && sentDetail.msgCount > 0 && (
+                                <div className="mx_FanoosDashboard_apMsgCount">
+                                    {sentDetail.msgCount} {_t("fanoos_dashboard|messages_analysed")}
+                                </div>
+                            )}
+                            {sentDetail && sentDetail.pos.length > 0 && (
+                                <div className="mx_FanoosDashboard_apKwGroup">
+                                    <span className="mx_FanoosDashboard_apKwLabel pos">
+                                        {_t("fanoos_dashboard|positive")}
+                                    </span>
+                                    <div className="mx_FanoosDashboard_apKws">
+                                        {sentDetail.pos.map((k) => (
+                                            <span key={k} className="mx_FanoosDashboard_apKw pos">
+                                                {k}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                            {sentDetail && sentDetail.neg.length > 0 && (
+                                <div className="mx_FanoosDashboard_apKwGroup">
+                                    <span className="mx_FanoosDashboard_apKwLabel neg">
+                                        {_t("fanoos_dashboard|issues")}
+                                    </span>
+                                    <div className="mx_FanoosDashboard_apKws">
+                                        {sentDetail.neg.map((k) => (
+                                            <span key={k} className="mx_FanoosDashboard_apKw neg">
+                                                {k}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                            {members && members.length > 0 && (
+                                <div className="mx_FanoosDashboard_apMembers">
+                                    <div className="mx_FanoosDashboard_apMembersHdr">
+                                        {_t("fanoos_dashboard|members")}
+                                    </div>
+                                    <div className="mx_FanoosDashboard_apMembersList">
+                                        {members.slice(0, 15).map((m) => (
+                                            <span key={m.userId} className="mx_FanoosDashboard_apMemberChip">
+                                                <span className="mx_FanoosDashboard_apMemberAv">
+                                                    {(m.displayName || m.userId).slice(0, 2).toUpperCase()}
+                                                </span>
+                                                <span className="mx_FanoosDashboard_apMemberName">
+                                                    {m.displayName || m.userId}
+                                                </span>
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Main column */}
+                    <div className="mx_FanoosDashboard_swMain">
+                        <div className="mx_FanoosDashboard_swChips">
+                            {recipients.length === 1 ? (
+                                <span className="mx_FanoosDashboard_swChip">
+                                    {server.label} · {recipients[0].name}
+                                </span>
+                            ) : (
+                                recipients.map((r) => (
+                                    <span key={r.roomId} className="mx_FanoosDashboard_swChip">
+                                        {r.name}
+                                        <button
+                                            className="mx_FanoosDashboard_swChipX"
+                                            onClick={() => removeRecipient(r.roomId)}
+                                            title={_t("action|remove")}
+                                        >
+                                            ✕
+                                        </button>
+                                    </span>
+                                ))
+                            )}
+                        </div>
+
+                        {sent.length > 0 && <div className="mx_FanoosDashboard_swSentBanner">✓ {sent.join(", ")}</div>}
+                        {error && (
+                            <div
+                                className="mx_FanoosDashboard_swSentBanner"
+                                style={{ background: "rgba(239,68,68,0.15)", color: "#ef4444" }}
+                            >
+                                {error}
+                            </div>
+                        )}
+
+                        {/* Chat history only for single recipient — broadcast mode is compose-only */}
+                        {singleRecipient && (
+                            <div className="mx_FanoosDashboard_chatHistory" ref={listRef}>
+                                {loading && <div className="mx_FanoosDashboard_chLoading">⏳</div>}
+                                {!loading && notMember && (
+                                    <div className="mx_FanoosDashboard_chEmpty" style={{ textAlign: "center" }}>
+                                        <div>{_t("fanoos_dashboard|admin_stv_not_member")}</div>
+                                        <button
+                                            className="mx_FanoosDashboard_cbEmojiBtn"
+                                            style={{ marginTop: 10, padding: "4px 12px" }}
+                                            onClick={() => void join()}
+                                        >
+                                            {_t("fanoos_dashboard|admin_stv_join")}
+                                        </button>
+                                    </div>
+                                )}
+                                {!loading && !notMember && messages.length === 0 && (
+                                    <div className="mx_FanoosDashboard_chEmpty">
+                                        {_t("fanoos_dashboard|admin_stv_no_messages")}
+                                    </div>
+                                )}
+                                {messages.map((m) => {
+                                    const senderName = m.sender.split(":")[0].replace(/^@/, "");
+                                    const isOwn = m.sender === server.adminMxid;
+                                    let bodyEl: React.ReactNode;
+                                    if (m.msgtype === "m.image" && m.url) {
+                                        bodyEl = <AuthMedia server={server} mxc={m.url} kind="img" alt={m.body} />;
+                                    } else if (m.msgtype === "m.audio" && m.url) {
+                                        bodyEl = <AuthMedia server={server} mxc={m.url} kind="audio" alt={m.body} />;
+                                    } else if (m.msgtype === "m.video" && m.url) {
+                                        bodyEl = <AuthMedia server={server} mxc={m.url} kind="video" alt={m.body} />;
+                                    } else if (m.msgtype === "m.file" && m.url) {
+                                        bodyEl = (
+                                            <AuthMedia server={server} mxc={m.url} kind="file" filename={m.body} />
+                                        );
+                                    } else if (m.formattedBody) {
+                                        bodyEl = (
+                                            <div
+                                                className="mx_FanoosDashboard_chBody mx_FanoosDashboard_chHtmlBody"
+                                                dangerouslySetInnerHTML={{ __html: m.formattedBody }}
+                                            />
+                                        );
+                                    } else {
+                                        bodyEl = <div className="mx_FanoosDashboard_chBody">{m.body}</div>;
+                                    }
+                                    const rx = m.reactions ?? {};
+                                    const rxKeys = Object.keys(rx);
+                                    return (
+                                        <div
+                                            key={m.eventId}
+                                            className={`mx_FanoosDashboard_chRow${isOwn ? " own" : ""}`}
+                                        >
+                                            {!isOwn && (
+                                                <div className="mx_FanoosDashboard_chAvatar">
+                                                    {senderName.slice(0, 2).toUpperCase()}
+                                                </div>
+                                            )}
+                                            <div className="mx_FanoosDashboard_chContent">
+                                                {!isOwn && (
+                                                    <div className="mx_FanoosDashboard_chSender">{senderName}</div>
+                                                )}
+                                                <div
+                                                    className={`mx_FanoosDashboard_chBubbleRow${isOwn ? " own" : ""}`}
+                                                    style={{ position: "relative" }}
+                                                >
+                                                    <div
+                                                        className={`mx_FanoosDashboard_chBubble${isOwn ? " own" : ""}`}
+                                                        dir="auto"
+                                                    >
+                                                        {bodyEl}
+                                                        <div className="mx_FanoosDashboard_chTs">
+                                                            {formatJalaliTime(m.ts)}
+                                                        </div>
+                                                    </div>
+                                                    {/* React "+" button — appears on bubble hover */}
+                                                    <button
+                                                        className="mx_FanoosDashboard_smpReactBtn"
+                                                        onClick={() =>
+                                                            setReactionFor((cur) =>
+                                                                cur === m.eventId ? null : m.eventId,
+                                                            )
+                                                        }
+                                                        title={_t("action|react")}
+                                                    >
+                                                        😊+
+                                                    </button>
+                                                    {reactionFor === m.eventId && (
+                                                        <div
+                                                            className="mx_FanoosDashboard_smpReactPicker"
+                                                            onClick={(e) => e.stopPropagation()}
+                                                        >
+                                                            <EmojiPicker
+                                                                onChoose={(unicode) => {
+                                                                    void toggleReaction(m, unicode);
+                                                                    return true;
+                                                                }}
+                                                                onFinished={() => setReactionFor(null)}
+                                                            />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                {rxKeys.length > 0 && (
+                                                    <div className="mx_FanoosDashboard_smpReactions">
+                                                        {rxKeys.map((k) => {
+                                                            const b = rx[k];
+                                                            return (
+                                                                <button
+                                                                    key={k}
+                                                                    className={`mx_FanoosDashboard_smpReactionChip${
+                                                                        b.mine ? " mine" : ""
+                                                                    }`}
+                                                                    onClick={() => void toggleReaction(m, k)}
+                                                                    title={b.senders
+                                                                        .map((s) => s.split(":")[0].replace(/^@/, ""))
+                                                                        .join(", ")}
+                                                                >
+                                                                    <span>{k}</span>
+                                                                    <span className="mx_FanoosDashboard_smpReactionCount">
+                                                                        {b.count}
+                                                                    </span>
+                                                                </button>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+
+                        {/* Composer — HTML rich-text editor + toolbar */}
+                        {(!singleRecipient || !notMember) && (
+                            <div className="mx_FanoosDashboard_cbCompose">
+                                {/* HTML toolbar */}
+                                <div className="mx_FanoosDashboard_htmlToolbar">
+                                    <button
+                                        onMouseDown={(e) => {
+                                            e.preventDefault();
+                                            saveSelection();
+                                        }}
+                                        onClick={() => applyFormat("bold")}
+                                        title={_t("fanoos_dashboard|html_bold")}
+                                    >
+                                        <b>B</b>
+                                    </button>
+                                    <button
+                                        onMouseDown={(e) => {
+                                            e.preventDefault();
+                                            saveSelection();
+                                        }}
+                                        onClick={() => applyFormat("italic")}
+                                        title={_t("fanoos_dashboard|html_italic")}
+                                    >
+                                        <i>I</i>
+                                    </button>
+                                    <button
+                                        onMouseDown={(e) => {
+                                            e.preventDefault();
+                                            saveSelection();
+                                        }}
+                                        onClick={() => applyFormat("underline")}
+                                        title={_t("fanoos_dashboard|html_underline")}
+                                    >
+                                        <u>U</u>
+                                    </button>
+                                    <button
+                                        onMouseDown={(e) => {
+                                            e.preventDefault();
+                                            saveSelection();
+                                        }}
+                                        onClick={() => applyFormat("strikeThrough")}
+                                        title={_t("fanoos_dashboard|html_strikethrough")}
+                                    >
+                                        <s>S</s>
+                                    </button>
+                                    <span className="mx_FanoosDashboard_htmlToolbarDivider" />
+                                    <label
+                                        className="mx_FanoosDashboard_htmlColorBtn"
+                                        title={_t("fanoos_dashboard|html_color")}
+                                        onMouseDown={(e) => {
+                                            e.preventDefault();
+                                            saveSelection();
+                                        }}
+                                        onClick={() => colorInputRef.current?.click()}
+                                    >
+                                        <span>A</span>
+                                        <input
+                                            ref={colorInputRef}
+                                            type="color"
+                                            defaultValue="#e879f9"
+                                            style={{
+                                                position: "absolute",
+                                                opacity: 0,
+                                                width: 0,
+                                                height: 0,
+                                                pointerEvents: "none",
+                                            }}
+                                            onChange={(e) => applyFormat("foreColor", e.target.value)}
+                                        />
+                                    </label>
+                                </div>
+                                <div
+                                    ref={editorRef}
+                                    className="mx_FanoosDashboard_cbInput mx_FanoosDashboard_cbHtmlEditor"
+                                    contentEditable
+                                    suppressContentEditableWarning
+                                    data-placeholder={_t("fanoos_dashboard|admin_stv_send_ph")}
+                                    onInput={() => {
+                                        setDraft(editorRef.current?.innerText ?? "");
+                                    }}
+                                    onBlur={saveSelection}
+                                    onKeyUp={saveSelection}
+                                    onMouseUp={saveSelection}
+                                    onKeyDown={(e) => {
+                                        if (e.key === "Enter" && !e.shiftKey && plainFromHtml()) {
+                                            e.preventDefault();
+                                            void send();
+                                        }
+                                    }}
+                                    style={{
+                                        minHeight: 40,
+                                        maxHeight: 200,
+                                        overflowY: "auto",
+                                        outline: "none",
+                                    }}
+                                />
+                                <div className="mx_FanoosDashboard_cbActions" style={{ position: "relative" }}>
+                                    <button
+                                        className="mx_FanoosDashboard_cbEmojiBtn"
+                                        onClick={() => setShowEmoji((v) => !v)}
+                                        title={_t("fanoos_dashboard|emoji_btn")}
+                                        disabled={sending || recording}
+                                    >
+                                        😀
+                                    </button>
+                                    <button
+                                        className="mx_FanoosDashboard_cbEmojiBtn"
+                                        onClick={() => fileInputRef.current?.click()}
+                                        title={_t("fanoos_dashboard|send_file")}
+                                        disabled={sending || recording}
+                                    >
+                                        📎
+                                    </button>
+                                    <input
+                                        ref={fileInputRef}
+                                        type="file"
+                                        style={{ display: "none" }}
+                                        onChange={(e) => void onFilePick(e)}
+                                    />
+                                    <button
+                                        className={`mx_FanoosDashboard_cbMic${recording ? " recording" : ""}`}
+                                        onClick={() => void toggleRecording()}
+                                        title={
+                                            recording
+                                                ? _t("fanoos_dashboard|stop_recording")
+                                                : _t("fanoos_dashboard|record_voice")
+                                        }
+                                        disabled={sending}
+                                    >
+                                        🎙
+                                    </button>
+                                    <button
+                                        className={`mx_FanoosDashboard_cbSend${sending ? " sending" : ""}`}
+                                        onClick={() => void send()}
+                                        disabled={sending || recording || !draft.trim()}
+                                        title={_t("fanoos_dashboard|send")}
+                                    >
+                                        {sending ? "…" : _t("fanoos_dashboard|send")}
+                                    </button>
+
+                                    {showEmoji && (
+                                        <div
+                                            style={{
+                                                position: "absolute",
+                                                bottom: "100%",
+                                                right: 0,
+                                                marginBottom: 6,
+                                                zIndex: 100,
+                                                background: "var(--cpd-color-bg-canvas-default)",
+                                                border: "1px solid rgba(148,163,184,0.3)",
+                                                borderRadius: 8,
+                                                boxShadow: "0 10px 30px rgba(0,0,0,0.35)",
+                                            }}
+                                        >
+                                            <EmojiPicker
+                                                onChoose={(unicode) => {
+                                                    insertAtCursor(unicode);
+                                                    return true;
+                                                }}
+                                                onFinished={() => setShowEmoji(false)}
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Resize handle */}
+                    <div className="mx_FanoosDashboard_swResize" onMouseDown={handleResizeStart} />
+                </div>
+            )}
+        </div>,
+        document.body,
     );
 }
 
@@ -5456,7 +7336,7 @@ const FanoosDashboard: React.FC = () => {
     const [hoverInfo, setHoverInfo] = useState<HoverInfo | null>(null);
     const [sendWindow, setSendWindow] = useState<SendWindowState | null>(null);
     const [isAdmin, setIsAdmin] = useState(false);
-    const [activeTab, setActiveTab] = useState<"teams" | "admin" | "draw">("teams");
+    const [activeTab, setActiveTab] = useState<"teams" | "admin" | "servers" | "draw">("teams");
 
     useEffect(() => {
         const token = client.getAccessToken();
@@ -5939,6 +7819,13 @@ const FanoosDashboard: React.FC = () => {
                         </button>
                     )}
                     <button
+                        className={`mx_FanoosDashboard_tab${activeTab === "servers" ? " active" : ""}${isDayMode ? " day" : ""}`}
+                        onClick={() => setActiveTab("servers")}
+                    >
+                        <span className="mx_FanoosDashboard_tabIcon">🖥️</span>
+                        {_t("fanoos_dashboard|tab_servers")}
+                    </button>
+                    <button
                         className={`mx_FanoosDashboard_tab${activeTab === "draw" ? " active" : ""}${isDayMode ? " day" : ""}`}
                         onClick={() => setActiveTab("draw")}
                     >
@@ -5946,13 +7833,31 @@ const FanoosDashboard: React.FC = () => {
                         {_t("fanoos_dashboard|draw_tab")}
                     </button>
                 </div>
-                <div
-                    className="mx_FanoosDashboard_tabIndicator"
-                    style={{
-                        transform: `translateX(${activeTab === "draw" ? (isAdmin ? "200%" : "100%") : activeTab === "admin" ? "100%" : "0%"})`,
-                        width: `${isAdmin ? "33.333%" : "50%"}`,
-                    }}
-                />
+                {(() => {
+                    // Compute the underline position for the animated tab indicator.
+                    // Tab order: teams, [admin?], servers, draw
+                    const tabCount = isAdmin ? 4 : 3;
+                    const width = `${(100 / tabCount).toFixed(3)}%`;
+                    const idx =
+                        activeTab === "teams"
+                            ? 0
+                            : activeTab === "admin"
+                              ? 1
+                              : activeTab === "servers"
+                                ? isAdmin
+                                    ? 2
+                                    : 1
+                                : /* draw */ tabCount - 1;
+                    return (
+                        <div
+                            className="mx_FanoosDashboard_tabIndicator"
+                            style={{
+                                transform: `translateX(${idx * 100}%)`,
+                                width,
+                            }}
+                        />
+                    );
+                })()}
             </div>
 
             {/* Keep all tab content mounted; toggle visibility with display so state is preserved on tab switch */}
@@ -6183,6 +8088,18 @@ const FanoosDashboard: React.FC = () => {
                     <AdminPanel client={client} tree={tree} isDayMode={isDayMode} onRefresh={rebuildTree} />
                 </div>
             )}
+
+            {/* "Admin servers" — visible to any logged-in user. Manage users on
+                any homeserver the user has admin credentials for. */}
+            <div style={{ display: activeTab === "servers" ? "contents" : "none" }}>
+                <AdminPanel
+                    client={client}
+                    tree={tree}
+                    isDayMode={isDayMode}
+                    onRefresh={rebuildTree}
+                    mode="servers-only"
+                />
+            </div>
 
             <div style={{ display: activeTab === "draw" ? "contents" : "none" }}>
                 <FanoosDrawTab isDayMode={isDayMode} client={client} />

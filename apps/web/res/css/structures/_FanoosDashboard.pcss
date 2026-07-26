@@ -2602,6 +2602,84 @@ Please see LICENSE files in the repository root for full details.
     }
     background: rgb(15 25 50 / 70%);
 }
+/* Multi-server admin bar */
+.mx_FanoosDashboard_adminServerBar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-bottom: 1px solid rgb(148, 163, 184, 0.12);
+    background: rgb(99, 102, 241, 0.04);
+    font-size: 11px;
+}
+.mx_FanoosDashboard_adminServerBarLabel {
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--cpd-color-text-secondary);
+    opacity: 0.7;
+    margin-inline-end: 4px;
+}
+.mx_FanoosDashboard_adminServerChipWrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+}
+.mx_FanoosDashboard_adminServerChip {
+    background: rgb(148, 163, 184, 0.14);
+    border: 1px solid transparent;
+    border-radius: 999px;
+    padding: 4px 10px;
+    font-size: 11px;
+    color: var(--cpd-color-text-primary);
+    cursor: pointer;
+    &:hover {
+        background: rgb(148, 163, 184, 0.22);
+    }
+    &.active {
+        background: linear-gradient(135deg, #6366f1, #8b5cf6);
+        color: #fff;
+        border-color: transparent;
+        font-weight: 600;
+    }
+}
+.mx_FanoosDashboard_adminServerChipDel {
+    background: transparent;
+    border: none;
+    color: var(--cpd-color-text-secondary);
+    cursor: pointer;
+    padding: 2px 6px;
+    font-size: 11px;
+    border-radius: 6px;
+    &:hover {
+        color: #ef4444;
+        background: rgb(239, 68, 68, 0.12);
+    }
+}
+.mx_FanoosDashboard_adminServerAdd {
+    background: transparent;
+    border: 1px dashed rgb(148, 163, 184, 0.55);
+    color: var(--cpd-color-text-secondary);
+    border-radius: 999px;
+    padding: 4px 10px;
+    font-size: 11px;
+    cursor: pointer;
+    margin-inline-start: 4px;
+    &:hover {
+        border-color: #6366f1;
+        color: #6366f1;
+    }
+}
+.mx_FanoosDashboard_adminAddServerForm {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px 16px 12px;
+    background: rgb(99, 102, 241, 0.06);
+    border-bottom: 1px solid rgb(99, 102, 241, 0.15);
+}
+
 .mx_FanoosDashboard_adminSubTabs {
     display: flex;
     gap: 4px;
@@ -2922,6 +3000,210 @@ Please see LICENSE files in the repository root for full details.
         text-decoration: underline dotted;
     }
 }
+/* ── Add-server form (Admin servers tab) ─────────────────────────────────── */
+
+.mx_FanoosDashboard_adminAddServerInput {
+    background: rgb(15 23 42 / 4%);
+    border: 1px solid rgb(148 163 184 / 30%);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 12px;
+    color: inherit;
+    font-family: inherit;
+}
+.mx_FanoosDashboard_adminAddServerError {
+    background: rgb(239 68 68 / 12%);
+    color: #ef4444;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+}
+.mx_FanoosDashboard_adminAddServerActions {
+    display: flex;
+    gap: 6px;
+    justify-content: flex-end;
+}
+.mx_FanoosDashboard_adminAddServerBtnPrimary,
+.mx_FanoosDashboard_adminAddServerBtnGhost {
+    border: none;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    &:disabled {
+        opacity: 0.5;
+        cursor: default;
+    }
+}
+.mx_FanoosDashboard_adminAddServerBtnPrimary {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: #fff;
+    &:hover:not(:disabled) {
+        opacity: 0.85;
+    }
+}
+.mx_FanoosDashboard_adminAddServerBtnGhost {
+    background: transparent;
+    border: 1px solid rgb(148 163 184 / 40%);
+    color: var(--cpd-color-text-primary);
+    &:hover:not(:disabled) {
+        background: rgb(148 163 184 / 12%);
+    }
+}
+
+/* ── Server Teams view (Admin servers → Teams sub-tab) ───────────────────── */
+
+.mx_FanoosDashboard_stv {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 500px;
+    gap: 8px;
+    padding: 8px 12px 12px;
+}
+.mx_FanoosDashboard_stvHeader {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-shrink: 0;
+}
+.mx_FanoosDashboard_stvSearch {
+    flex: 1;
+    background: rgb(15 23 42 / 4%);
+    border: 1px solid rgb(148 163 184 / 30%);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 12px;
+    color: inherit;
+}
+.mx_FanoosDashboard_stvReload {
+    background: transparent;
+    border: 1px solid rgb(148 163 184 / 40%);
+    border-radius: 6px;
+    padding: 4px 10px;
+    color: var(--cpd-color-text-primary);
+    cursor: pointer;
+    &:hover:not(:disabled) {
+        background: rgb(148 163 184 / 12%);
+    }
+}
+.mx_FanoosDashboard_stvCount {
+    font-size: 11px;
+    color: var(--cpd-color-text-secondary);
+    font-variant-numeric: tabular-nums;
+}
+.mx_FanoosDashboard_stvError {
+    background: rgb(239 68 68 / 12%);
+    color: #ef4444;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+}
+.mx_FanoosDashboard_stvCanvas {
+    flex: 1;
+    position: relative;
+    min-height: 400px;
+    overflow: hidden;
+}
+.mx_FanoosDashboard_stvEmpty {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--cpd-color-text-secondary);
+    opacity: 0.7;
+    font-size: 12px;
+    pointer-events: none;
+}
+
+/* ── Reactions on external-server messages ────────────────────────────── */
+
+.mx_FanoosDashboard_smpReactions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 4px;
+    padding-left: 6px;
+}
+
+.mx_FanoosDashboard_smpReactionChip {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 2px 7px;
+    font-size: 11.5px;
+    background: rgb(148 163 184 / 12%);
+    border: 1px solid transparent;
+    border-radius: 999px;
+    cursor: pointer;
+    color: var(--cpd-color-text-primary);
+    transition: background 0.1s ease;
+
+    &:hover {
+        background: rgb(148 163 184 / 22%);
+    }
+    &.mine {
+        background: rgb(99 102 241 / 18%);
+        border-color: rgb(99 102 241 / 45%);
+    }
+}
+
+.mx_FanoosDashboard_smpReactionCount {
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    opacity: 0.75;
+    font-size: 10.5px;
+}
+
+.mx_FanoosDashboard_smpReactBtn {
+    position: absolute;
+    top: 0;
+    right: -32px;
+    background: rgb(148 163 184 / 12%);
+    border: none;
+    border-radius: 999px;
+    padding: 2px 6px;
+    font-size: 11px;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.12s ease;
+    color: var(--cpd-color-text-secondary);
+
+    &:hover {
+        background: rgb(99 102 241 / 22%);
+        color: var(--cpd-color-text-primary);
+    }
+}
+.mx_FanoosDashboard_chBubbleRow:hover .mx_FanoosDashboard_smpReactBtn {
+    opacity: 0.85;
+}
+
+.mx_FanoosDashboard_smpReactPicker {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 4px;
+    z-index: 100;
+    background: var(--cpd-color-bg-canvas-default);
+    border: 1px solid rgb(148, 163, 184, 0.3);
+    border-radius: 8px;
+    box-shadow: 0 10px 30px rgb(0, 0, 0, 0.35);
+}
+
+/* Overlay backdrop for the message pane — pins it centered above content. */
+.mx_FanoosDashboard_swOverlay {
+    position: fixed;
+    inset: 0;
+    background: rgb(0 0 0 / 45%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+}
+
 /* Add user button */
 .mx_FanoosDashboard_adminBtnAdd {
     background: linear-gradient(135deg, #6366f1, #8b5cf6);
