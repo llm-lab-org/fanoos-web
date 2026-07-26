@@ -6457,10 +6457,24 @@ function ServerMessagePane({
 
     const insertAtCursor = useCallback(
         (text: string): void => {
-            if (!editorRef.current) return;
-            restoreSelection();
+            const el = editorRef.current;
+            if (!el) return;
+            const savedInside = savedRangeRef.current && el.contains(savedRangeRef.current.commonAncestorContainer);
+            if (savedInside) {
+                restoreSelection();
+            } else {
+                // No saved selection (user opened the picker before clicking
+                // into the editor). Put the cursor at the end.
+                el.focus();
+                const range = document.createRange();
+                range.selectNodeContents(el);
+                range.collapse(false);
+                const sel = window.getSelection();
+                sel?.removeAllRanges();
+                sel?.addRange(range);
+            }
             document.execCommand("insertText", false, text);
-            setDraft(editorRef.current.innerText);
+            setDraft(el.innerText);
         },
         [restoreSelection],
     );
@@ -7133,12 +7147,41 @@ function ServerMessagePane({
                                             onChange={(e) => applyFormat("foreColor", e.target.value)}
                                         />
                                     </label>
+                                    <span className="mx_FanoosDashboard_htmlToolbarDivider" />
+                                    <button
+                                        onMouseDown={(e) => e.preventDefault()}
+                                        onClick={() => {
+                                            if (editorRef.current) editorRef.current.dir = "ltr";
+                                        }}
+                                        title={_t("fanoos_dashboard|html_ltr")}
+                                    >
+                                        ⇒
+                                    </button>
+                                    <button
+                                        onMouseDown={(e) => e.preventDefault()}
+                                        onClick={() => {
+                                            if (editorRef.current) editorRef.current.dir = "rtl";
+                                        }}
+                                        title={_t("fanoos_dashboard|html_rtl")}
+                                    >
+                                        ⇐
+                                    </button>
+                                    <button
+                                        onMouseDown={(e) => e.preventDefault()}
+                                        onClick={() => {
+                                            if (editorRef.current) editorRef.current.dir = "auto";
+                                        }}
+                                        title="Auto direction"
+                                    >
+                                        ⇔
+                                    </button>
                                 </div>
                                 <div
                                     ref={editorRef}
                                     className="mx_FanoosDashboard_cbInput mx_FanoosDashboard_cbHtmlEditor"
                                     contentEditable
                                     suppressContentEditableWarning
+                                    dir="auto"
                                     data-placeholder={_t("fanoos_dashboard|admin_stv_send_ph")}
                                     onInput={() => {
                                         setDraft(editorRef.current?.innerText ?? "");
