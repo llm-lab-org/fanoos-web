@@ -4429,18 +4429,6 @@ function AdminPanel({
     const [addServerBusy, setAddServerBusy] = useState(false);
     const [addServerError, setAddServerError] = useState<string | null>(null);
 
-    // Spaces panel only makes sense against local admin. Users sub-tab is
-    // admin-only. Silently snap views when the selected server can't support
-    // the current view.
-    useEffect(() => {
-        if (selectedServerId !== "local" && view === "spaces") {
-            setView("teams");
-        }
-        if (view === "users" && activeServer && activeServer.isAdmin === false) {
-            setView("teams");
-        }
-    }, [selectedServerId, view, activeServer]);
-
     // Resolve the currently-selected server's baseUrl + token + domain.
     // In "servers-only" mode there is no "local" fallback — if nothing is
     // selected we fall back to empty strings and adminFetch will simply
@@ -4457,6 +4445,18 @@ function AdminPanel({
         : hasLocal
           ? (client.getDomain() ?? "")
           : "";
+
+    // Spaces panel only makes sense against local admin. Users sub-tab is
+    // admin-only. Silently snap views when the selected server can't support
+    // the current view.
+    useEffect(() => {
+        if (selectedServerId !== "local" && view === "spaces") {
+            setView("teams");
+        }
+        if (view === "users" && activeServer && activeServer.isAdmin === false) {
+            setView("teams");
+        }
+    }, [selectedServerId, view, activeServer]);
 
     const adminFetch = useCallback(
         (path: string, opts?: RequestInit) =>
