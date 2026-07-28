@@ -46,10 +46,6 @@ export function writeAll(servers: AdminServer[]): void {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(servers));
 }
 
-export function find(id: string): AdminServer | undefined {
-    return readAll().find((s) => s.id === id);
-}
-
 export function upsert(s: AdminServer): void {
     const all = readAll();
     const idx = all.findIndex((x) => x.id === s.id);

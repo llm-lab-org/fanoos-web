@@ -15,6 +15,9 @@ permissions: {} # No permissions required
 jobs:
     testStorybook:
         name: "Run Visual Tests"
+        # Fanoos fork: this workflow checks out element-hq/element-web (not our repo),
+        # so it's only meaningful in the upstream context. Skip on forks.
+        if: github.repository == 'element-hq/element-web'
         runs-on: ubuntu-24.04
         permissions:
             actions: read

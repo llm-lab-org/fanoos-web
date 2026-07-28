@@ -11,7 +11,9 @@ permissions: {}
 jobs:
     sonarqube:
         name: 🩻 SonarQube
-        if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event != 'merge_group'
+        # Fanoos fork: SonarCloud secrets (SONAR_TOKEN, ELEMENT_BOT_TOKEN) exist only in
+        # upstream. Skip on forks to keep the workflow list green.
+        if: github.repository == 'element-hq/element-web' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event != 'merge_group'
         uses: matrix-org/matrix-js-sdk/.github/workflows/sonarcloud.yml@develop # zizmor: ignore[unpinned-uses]
         permissions:
             actions: read

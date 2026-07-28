@@ -47,18 +47,6 @@ export interface RoomMessage {
 }
 
 /**
- * Turn an mxc://server/mediaId URL into an https URL the browser can load.
- * Uses the deprecated unauthenticated /media/v3/download endpoint. Newer
- * Synapse deployments lock this behind auth — see fetchAuthMedia() for the
- * auth-aware fallback that returns a blob URL.
- */
-export function mxcToHttp(server: AdminServer, mxc: string): string {
-    const m = mxc.match(/^mxc:\/\/([^/]+)\/(.+)$/);
-    if (!m) return "";
-    return `${server.homeserverUrl.replace(/\/$/, "")}/_matrix/media/v3/download/${m[1]}/${m[2]}`;
-}
-
-/**
  * Auth-aware media fetch. Uses /_matrix/client/v1/media/download (with the
  * admin's Bearer token) so it works on newer Synapse deployments that require
  * authenticated media. Returns an object URL the browser can render in an
@@ -261,12 +249,6 @@ export async function fetchServerHierarchy(server: AdminServer): Promise<ServerH
         else rooms.push(record);
     }
     return { rooms, spaces, spaceChildren };
-}
-
-/** Back-compat wrapper: previously flat list of rooms. */
-export async function fetchServerRooms(server: AdminServer): Promise<ServerRoom[]> {
-    const h = await fetchServerHierarchy(server);
-    return h.rooms;
 }
 
 /**

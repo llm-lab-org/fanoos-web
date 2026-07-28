@@ -30,23 +30,3 @@ export function formatTime(ts: number | Date, locale?: string): string {
     }
     return date.toLocaleTimeString(lang, opts);
 }
-
-/**
- * Format a timestamp as a short date + time (e.g. "1403/05/04 13:22" in
- * Persian, "2025-07-26 13:22" otherwise).
- */
-export function formatDateTime(ts: number | Date, locale?: string): string {
-    const date = ts instanceof Date ? ts : new Date(ts);
-    const lang = locale ?? document.documentElement.lang ?? undefined;
-    const opts: Intl.DateTimeFormatOptions = {
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-    };
-    if (usesJalali(lang)) {
-        return toLocaleDigits(new Intl.DateTimeFormat("fa-IR-u-ca-persian", opts).format(date), "fa");
-    }
-    return date.toLocaleString(lang, opts);
-}

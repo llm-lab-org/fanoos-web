@@ -24,8 +24,11 @@ jobs:
             fail-fast: false
             matrix:
                 include:
+                    # Fanoos fork: use `normal` install — layered.sh clones upstream
+                    # matrix-js-sdk#develop and installs its (frequently broken) lockfile,
+                    # which our fork doesn't need since we pin the SDK in our own lockfile.
                     - name: Typescript Syntax Check
-                      install: layered
+                      install: normal
                       command: "lint:types"
                     - name: Prettier
                       install: normal

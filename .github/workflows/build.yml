@@ -55,8 +55,12 @@ jobs:
                   cache: ${{ runner.os != 'Windows' && 'pnpm' || '' }}
                   node-version: "lts/*"
 
-            - name: Fetch layered build
-              run: ./scripts/layered.sh
+            # Fanoos fork: skip layered.sh (which clones matrix-org/matrix-js-sdk#develop
+            # and installs its lockfile). Our lockfile pins the SDK we ship, and upstream
+            # develop's lockfile is often broken. A plain install against our own lockfile
+            # is what the production Docker build does anyway.
+            - name: Install dependencies
+              run: pnpm install --frozen-lockfile
 
             - name: Copy config
               working-directory: apps/web
