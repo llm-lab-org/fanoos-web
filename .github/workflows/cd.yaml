@@ -11,6 +11,9 @@ env:
 jobs:
     docker:
         name: Docker Bake
+        # Fanoos fork: this publishes to ghcr.io/element-hq/element-web and depends
+        # on upstream package/OIDC setup. Skip on forks.
+        if: github.repository == 'element-hq/element-web'
         runs-on: ubuntu-24.04
         permissions:
             id-token: write # needed for signing the images with GitHub OIDC Token

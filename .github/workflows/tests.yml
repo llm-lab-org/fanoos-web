@@ -52,10 +52,10 @@ jobs:
                   node-version: "lts/*"
                   cache: "pnpm"
 
+            # Fanoos fork: skip layered.sh (which clones matrix-org/matrix-js-sdk#develop
+            # and installs its broken lockfile). Our lockfile pins the SDK we ship.
             - name: Install Deps
-              run: "./scripts/layered.sh"
-              env:
-                  JS_SDK_GITHUB_BASE_REF: ${{ inputs.matrix-js-sdk-sha }}
+              run: pnpm install --frozen-lockfile
 
             - name: Jest Cache
               uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5

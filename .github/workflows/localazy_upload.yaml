@@ -9,6 +9,9 @@ on:
 permissions: {} # No permissions needed
 jobs:
     upload:
+        # Fanoos fork: LOCALAZY_WRITE_KEY exists only in the upstream repo.
+        # Skip on forks so the workflow doesn't error out on every push.
+        if: github.repository == 'element-hq/element-web'
         uses: matrix-org/matrix-web-i18n/.github/workflows/localazy_upload.yaml@6eda3835118f3bc3fb658a1a3c20b7da9d16ae42
         secrets:
             LOCALAZY_WRITE_KEY: ${{ secrets.LOCALAZY_WRITE_KEY }}

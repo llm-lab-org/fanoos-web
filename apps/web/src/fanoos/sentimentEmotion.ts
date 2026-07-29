@@ -8,6 +8,20 @@ SPDX-License-Identifier: AGPL-3.0-only OR GPL-3.0-only OR LicenseRef-Element-Com
  * See POST /api/v1/embed/sentiment_emotion.
  */
 
+import { _td } from "../languageHandler";
+
+// FanoosDashboard renders emotion labels via `_t(`fanoos_dashboard|emotion_${k}`)`
+// where k is an EmotionLabel. The i18n extractor can't statically resolve the
+// template literal, so these _td markers let it see every valid key.
+_td("fanoos_dashboard|emotion_anger");
+_td("fanoos_dashboard|emotion_anticipation");
+_td("fanoos_dashboard|emotion_disgust");
+_td("fanoos_dashboard|emotion_fear");
+_td("fanoos_dashboard|emotion_joy");
+_td("fanoos_dashboard|emotion_sadness");
+_td("fanoos_dashboard|emotion_surprise");
+_td("fanoos_dashboard|emotion_trust");
+
 /**
  * Ordered list of endpoints to try. Same-origin path comes first so the browser can
  * reach the API through a reverse proxy (webpack-dev-server in dev, nginx in prod)
