@@ -1,9 +1,10 @@
 name: SonarQube
+# Fanoos fork: this workflow relies on SonarCloud secrets that only exist in
+# the upstream repo. `if:` at the job level doesn't fully skip a reusable
+# workflow invocation, so we gate the triggers themselves — the workflow can
+# still be invoked manually if needed.
 on:
-    workflow_run:
-        workflows: ["Tests"]
-        types:
-            - completed
+    workflow_dispatch: {}
 concurrency:
     group: ${{ github.workflow }}-${{ github.event.workflow_run.head_branch }}
     cancel-in-progress: true
@@ -11,8 +12,6 @@ permissions: {}
 jobs:
     sonarqube:
         name: 🩻 SonarQube
-        # Fanoos fork: SonarCloud secrets (SONAR_TOKEN, ELEMENT_BOT_TOKEN) exist only in
-        # upstream. Skip on forks to keep the workflow list green.
         if: github.repository == 'element-hq/element-web' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event != 'merge_group'
         uses: matrix-org/matrix-js-sdk/.github/workflows/sonarcloud.yml@develop # zizmor: ignore[unpinned-uses]
         permissions:
