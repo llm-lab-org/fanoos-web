@@ -516,6 +516,14 @@ export default class BasicMessageEditor extends React.Component<IProps, IState> 
             }
         }
 
+        // Fanoos: Ctrl+S inserts "salām", Ctrl+Shift+S inserts the response
+        if ((event.ctrlKey || event.metaKey) && (event.key === "s" || event.key === "S")) {
+            this.insertText(event.shiftKey ? "وعليكم السلام ورحمةالله وبركاته" : "السلام علیکم ورحمةالله وبركاته");
+            event.preventDefault();
+            event.stopPropagation();
+            return;
+        }
+
         const navAction = getKeyBindingsManager().getNavigationAction(event);
 
         if (navAction === KeyBindingAction.NextLandmark || navAction === KeyBindingAction.PreviousLandmark) {

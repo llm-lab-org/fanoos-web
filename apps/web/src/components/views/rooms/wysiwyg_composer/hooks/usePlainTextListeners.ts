@@ -139,6 +139,15 @@ export function usePlainTextListeners(
     const enterShouldSend = !useSettingValue("MessageComposerInput.ctrlEnterToSend");
     const onKeyDown = useCallback(
         (event: KeyboardEvent<HTMLDivElement>) => {
+            // Fanoos: Ctrl+S inserts "salām", Ctrl+Shift+S inserts the response
+            if ((event.ctrlKey || event.metaKey) && (event.key === "s" || event.key === "S")) {
+                event.preventDefault();
+                event.stopPropagation();
+                const text = event.shiftKey ? "وعليكم السلام ورحمةالله وبركاته" : "السلام علیکم ورحمةالله وبركاته";
+                document.execCommand("insertText", false, text);
+                return;
+            }
+
             // we need autocomplete to take priority when it is open for using enter to select
             const isHandledByAutocomplete = handleEventWithAutocomplete(autocompleteRef, event);
             if (isHandledByAutocomplete) {
