@@ -4406,6 +4406,21 @@ const IcoWhatsApp = (): React.ReactElement => (
         <path d="M8.02 1.5A6.48 6.48 0 0 0 2.34 11.2L1.5 14.5l3.4-.83a6.48 6.48 0 1 0 3.12-12.17Zm0 11.86a5.34 5.34 0 0 1-2.72-.75l-.2-.12-2.02.5.51-1.96-.13-.2a5.35 5.35 0 1 1 4.56 2.53Zm3.03-3.96c-.16-.08-.98-.48-1.13-.54-.15-.06-.26-.08-.37.08-.11.16-.42.54-.52.65-.1.11-.19.12-.35.04a4.4 4.4 0 0 1-2.16-1.88c-.16-.28.16-.26.46-.87.05-.11.03-.2-.01-.28-.04-.08-.37-.88-.5-1.2-.13-.32-.27-.28-.37-.28h-.31c-.11 0-.28.04-.43.2-.15.16-.57.55-.57 1.35s.58 1.56.66 1.67c.08.11 1.14 1.74 2.76 2.44 1.02.44 1.42.48 1.93.4.31-.05.98-.4 1.11-.79.14-.39.14-.72.1-.79-.04-.07-.15-.11-.31-.19Z" />
     </svg>
 );
+const IcoMessage = (): React.ReactElement => (
+    <svg
+        viewBox="0 0 16 16"
+        width="14"
+        height="14"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+    >
+        <path d="M2 3.5A1.5 1.5 0 0 1 3.5 2h9A1.5 1.5 0 0 1 14 3.5v6A1.5 1.5 0 0 1 12.5 11H6l-3 2.5V11H3.5A1.5 1.5 0 0 1 2 9.5v-6Z" />
+    </svg>
+);
 const IcoSortNone = (): React.ReactElement => (
     <svg viewBox="0 0 10 12" width="8" height="10" fill="currentColor" aria-hidden="true" style={{ opacity: 0.35 }}>
         <path d="M5 0L9 4H1L5 0ZM5 12L1 8H9L5 12Z" />
@@ -5449,12 +5464,6 @@ function AdminPanel({
                                         <span className={cls("UserMatrixId")} dir="ltr">
                                             {u.name}
                                         </span>
-                                        {u.email && (
-                                            <span className={cls("UserEmail")} dir="ltr" title={u.email}>
-                                                <IcoMail />
-                                                {u.email}
-                                            </span>
-                                        )}
                                     </div>
                                 </div>
                                 {/* Col: Role */}
@@ -5485,6 +5494,29 @@ function AdminPanel({
                                 </div>
                                 {/* Col: Actions */}
                                 <div className={cls("UserActions")}>
+                                    {/* Contact actions: email (mailto), whatsapp (todo), sms (todo). */}
+                                    <a
+                                        className={`${cls("UABtn")}${!u.email ? " disabled" : ""}`}
+                                        title={u.email ? `Email ${u.email}` : "No email on file"}
+                                        href={u.email ? `mailto:${u.email}` : undefined}
+                                        aria-disabled={!u.email}
+                                        onClick={(e) => {
+                                            if (!u.email) e.preventDefault();
+                                        }}
+                                    >
+                                        <IcoMail />
+                                    </a>
+                                    <button
+                                        className={`${cls("UABtn")} disabled`}
+                                        title="WhatsApp (coming soon)"
+                                        disabled
+                                    >
+                                        <IcoWhatsApp />
+                                    </button>
+                                    <button className={`${cls("UABtn")} disabled`} title="SMS (coming soon)" disabled>
+                                        <IcoMessage />
+                                    </button>
+                                    <span className={cls("UABtnSep")} aria-hidden="true" />
                                     <button
                                         className={cls("UABtn")}
                                         title={_t("fanoos_dashboard|admin_edit")}

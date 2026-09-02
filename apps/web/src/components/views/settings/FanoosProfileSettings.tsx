@@ -13,6 +13,15 @@ import { SettingsSubsection } from "./shared/SettingsSubsection";
 // are preserved on save so nothing gets clobbered.
 const PROFILE_TYPE = "im.llm-lab.profile";
 
+// Homeservers whose Synapse is Fanoos-configured to surface these fields.
+// Users on any other server never see this subsection — the profile blob
+// wouldn't be read anywhere on those servers.
+function isFanoosServer(userId: string | null | undefined): boolean {
+    if (!userId) return false;
+    const domain = userId.split(":")[1] ?? "";
+    return domain === "llm-lab.org" || domain.endsWith(".llm-lab.org");
+}
+
 interface FanoosProfile {
     email?: string;
     github?: string;
@@ -138,6 +147,7 @@ export const FanoosProfileSettings: React.FC = () => {
     const baseUrl = client.getHomeserverUrl();
     const token = client.getAccessToken() ?? "";
     const userId = client.getUserId() ?? "";
+    const supported = isFanoosServer(userId);
     const [values, setValues] = useState<Record<FieldKey, string>>({
         email: "",
         phone_number: "",
@@ -150,7 +160,7 @@ export const FanoosProfileSettings: React.FC = () => {
     const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
 
     useEffect(() => {
-        if (!baseUrl || !token || !userId) return;
+        if (!supported || !baseUrl || !token || !userId) return;
         void fetchOwnProfile(baseUrl, token, userId).then((content) => {
             setExisting(content);
             setValues({
@@ -161,7 +171,7 @@ export const FanoosProfileSettings: React.FC = () => {
                 huggingface: (content.huggingface as string) ?? "",
             });
         });
-    }, [baseUrl, token, userId]);
+    }, [supported, baseUrl, token, userId]);
 
     const onChangeField = useCallback((key: FieldKey, v: string) => {
         setValues((prev) => ({ ...prev, [key]: v }));
@@ -188,6 +198,9 @@ export const FanoosProfileSettings: React.FC = () => {
             setStatus("error");
         }
     }, [baseUrl, token, userId, existing, values]);
+
+    // Rules of Hooks: early return must come AFTER every hook call above.
+    if (!supported) return null;
 
     return (
         <SettingsSubsection heading="Fanoos profile" stretchContent>

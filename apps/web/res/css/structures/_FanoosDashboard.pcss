@@ -3580,23 +3580,6 @@ $userCols: 1fr 68px 90px 86px 86px 138px;
         color: rgb(30 41 59 / 40%);
     }
 }
-.mx_FanoosDashboard_adminUserEmail {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 11px;
-    color: rgb(255 255 255 / 45%);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    & > svg {
-        flex-shrink: 0;
-        opacity: 0.85;
-    }
-    &.day {
-        color: rgb(30 41 59 / 55%);
-    }
-}
 
 /* ── Badges ── */
 .mx_FanoosDashboard_adminBadgeAdmin {
@@ -3681,6 +3664,30 @@ $userCols: 1fr 68px 90px 86px 86px 138px;
     }
     &.copied {
         color: #4ade80;
+    }
+    &.disabled,
+    &[aria-disabled="true"],
+    &:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+        &:hover {
+            background: transparent;
+            color: inherit;
+        }
+    }
+    /* Reset anchor look so <a> flavours (mailto) match <button> flavours. */
+    &,
+    &:visited {
+        text-decoration: none;
+    }
+}
+.mx_FanoosDashboard_adminUABtnSep {
+    align-self: stretch;
+    width: 1px;
+    margin: 4px 4px;
+    background: rgb(255 255 255 / 10%);
+    &.day {
+        background: rgb(30 41 59 / 12%);
     }
 }
 
