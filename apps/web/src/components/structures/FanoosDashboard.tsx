@@ -2735,6 +2735,7 @@ interface SynapseUser {
     admin: boolean;
     creation_ts: number;
     last_seen_ts?: number;
+    email?: string;
 }
 
 interface RoomInfo {
@@ -4521,6 +4522,28 @@ function AdminPanel({
             if (!res.ok) throw new Error(`${res.status}`);
             const data = (await res.json()) as { users: SynapseUser[] };
             setUsers(data.users);
+            // Progressive email load — /_synapse/admin/v2/users list omits threepids,
+            // so fetch each user's detail with limited concurrency and merge emails in.
+            let idx = 0;
+            const loadOneEmail = async (): Promise<void> => {
+                while (idx < data.users.length) {
+                    const u = data.users[idx++];
+                    try {
+                        const r = await adminFetch(`/_synapse/admin/v2/users/${encodeURIComponent(u.name)}`);
+                        if (!r.ok) continue;
+                        const detail = (await r.json()) as {
+                            threepids?: Array<{ medium: string; address: string }>;
+                        };
+                        const email = detail.threepids?.find((t) => t.medium === "email")?.address;
+                        if (email) {
+                            setUsers((prev) => prev.map((x) => (x.name === u.name ? { ...x, email } : x)));
+                        }
+                    } catch {
+                        /* skip individual failures */
+                    }
+                }
+            };
+            void Promise.all(Array.from({ length: 8 }, loadOneEmail));
         } catch (e) {
             setError(String(e));
         } finally {
@@ -5235,6 +5258,11 @@ function AdminPanel({
                                         <span className={cls("UserMatrixId")} dir="ltr">
                                             {u.name}
                                         </span>
+                                        {u.email && (
+                                            <span className={cls("UserEmail")} dir="ltr" title={u.email}>
+                                                {u.email}
+                                            </span>
+                                        )}
                                     </div>
                                 </div>
                                 {/* Col: Role */}
