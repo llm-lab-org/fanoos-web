@@ -13,6 +13,7 @@ jobs:
               uses: appleboy/ssh-action@v1
               with:
                   host: ${{ secrets.DEPLOY_HOST_QURANIC }}
+                  port: 22022
                   username: root
                   key: ${{ secrets.DEPLOY_SSH_KEY_QURANIC }}
                   script: |
@@ -28,6 +29,7 @@ jobs:
               uses: appleboy/ssh-action@v1
               with:
                   host: ${{ secrets.DEPLOY_HOST_LLMLAB }}
+                  port: 21314
                   username: root
                   key: ${{ secrets.DEPLOY_SSH_KEY_LLMLAB }}
                   script: |
