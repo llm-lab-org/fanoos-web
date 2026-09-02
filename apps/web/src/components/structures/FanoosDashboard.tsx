@@ -2738,6 +2738,19 @@ interface SynapseUser {
     email?: string;
 }
 
+// Custom profile blob stored in im.llm-lab.profile account_data. Fields are
+// all optional; unknown/missing fields are treated as empty. Preserved as-is
+// on write so we don't clobber fields we don't render (e.g. phone_number).
+interface FanoosProfile {
+    email?: string;
+    github?: string;
+    huggingface?: string;
+    phone_number?: string;
+    whatsapp_number?: string;
+    [key: string]: unknown;
+}
+const PROFILE_TYPE = "im.llm-lab.profile";
+
 interface RoomInfo {
     room_id: string;
     name?: string;
@@ -4333,6 +4346,46 @@ const IcoCamera = (): React.ReactElement => (
         <circle cx="8" cy="8.5" r="2.5" />
     </svg>
 );
+const IcoMail = (): React.ReactElement => (
+    <svg
+        viewBox="0 0 16 16"
+        width="14"
+        height="14"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+    >
+        <rect x="1.5" y="3" width="13" height="10" rx="1.5" />
+        <path d="M2 4l6 4.5L14 4" />
+    </svg>
+);
+const IcoGithub = (): React.ReactElement => (
+    <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor" aria-hidden="true">
+        <path
+            fillRule="evenodd"
+            d="M8 0C3.58 0 0 3.58 0 8a8 8 0 0 0 5.47 7.59c.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"
+        />
+    </svg>
+);
+const IcoHuggingFace = (): React.ReactElement => (
+    <span
+        aria-hidden="true"
+        style={{
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: 14,
+            height: 14,
+            fontSize: 12,
+            lineHeight: 1,
+        }}
+    >
+        🤗
+    </span>
+);
 const IcoSortNone = (): React.ReactElement => (
     <svg viewBox="0 0 10 12" width="8" height="10" fill="currentColor" aria-hidden="true" style={{ opacity: 0.35 }}>
         <path d="M5 0L9 4H1L5 0ZM5 12L1 8H9L5 12Z" />
@@ -4377,6 +4430,13 @@ function AdminPanel({
     const [editingUser, setEditingUser] = useState<string | null>(null);
     const [editDisplayName, setEditDisplayName] = useState("");
     const [newPassword, setNewPassword] = useState("");
+    // Profile fields shown in the edit dialog. Email lives in Synapse threepids
+    // (universal, cross-server); github/huggingface live in im.llm-lab.profile
+    // account_data (llm-lab-only — writes silently no-op elsewhere).
+    const [editEmail, setEditEmail] = useState("");
+    const [editGithub, setEditGithub] = useState("");
+    const [editHuggingFace, setEditHuggingFace] = useState("");
+    const editProfileRef = useRef<FanoosProfile | null>(null);
     const [confirmAction, setConfirmAction] = useState<{ userId: string; action: "ban" | "delete" } | null>(null);
     // Create user
     const [showAddUser, setShowAddUser] = useState(false);
@@ -4470,6 +4530,98 @@ function AdminPanel({
                 },
             }),
         [baseUrl, token],
+    );
+
+    // Log in AS the target user via the Synapse admin API, run one operation,
+    // then log the impersonation token out. Returns null on any failure so
+    // callers can silently no-op on non-Fanoos servers.
+    const withImpersonation = useCallback(
+        async <T,>(userId: string, fn: (userToken: string) => Promise<T>): Promise<T | null> => {
+            if (!baseUrl || !token) return null;
+            let userToken: string | null = null;
+            try {
+                const r = await adminFetch(`/_synapse/admin/v1/users/${encodeURIComponent(userId)}/login`, {
+                    method: "POST",
+                    body: JSON.stringify({}),
+                });
+                if (!r.ok) return null;
+                const d = (await r.json()) as { access_token?: string };
+                if (!d.access_token) return null;
+                userToken = d.access_token;
+                return await fn(userToken);
+            } catch {
+                return null;
+            } finally {
+                if (userToken) {
+                    void fetch(`${baseUrl}/_matrix/client/v3/logout`, {
+                        method: "POST",
+                        headers: { Authorization: `Bearer ${userToken}` },
+                    });
+                }
+            }
+        },
+        [adminFetch, baseUrl, token],
+    );
+
+    const fetchUserProfile = useCallback(
+        (userId: string): Promise<FanoosProfile | null> =>
+            withImpersonation(userId, async (userToken) => {
+                const r = await fetch(
+                    `${baseUrl}/_matrix/client/v3/user/${encodeURIComponent(userId)}/account_data/${PROFILE_TYPE}`,
+                    { headers: { Authorization: `Bearer ${userToken}` } },
+                );
+                if (r.status === 404) return {} as FanoosProfile;
+                if (!r.ok) return null;
+                return (await r.json()) as FanoosProfile;
+            }).then((r) => r as FanoosProfile | null),
+        [baseUrl, withImpersonation],
+    );
+
+    // Merge updates into the existing profile and write back. Silently no-ops
+    // on servers that don't support the account_data type (e.g. non-Fanoos).
+    const saveUserProfile = useCallback(
+        (userId: string, base: FanoosProfile | null, updates: Partial<FanoosProfile>): Promise<void> =>
+            withImpersonation(userId, async (userToken) => {
+                const merged: FanoosProfile = { ...(base ?? {}), ...updates };
+                await fetch(
+                    `${baseUrl}/_matrix/client/v3/user/${encodeURIComponent(userId)}/account_data/${PROFILE_TYPE}`,
+                    {
+                        method: "PUT",
+                        headers: {
+                            "Authorization": `Bearer ${userToken}`,
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify(merged),
+                    },
+                );
+            }).then(() => undefined),
+        [baseUrl, withImpersonation],
+    );
+
+    // Replace the user's email threepid via the Synapse admin API. Preserves
+    // any non-email threepids the user has (phone, msisdn). Empty string
+    // clears email; unchanged value → no-op.
+    const saveUserEmail = useCallback(
+        async (userId: string, currentEmail: string, newEmail: string): Promise<void> => {
+            const trimmed = newEmail.trim();
+            if (trimmed === currentEmail) return;
+            try {
+                const getR = await adminFetch(`/_synapse/admin/v2/users/${encodeURIComponent(userId)}`);
+                if (!getR.ok) return;
+                const detail = (await getR.json()) as {
+                    threepids?: Array<{ medium: string; address: string }>;
+                };
+                const others = (detail.threepids ?? []).filter((t) => t.medium !== "email");
+                const threepids = trimmed ? [...others, { medium: "email", address: trimmed }] : others;
+                await adminFetch(`/_synapse/admin/v2/users/${encodeURIComponent(userId)}`, {
+                    method: "PUT",
+                    body: JSON.stringify({ threepids }),
+                });
+            } catch {
+                /* silent: preserves the "no error on non-llm-lab" guarantee */
+            }
+        },
+        [adminFetch],
     );
 
     const submitAddServer = useCallback(async () => {
@@ -4836,6 +4988,19 @@ function AdminPanel({
         setEditDisplayName(u.displayname ?? "");
         setNewPassword("");
         setEditAvatarPreview(null);
+        // Seed profile fields from what we already know; fill in the rest as
+        // the account_data fetch completes. Silent on non-Fanoos servers.
+        setEditEmail(u.email ?? "");
+        setEditGithub("");
+        setEditHuggingFace("");
+        editProfileRef.current = null;
+        void fetchUserProfile(u.name).then((p) => {
+            if (!p) return;
+            editProfileRef.current = p;
+            if (p.email && !u.email) setEditEmail(p.email);
+            if (p.github) setEditGithub(p.github);
+            if (p.huggingface) setEditHuggingFace(p.huggingface);
+        });
     };
 
     const SortIcon = ({ field }: { field: typeof sortField }): React.ReactElement => {
@@ -5260,6 +5425,7 @@ function AdminPanel({
                                         </span>
                                         {u.email && (
                                             <span className={cls("UserEmail")} dir="ltr" title={u.email}>
+                                                <IcoMail />
                                                 {u.email}
                                             </span>
                                         )}
@@ -5441,12 +5607,57 @@ function AdminPanel({
                                         <IcoKey />
                                     </button>
                                 </div>
+                                {/* Profile fields: email + accounts (github, huggingface) */}
+                                <div className={cls("ProfileRow")}>
+                                    <span className={cls("ProfileIcon")} title="Email">
+                                        <IcoMail />
+                                    </span>
+                                    <input
+                                        className={cls("EditInput")}
+                                        placeholder="email@example.com"
+                                        type="email"
+                                        dir="ltr"
+                                        value={editEmail}
+                                        onChange={(e) => setEditEmail(e.target.value)}
+                                    />
+                                </div>
+                                <div className={cls("ProfileRow")}>
+                                    <span className={cls("ProfileIcon")} title="GitHub">
+                                        <IcoGithub />
+                                    </span>
+                                    <input
+                                        className={cls("EditInput")}
+                                        placeholder="github username"
+                                        dir="ltr"
+                                        value={editGithub}
+                                        onChange={(e) => setEditGithub(e.target.value)}
+                                    />
+                                </div>
+                                <div className={cls("ProfileRow")}>
+                                    <span className={cls("ProfileIcon")} title="Hugging Face">
+                                        <IcoHuggingFace />
+                                    </span>
+                                    <input
+                                        className={cls("EditInput")}
+                                        placeholder="huggingface username"
+                                        dir="ltr"
+                                        value={editHuggingFace}
+                                        onChange={(e) => setEditHuggingFace(e.target.value)}
+                                    />
+                                </div>
                                 <div className={cls("FormBtns")}>
                                     <button
                                         className={cls("BtnSave")}
                                         onClick={async () => {
                                             await saveDisplayName(u.name, editDisplayName);
                                             if (newPassword) await resetPassword(u.name, newPassword);
+                                            await saveUserEmail(u.name, u.email ?? "", editEmail);
+                                            const updates: Partial<FanoosProfile> = {
+                                                email: editEmail.trim() || undefined,
+                                                github: editGithub.trim() || undefined,
+                                                huggingface: editHuggingFace.trim() || undefined,
+                                            };
+                                            await saveUserProfile(u.name, editProfileRef.current, updates);
                                         }}
                                     >
                                         {_t("fanoos_dashboard|admin_save")}

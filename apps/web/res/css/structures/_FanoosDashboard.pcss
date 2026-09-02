@@ -3283,6 +3283,28 @@ Please see LICENSE files in the repository root for full details.
     gap: 6px;
 }
 
+/* Profile row: icon prefix + input (email, github, huggingface). */
+.mx_FanoosDashboard_adminProfileRow {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.mx_FanoosDashboard_adminProfileIcon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    flex-shrink: 0;
+    border-radius: 6px;
+    background: rgb(255 255 255 / 6%);
+    color: rgb(255 255 255 / 70%);
+    &.day {
+        background: #e2e8f0;
+        color: rgb(30 41 59 / 75%);
+    }
+}
+
 /* Room block for member management */
 .mx_FanoosDashboard_adminRoomBlock {
     border-bottom: 1px solid rgb(255 255 255 / 4%);
@@ -3559,11 +3581,18 @@ $userCols: 1fr 68px 90px 86px 86px 138px;
     }
 }
 .mx_FanoosDashboard_adminUserEmail {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
     font-size: 11px;
     color: rgb(255 255 255 / 45%);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    & > svg {
+        flex-shrink: 0;
+        opacity: 0.85;
+    }
     &.day {
         color: rgb(30 41 59 / 55%);
     }
