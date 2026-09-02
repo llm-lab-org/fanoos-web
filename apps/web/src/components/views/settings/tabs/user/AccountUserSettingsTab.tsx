@@ -25,6 +25,7 @@ import { SettingsSection } from "../../shared/SettingsSection";
 import { SettingsSubsection, SettingsSubsectionText } from "../../shared/SettingsSubsection";
 import { SDKContext } from "../../../../../contexts/SDKContext";
 import { UserPersonalInfoSettings } from "../../UserPersonalInfoSettings";
+import { FanoosProfileSettings } from "../../FanoosProfileSettings";
 import { useMatrixClientContext } from "../../../../../contexts/MatrixClientContext";
 
 interface IProps {
@@ -188,6 +189,7 @@ const AccountUserSettingsTab: React.FC<IProps> = ({ closeSettingsFn }) => {
                 {(!isAccountManagedExternally || canMake3pidChanges) && (
                     <UserPersonalInfoSettings canMake3pidChanges={canMake3pidChanges} />
                 )}
+                <FanoosProfileSettings />
                 <AccountSection
                     canChangePassword={canChangePassword}
                     onPasswordChanged={onPasswordChanged}

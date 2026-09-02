@@ -1,0 +1,82 @@
+/*
+Copyright 2026 Fanoos / LLM Lab
+
+SPDX-License-Identifier: AGPL-3.0-only OR GPL-3.0-only OR LicenseRef-Element-Commercial
+*/
+
+.mx_FanoosProfileSettings {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-width: 480px;
+}
+
+.mx_FanoosProfileSettings_row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.mx_FanoosProfileSettings_icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    flex-shrink: 0;
+    border-radius: 6px;
+    background: var(--cpd-color-bg-subtle-secondary, rgb(0 0 0 / 4%));
+    color: var(--cpd-color-text-secondary, rgb(0 0 0 / 60%));
+}
+
+.mx_FanoosProfileSettings_input {
+    flex: 1;
+    min-width: 0;
+    padding: 6px 10px;
+    border: 1px solid var(--cpd-color-border-interactive-secondary, rgb(0 0 0 / 15%));
+    border-radius: 6px;
+    background: var(--cpd-color-bg-canvas-default, #fff);
+    color: var(--cpd-color-text-primary, inherit);
+    font-size: 14px;
+
+    &:focus {
+        outline: none;
+        border-color: var(--cpd-color-border-interactive-primary, #3b82f6);
+    }
+}
+
+.mx_FanoosProfileSettings_actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 4px;
+}
+
+.mx_FanoosProfileSettings_save {
+    padding: 6px 14px;
+    border: none;
+    border-radius: 6px;
+    background: var(--cpd-color-bg-action-primary-rest, #0dbd8b);
+    color: var(--cpd-color-text-on-solid-primary, #fff);
+    font-size: 14px;
+    cursor: pointer;
+
+    &:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    &:not(:disabled):hover {
+        background: var(--cpd-color-bg-action-primary-hovered, #0aa47a);
+    }
+}
+
+.mx_FanoosProfileSettings_ok {
+    font-size: 13px;
+    color: var(--cpd-color-text-success-primary, #0dbd8b);
+}
+
+.mx_FanoosProfileSettings_err {
+    font-size: 13px;
+    color: var(--cpd-color-text-critical-primary, #d62c2c);
+}

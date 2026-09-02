@@ -4386,6 +4386,26 @@ const IcoHuggingFace = (): React.ReactElement => (
         🤗
     </span>
 );
+const IcoPhone = (): React.ReactElement => (
+    <svg
+        viewBox="0 0 16 16"
+        width="14"
+        height="14"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+    >
+        <path d="M3.5 2.5h2l1 3-1.5 1a8 8 0 0 0 4.5 4.5l1-1.5 3 1v2A1.5 1.5 0 0 1 12 14 10 10 0 0 1 2 4a1.5 1.5 0 0 1 1.5-1.5Z" />
+    </svg>
+);
+const IcoWhatsApp = (): React.ReactElement => (
+    <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor" aria-hidden="true">
+        <path d="M8.02 1.5A6.48 6.48 0 0 0 2.34 11.2L1.5 14.5l3.4-.83a6.48 6.48 0 1 0 3.12-12.17Zm0 11.86a5.34 5.34 0 0 1-2.72-.75l-.2-.12-2.02.5.51-1.96-.13-.2a5.35 5.35 0 1 1 4.56 2.53Zm3.03-3.96c-.16-.08-.98-.48-1.13-.54-.15-.06-.26-.08-.37.08-.11.16-.42.54-.52.65-.1.11-.19.12-.35.04a4.4 4.4 0 0 1-2.16-1.88c-.16-.28.16-.26.46-.87.05-.11.03-.2-.01-.28-.04-.08-.37-.88-.5-1.2-.13-.32-.27-.28-.37-.28h-.31c-.11 0-.28.04-.43.2-.15.16-.57.55-.57 1.35s.58 1.56.66 1.67c.08.11 1.14 1.74 2.76 2.44 1.02.44 1.42.48 1.93.4.31-.05.98-.4 1.11-.79.14-.39.14-.72.1-.79-.04-.07-.15-.11-.31-.19Z" />
+    </svg>
+);
 const IcoSortNone = (): React.ReactElement => (
     <svg viewBox="0 0 10 12" width="8" height="10" fill="currentColor" aria-hidden="true" style={{ opacity: 0.35 }}>
         <path d="M5 0L9 4H1L5 0ZM5 12L1 8H9L5 12Z" />
@@ -4436,6 +4456,8 @@ function AdminPanel({
     const [editEmail, setEditEmail] = useState("");
     const [editGithub, setEditGithub] = useState("");
     const [editHuggingFace, setEditHuggingFace] = useState("");
+    const [editPhone, setEditPhone] = useState("");
+    const [editWhatsapp, setEditWhatsapp] = useState("");
     const editProfileRef = useRef<FanoosProfile | null>(null);
     const [confirmAction, setConfirmAction] = useState<{ userId: string; action: "ban" | "delete" } | null>(null);
     // Create user
@@ -4993,6 +5015,8 @@ function AdminPanel({
         setEditEmail(u.email ?? "");
         setEditGithub("");
         setEditHuggingFace("");
+        setEditPhone("");
+        setEditWhatsapp("");
         editProfileRef.current = null;
         void fetchUserProfile(u.name).then((p) => {
             if (!p) return;
@@ -5000,6 +5024,8 @@ function AdminPanel({
             if (p.email && !u.email) setEditEmail(p.email);
             if (p.github) setEditGithub(p.github);
             if (p.huggingface) setEditHuggingFace(p.huggingface);
+            if (p.phone_number) setEditPhone(p.phone_number);
+            if (p.whatsapp_number) setEditWhatsapp(p.whatsapp_number);
         });
     };
 
@@ -5645,6 +5671,32 @@ function AdminPanel({
                                         onChange={(e) => setEditHuggingFace(e.target.value)}
                                     />
                                 </div>
+                                <div className={cls("ProfileRow")}>
+                                    <span className={cls("ProfileIcon")} title="Phone">
+                                        <IcoPhone />
+                                    </span>
+                                    <input
+                                        className={cls("EditInput")}
+                                        placeholder="+974 …"
+                                        type="tel"
+                                        dir="ltr"
+                                        value={editPhone}
+                                        onChange={(e) => setEditPhone(e.target.value)}
+                                    />
+                                </div>
+                                <div className={cls("ProfileRow")}>
+                                    <span className={cls("ProfileIcon")} title="WhatsApp">
+                                        <IcoWhatsApp />
+                                    </span>
+                                    <input
+                                        className={cls("EditInput")}
+                                        placeholder="+974 …"
+                                        type="tel"
+                                        dir="ltr"
+                                        value={editWhatsapp}
+                                        onChange={(e) => setEditWhatsapp(e.target.value)}
+                                    />
+                                </div>
                                 <div className={cls("FormBtns")}>
                                     <button
                                         className={cls("BtnSave")}
@@ -5656,6 +5708,8 @@ function AdminPanel({
                                                 email: editEmail.trim() || undefined,
                                                 github: editGithub.trim() || undefined,
                                                 huggingface: editHuggingFace.trim() || undefined,
+                                                phone_number: editPhone.trim() || undefined,
+                                                whatsapp_number: editWhatsapp.trim() || undefined,
                                             };
                                             await saveUserProfile(u.name, editProfileRef.current, updates);
                                         }}
